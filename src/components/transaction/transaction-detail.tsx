@@ -6,8 +6,47 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { ExternalLink, Copy, Check, CreditCard, Calendar, Tag, User, Wallet, CreditCardIcon } from "lucide-react"
 import { useState } from "react"
-import type { Transaction } from "../../lib/api/Subscribtions/types"
+// import type { Transaction } from "../../lib/api/Subscribtions/types" // Commented out API types
 import { Badge } from "@/components/transaction/ui/badge"
+
+// Frontend-only Transaction type definition
+interface Transaction {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  paymentMethod: string;
+  type: string;
+  method: string;
+  createdAt: {
+    seconds: number;
+    _seconds: number;
+    _nanoseconds: number;
+  };
+  user?: {
+    name: string;
+    phone: string;
+    email?: string;
+  };
+  store: {
+    name: string;
+    logo?: string;
+    country: string;
+    merchantId: string;
+    link?: string;
+  };
+  plan: {
+    id: string;
+    name: string;
+    duration: string;
+  };
+  admin?: {
+    name: string;
+    avatar?: string;
+    email?: string;
+  };
+  kashierLink?: string;
+}
 import { Button } from "@/components/transaction/ui/button"
 import {
   Dialog,
@@ -141,13 +180,15 @@ export function TransactionDetail({ transaction, open, onOpenChange }: Transacti
                 <span className="text-gray-300">•</span>
                 <span className="uppercase">{transaction.store.country}</span>
               </div>
-              <Link
-                href={transaction.store.link}
-                target="_blank"
-                className="text-indigo-600 flex items-center gap-1 text-sm mt-1.5 hover:text-indigo-700 transition-colors font-medium"
-              >
-                Visit Store <ExternalLink className="h-3 w-3" />
-              </Link>
+              {transaction.store.link && (
+                <Link
+                  href={transaction.store.link}
+                  target="_blank"
+                  className="text-indigo-600 flex items-center gap-1 text-sm mt-1.5 hover:text-indigo-700 transition-colors font-medium"
+                >
+                  Visit Store <ExternalLink className="h-3 w-3" />
+                </Link>
+              )}
             </div>
           </div>
 
@@ -168,7 +209,7 @@ export function TransactionDetail({ transaction, open, onOpenChange }: Transacti
                   <Calendar className="h-3.5 w-3.5 text-indigo-500" />
                   <span>Date & Time</span>
                 </div>
-                <p className="font-medium">{format(new Date(transaction.createdAt._seconds * 1000), "PPP p")}</p>
+                <p className="font-medium">{format(new Date((transaction.createdAt.seconds || transaction.createdAt._seconds || 0) * 1000), "PPP p")}</p>
               </div>
 
               <div>

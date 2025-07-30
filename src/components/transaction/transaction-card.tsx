@@ -52,6 +52,7 @@ interface Transaction {
   admin?: {
     name: string;
     avatar?: string;
+    email?: string;
   };
   kashierLink?: string;
 }

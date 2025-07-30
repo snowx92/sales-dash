@@ -3,8 +3,47 @@
 import { useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import { DateGroup } from "@/components/transaction/date-group"
-import type { Transaction } from "../../lib/api/Subscribtions/types"
+// import type { Transaction } from "../../lib/api/Subscribtions/types" // Commented out API types
 import { Skeleton } from "@/components/transaction/ui/skeleton"
+
+// Frontend-only Transaction type definition
+interface Transaction {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  paymentMethod: string;
+  type: string;
+  method: string;
+  createdAt: {
+    seconds: number;
+    _seconds: number;
+    _nanoseconds: number;
+  };
+  user?: {
+    name: string;
+    phone: string;
+    email?: string;
+  };
+  store: {
+    name: string;
+    logo?: string;
+    country: string;
+    merchantId: string;
+    link?: string;
+  };
+  plan: {
+    id: string;
+    name: string;
+    duration: string;
+  };
+  admin?: {
+    name: string;
+    avatar?: string;
+    email?: string;
+  };
+  kashierLink?: string;
+}
 
 // Utility function moved directly to this component
 function groupTransactionsByDate(transactions: Transaction[]): Array<{ 
@@ -20,7 +59,9 @@ function groupTransactionsByDate(transactions: Transaction[]): Array<{
   const grouped: Record<string, Transaction[]> = {}
 
   uniqueTransactions.forEach((transaction) => {
-    const date = new Date(transaction.createdAt._seconds * 1000)
+    // Use seconds or _seconds depending on what's available
+    const timestampSeconds = transaction.createdAt.seconds || transaction.createdAt._seconds || 0;
+    const date = new Date(timestampSeconds * 1000)
     const dateStr = date.toISOString().split('T')[0] // Format: yyyy-MM-dd
 
     if (!grouped[dateStr]) {
