@@ -26,6 +26,8 @@ interface Transaction {
   currency: string;
   status: string;
   paymentMethod: string;
+  type: string;
+  method: string;
   createdAt: {
     seconds: number;
     _nanoseconds: number;
@@ -35,7 +37,23 @@ interface Transaction {
     phone: string;
     email?: string;
   };
-  [key: string]: any;
+  store: {
+    name: string;
+    logo?: string;
+    country: string;
+    merchantId: string;
+    link?: string;
+  };
+  plan: {
+    id: string;
+    name: string;
+    duration: string;
+  };
+  admin?: {
+    name: string;
+    avatar?: string;
+  };
+  kashierLink?: string;
 }
 import Link from "next/link"
 

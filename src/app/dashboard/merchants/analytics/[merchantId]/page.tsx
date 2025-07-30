@@ -1024,19 +1024,21 @@ export default function MerchantAnalyticsPage() {
                           _nanoseconds: 0
                         },
                         type: payment.type,
-                        plan: payment.plan,
-                        discountCode: "",
+                        plan: {
+                          id: payment.plan,
+                          name: payment.plan,
+                          duration: "N/A"
+                        },
                         method: "credit_card",
-                        kashierLink: null,
+                        kashierLink: undefined,
                         store: {
-                          id: merchantId,
                           merchantId: storeData?.store.merchantId || "",
                           name: storeData?.store.name || "",
                           logo: storeData?.store.logo || "",
                           country: storeData?.store.defaultCountry || "",
                           link: ""
                         },
-                        admin: null,
+                        admin: undefined,
                         status: "completed",
                         paymentMethod: "credit_card"
                       }}

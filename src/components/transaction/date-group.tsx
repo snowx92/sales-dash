@@ -37,7 +37,30 @@ interface DailyTransactions {
     amount: number;
     status: string;
     paymentMethod: string;
-    [key: string]: any;
+    type: string;
+    method: string;
+    store: {
+      name: string;
+      logo?: string;
+      country: string;
+      merchantId: string;
+      link?: string;
+    };
+    plan: {
+      id: string;
+      name: string;
+      duration: string;
+    };
+    admin?: {
+      name: string;
+      avatar?: string;
+    };
+    kashierLink?: string;
+    user?: {
+      name: string;
+      phone: string;
+      email?: string;
+    };
   }>;
 }
 
