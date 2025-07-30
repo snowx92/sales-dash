@@ -12,11 +12,37 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import type { Payout, PayoutStatus } from "@/lib/api/vpay/types"
+// import type { Payout, PayoutStatus } from "@/lib/api/vpay/types" // Commented out API types
 import { Pagination } from "@/components/tables/Pagination"
 import { ResponsiveCard } from "@/components/layout/ResponsiveWrapper"
 import { Toast } from "@/components/ui/toast"
 import Link from "next/link"
+
+// Frontend-only type definitions
+type PayoutStatus = "Pending" | "Success" | "Failed" | "Canceled"
+
+interface Payout {
+  id: string
+  amount: number
+  walletNumber: string
+  method: string
+  status: PayoutStatus
+  createdAt: {
+    _seconds: number
+    _nanoseconds: number
+  }
+  owner: {
+    store: {
+      id: string
+      name: string
+      logo?: string
+    }
+    user: {
+      name: string
+      avatar?: string
+    }
+  }
+}
 
 interface PayoutsListProps {
   payouts: Payout[]

@@ -1059,7 +1059,28 @@ export default function MerchantAnalyticsPage() {
           </CardHeader>
           <CardContent>
             <TransactionsList
-              transactions={vPayTransactions?.items || []}
+              transactions={
+                (vPayTransactions?.items || []).map((tx) => ({
+                  ...tx,
+                  orderLink: `/dashboard/orders/${tx.orderId}`,
+                  kashierLink: "",
+                  createdAt: {
+                    _seconds: tx.createdAt._seconds,
+                    _nanoseconds: (tx.createdAt as any)._nanoseconds ?? 0
+                  },
+                  owner: {
+                    store: {
+                      id: storeData?.store.merchantId || "",
+                      name: tx.owner.store.name,
+                      logo: tx.owner.store.logo,
+                    },
+                    user: {
+                      name: tx.customer.name,
+                      avatar: tx.customer.avatar,
+                    }
+                  }
+                }))
+              }
               currentPage={currentPage}
               totalPages={vPayTransactions?.totalPages || 1}
               totalItems={vPayTransactions?.totalItems || 0}
@@ -1108,7 +1129,24 @@ export default function MerchantAnalyticsPage() {
           <CardContent>
             {payouts && (
               <PayoutsList
-                payouts={payouts.items}
+                payouts={payouts.items.map(payout => ({
+                  ...payout,
+                  createdAt: {
+                    _seconds: payout.createdAt._seconds,
+                    _nanoseconds: (payout.createdAt as any)._nanoseconds ?? 0
+                  },
+                  owner: {
+                    store: {
+                      id: payout.merchantId,
+                      name: payout.owner.store.name,
+                      logo: payout.owner.store.logo,
+                    },
+                    user: {
+                      name: storeData?.owner?.name || "",
+                      avatar: storeData?.owner?.profilePic || "",
+                    }
+                  }
+                }))}
                 updateStatus={updatePayoutStatus}
                 currentPage={payoutsCurrentPage}
                 totalPages={payouts.totalPages}

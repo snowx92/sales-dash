@@ -5,8 +5,35 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { CreditCard, WalletIcon, Building, MoreVertical, Receipt, CreditCardIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { Transaction } from "@/lib/api/vpay/types"
+// import type { Transaction } from "@/lib/api/vpay/types" // Commented out API types
 import { Pagination } from "@/components/tables/Pagination"
+
+// Frontend-only type definition
+interface Transaction {
+  id: string
+  totalAmount: number
+  amountAfterFees: number
+  commission: number
+  method: string
+  orderId: string
+  orderLink: string
+  kashierLink: string
+  createdAt: {
+    _seconds: number
+    _nanoseconds: number
+  }
+  owner: {
+    store: {
+      id: string
+      name: string
+      logo?: string
+    }
+    user: {
+      name: string
+      avatar?: string
+    }
+  }
+}
 
 interface TransactionsListProps {
   transactions: Transaction[]
