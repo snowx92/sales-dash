@@ -526,7 +526,7 @@ export default function MerchantAnalyticsPage() {
     } finally {
       setPayoutsLoading(false)
     }
-  }, [payoutsCurrentPage, payoutsStatus, merchantId])
+  }, [])
 
   // Update payout status (using static data)
   const updatePayoutStatus = async (payoutId: string, status: PayoutStatus) => {
@@ -570,7 +570,7 @@ export default function MerchantAnalyticsPage() {
     } finally {
       setLoading(false)
     }
-  }, [merchantId, dateRange.from, dateRange.to])
+  }, [])
 
   const refreshCharts = async () => {
     try {
@@ -1066,7 +1066,7 @@ export default function MerchantAnalyticsPage() {
                   kashierLink: "",
                   createdAt: {
                     _seconds: tx.createdAt._seconds,
-                    _nanoseconds: (tx.createdAt as any)._nanoseconds ?? 0
+                    _nanoseconds: (tx.createdAt as { _nanoseconds?: number })._nanoseconds ?? 0
                   },
                   owner: {
                     store: {
@@ -1133,7 +1133,7 @@ export default function MerchantAnalyticsPage() {
                   ...payout,
                   createdAt: {
                     _seconds: payout.createdAt._seconds,
-                    _nanoseconds: (payout.createdAt as any)._nanoseconds ?? 0
+                    _nanoseconds: (payout.createdAt as { _nanoseconds?: number })._nanoseconds ?? 0
                   },
                   owner: {
                     store: {
