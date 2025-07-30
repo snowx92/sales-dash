@@ -1,13 +1,4 @@
 "use client";
-import { Metadata } from "next";
-import { PAGE_TITLES } from "@/lib/config/page-titles";
-
-export const metadata: Metadata = {
-  title: PAGE_TITLES.RETENTION,
-  description: "Customer retention analytics and insights",
-};
-
-
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -445,7 +436,7 @@ export default function RetentionPage() {
                                 e.stopPropagation();
                                 window.open(`tel:${merchant.storeName}`, '_self');
                               }}
-                              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                               title="Call"
                             >
                               <Phone className="h-4 w-4" />
@@ -455,7 +446,7 @@ export default function RetentionPage() {
                                 e.stopPropagation();
                                 window.open(`mailto:contact@${merchant.website.replace(/^https?:\/\//, '')}`, '_self');
                               }}
-                              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               title="Email"
                             >
                               <Mail className="h-4 w-4" />
@@ -465,7 +456,7 @@ export default function RetentionPage() {
                                 e.stopPropagation();
                                 handleEditMerchant(merchant);
                               }}
-                              className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                              className="p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                               title="Edit"
                             >
                               <Edit className="h-4 w-4" />

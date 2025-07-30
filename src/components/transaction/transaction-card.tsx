@@ -4,7 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { CreditCard, Wallet, User, CreditCardIcon, ExternalLink } from "lucide-react"
-import type { Transaction } from "../../lib/api/Subscribtions/types"
+// import type { Transaction } from "../../lib/api/Subscribtions/types" // Commented out API types
 import {
   Tooltip,
   TooltipContent,
@@ -18,6 +18,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/transaction/ui/dialog"
+
+// Frontend-only Transaction type definition
+interface Transaction {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  paymentMethod: string;
+  createdAt: {
+    seconds: number;
+    _nanoseconds: number;
+  };
+  user?: {
+    name: string;
+    phone: string;
+    email?: string;
+  };
+  [key: string]: any;
+}
 import Link from "next/link"
 
 // Utility functions
@@ -251,8 +270,8 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
 
                 {/* Mobile: Second row */}
                 <div className="flex sm:hidden items-center gap-2 flex-wrap">
-                  <span className="bg-indigo-50/80 text-indigo-700 px-2 py-0.5 rounded-full font-medium group-hover:bg-indigo-100/80 transition-colors duration-300 text-xs">
-                    {formatTimestamp(transaction.createdAt._seconds)}
+                  <span className="bg-indigo-50/80 text-indigo-700 px-2 py-0.5 rounded-full font-medium text-xs">
+                    {formatTimestamp(transaction.createdAt.seconds)}
                   </span>
                   <div className="flex items-center gap-1 bg-white/80 px-2 py-0.5 rounded-full shadow-sm text-xs">
                     {getMethodIcon(transaction.method)}
@@ -273,7 +292,7 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
                 {/* Desktop: Original single row layout */}
                 <div className="hidden sm:flex items-center gap-2 text-sm text-gray-500 mt-2 flex-wrap">
                   <span className="bg-indigo-50/80 text-indigo-700 px-2.5 py-1 rounded-full font-medium group-hover:bg-indigo-100/80 transition-colors duration-300">
-                    {formatTimestamp(transaction.createdAt._seconds)}
+                    {formatTimestamp(transaction.createdAt.seconds)}
                   </span>
                   <span className="text-gray-300">•</span>
                   <div className="flex items-center gap-1.5 bg-white/80 px-2.5 py-1 rounded-full shadow-sm">
@@ -363,7 +382,7 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
             </div>
           </TooltipContent>
         </Tooltip>
-      </TooltipProvider>
+        </TooltipProvider>
 
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto p-0 bg-gradient-to-br from-white to-indigo-50 border-0 shadow-2xl shadow-indigo-200/30">
@@ -457,8 +476,8 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
                 </Badge>
               </div>
               <div className="text-base sm:text-lg font-bold text-gray-800">{transaction.plan.name}</div>
-              <div className="mt-2 text-xs sm:text-sm text-gray-500">
-                Created on {formatTimestamp(transaction.createdAt._seconds)}
+              <div className="text-xs sm:text-sm text-gray-500">
+                Created on {formatTimestamp(transaction.createdAt.seconds)}
               </div>
             </div>
             

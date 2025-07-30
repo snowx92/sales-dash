@@ -66,14 +66,14 @@ const MobileFilters = ({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Sort by</label>
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sort by" />
+                  <SelectTrigger className="text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400 transition-colors duration-200">
+                    <SelectValue placeholder="Sort by" className="text-gray-900" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="date">Date Created</SelectItem>
-                    <SelectItem value="orders">Orders</SelectItem>
-                    <SelectItem value="site">Website Visits</SelectItem>
-                    <SelectItem value="products">Products</SelectItem>
+                  <SelectContent className="bg-white border-gray-300 shadow-lg">
+                    <SelectItem value="date" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Date Created</SelectItem>
+                    <SelectItem value="orders" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Orders</SelectItem>
+                    <SelectItem value="site" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Website Visits</SelectItem>
+                    <SelectItem value="products" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Products</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -81,15 +81,15 @@ const MobileFilters = ({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Filter by plan</label>
                 <Select value={filterPlan} onValueChange={setFilterPlan}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by plan" />
+                  <SelectTrigger className="text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400 transition-colors duration-200">
+                    <SelectValue placeholder="Filter by plan" className="text-gray-900" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Plans</SelectItem>
-                    <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="starter">Starter</SelectItem>
-                    <SelectItem value="plus">Plus</SelectItem>
-                    <SelectItem value="pro">Pro</SelectItem>
+                  <SelectContent className="bg-white border-gray-300 shadow-lg">
+                    <SelectItem value="all" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">All Plans</SelectItem>
+                    <SelectItem value="free" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Free</SelectItem>
+                    <SelectItem value="starter" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Starter</SelectItem>
+                    <SelectItem value="plus" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Plus</SelectItem>
+                    <SelectItem value="pro" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Pro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -97,15 +97,15 @@ const MobileFilters = ({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Filter by status</label>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by status" />
+                  <SelectTrigger className="text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400 transition-colors duration-200">
+                    <SelectValue placeholder="Filter by status" className="text-gray-900" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="subscribed">Subscribed</SelectItem>
-                    <SelectItem value="not_subscribed">Not Subscribed</SelectItem>
-                    <SelectItem value="hidden">Hidden Orders</SelectItem>
-                    <SelectItem value="auto_renew">Auto Renew</SelectItem>
+                  <SelectContent className="bg-white border-gray-300 shadow-lg">
+                    <SelectItem value="all" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">All Statuses</SelectItem>
+                    <SelectItem value="subscribed" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Subscribed</SelectItem>
+                    <SelectItem value="not_subscribed" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Not Subscribed</SelectItem>
+                    <SelectItem value="hidden" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Hidden Orders</SelectItem>
+                    <SelectItem value="auto_renew" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Auto Renew</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -226,7 +226,7 @@ export default function MerchantListingPage() {
                 handleSearch(searchEvent);
               }
             }}
-            className="pl-10 pr-16 text-base" // text-base prevents zoom on iOS
+            className="pl-10 pr-16 text-base text-gray-900 border-gray-300 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400 transition-colors duration-200" // text-base prevents zoom on iOS
           />
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 h-5 w-5" />
           <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-1">
@@ -285,40 +285,40 @@ export default function MerchantListingPage() {
         <ResponsiveCard padding="sm">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sort by" />
+              <SelectTrigger className="text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400 transition-colors duration-200">
+                <SelectValue placeholder="Sort by" className="text-gray-900" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="date">Date Created</SelectItem>
-                <SelectItem value="orders">Orders</SelectItem>
-                <SelectItem value="site">Website Visits</SelectItem>
-                <SelectItem value="products">Products</SelectItem>
+              <SelectContent className="bg-white border-gray-300 shadow-lg">
+                <SelectItem value="date" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Date Created</SelectItem>
+                <SelectItem value="orders" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Orders</SelectItem>
+                <SelectItem value="site" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Website Visits</SelectItem>
+                <SelectItem value="products" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Products</SelectItem>
               </SelectContent>
             </Select>
             
             <Select value={filterPlan} onValueChange={setFilterPlan}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by plan" />
+              <SelectTrigger className="text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400 transition-colors duration-200">
+                <SelectValue placeholder="Filter by plan" className="text-gray-900" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Plans</SelectItem>
-                <SelectItem value="free">Free</SelectItem>
-                <SelectItem value="starter">Starter</SelectItem>
-                <SelectItem value="plus">Plus</SelectItem>
-                <SelectItem value="pro">Pro</SelectItem>
+              <SelectContent className="bg-white border-gray-300 shadow-lg">
+                <SelectItem value="all" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">All Plans</SelectItem>
+                <SelectItem value="free" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Free</SelectItem>
+                <SelectItem value="starter" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Starter</SelectItem>
+                <SelectItem value="plus" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Plus</SelectItem>
+                <SelectItem value="pro" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Pro</SelectItem>
               </SelectContent>
             </Select>
             
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by status" />
+              <SelectTrigger className="text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-400 transition-colors duration-200">
+                <SelectValue placeholder="Filter by status" className="text-gray-900" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="subscribed">Subscribed</SelectItem>
-                <SelectItem value="not_subscribed">Not Subscribed</SelectItem>
-                <SelectItem value="hidden">Hidden Orders</SelectItem>
-                <SelectItem value="auto_renew">Auto Renew</SelectItem>
+              <SelectContent className="bg-white border-gray-300 shadow-lg">
+                <SelectItem value="all" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">All Statuses</SelectItem>
+                <SelectItem value="subscribed" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Subscribed</SelectItem>
+                <SelectItem value="not_subscribed" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Not Subscribed</SelectItem>
+                <SelectItem value="hidden" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Hidden Orders</SelectItem>
+                <SelectItem value="auto_renew" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Auto Renew</SelectItem>
               </SelectContent>
             </Select>
             

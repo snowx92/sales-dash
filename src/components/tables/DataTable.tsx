@@ -1,5 +1,19 @@
 import React from 'react';
-import { getUniqueColor } from '../../helpers/helpers'; // Import the helper function
+
+// Simple color helper function
+const getUniqueColor = (value: string) => {
+  // Simple hash-based color generation
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = value.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  const hue = hash % 360;
+  return {
+    backgroundColor: `hsl(${hue}, 70%, 90%)`,
+    textColor: `hsl(${hue}, 70%, 30%)`
+  };
+};
 
 interface DataTableProps {
   data: {

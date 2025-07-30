@@ -116,7 +116,7 @@ export default function TransactionsList({
                     toggleExpand(transaction.id)
                   }}
                 >
-                  <MoreVertical className="h-4 w-4 text-gray-600" />
+                  <MoreVertical className="h-4 w-4 text-gray-400" />
                 </Button>
               </div>
             </motion.div>

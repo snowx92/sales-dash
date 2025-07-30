@@ -47,13 +47,13 @@ export class SessionManager {
     }
   }
 
-  setUserData(userData: any): void {
+  setUserData(userData: unknown): void {
     if (typeof window !== 'undefined') {
       localStorage.setItem(SessionKeys.USER_DATA, JSON.stringify(userData));
     }
   }
 
-  getUserData(): any | null {
+  getUserData(): unknown | null {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem(SessionKeys.USER_DATA);
       return userData ? JSON.parse(userData) : null;

@@ -34,7 +34,6 @@ const getToastInstance = (): ToastContextType | null => {
         return null;
       }
     });
-  // eslint-disable-next-line no-empty
   } catch {
     console.warn('Toast context not available yet');
   }

@@ -25,7 +25,7 @@ const LoginForm = () => {
       // Frontend-only login - no validation required
       // Redirect directly to dashboard
       router.push("/dashboard/overview");
-    } catch (error) {
+    } catch {
       setError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);

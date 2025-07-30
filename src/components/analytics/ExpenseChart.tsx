@@ -1,7 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ExpenseData } from "@/lib/api/statistics/types";
+
+// Define ExpenseData type inline since the import doesn't exist
+interface ExpenseData {
+  name: string;
+  totalAmount: number;
+  count: number;
+}
 
 // Define a color mapping for expense categories
 const EXPENSE_COLORS: Record<string, { color: string, icon: string }> = {

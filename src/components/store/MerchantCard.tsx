@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, ShoppingBag, Globe, Box, Eye, Calendar, Clock, LogIn, Trash2, RotateCcw, BarChart, Key, EyeOff, MapPin, Building2, Copy } from "lucide-react";
+import { Users, ShoppingBag, Globe, Box, Eye, Calendar, Clock, LogIn, Trash2, RotateCcw, BarChart, Key, EyeOff, MapPin, Building2, Copy, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 import { ActionDropdown } from "@/components/ui/ActionDropdown";
@@ -221,9 +221,9 @@ export function MerchantCard({
         console.log("[Login] Using static token:", mockToken.substring(0, 20) + "...");
         
         // Redirect to login page with login token
-        window.open(`https://dashboard.vondera.app/auth/login?token=${loginToken}`, "_blank");
+        window.open(`https://dashboard.vondera.app/auth/login?token`, "_blank");
       } else {
-        console.log("[Login] Invalid response:", { response, type: typeof response });
+        console.log("[Login] Invalid response: No token received");
         toast.error("Failed to get store login token");
       }
     } catch (error) {
@@ -447,9 +447,21 @@ export function MerchantCard({
             animate={{ scale: 1, opacity: 1 }}
             className="bg-white p-6 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200"
           >
-            <h3 className="text-xl font-bold mb-2 text-gray-900">
-              {actionType === "delete" ? "Delete Store" : "Reset Store Data"}
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">
+                {actionType === "delete" ? "Delete Store" : "Reset Store Data"}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPassword("");
+                  setActionType(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XCircle className="h-6 w-6" />
+              </button>
+            </div>
             <p className="text-sm text-gray-600 mb-6">
               Please enter your admin password to confirm this action.
             </p>
@@ -491,7 +503,19 @@ export function MerchantCard({
             animate={{ scale: 1, opacity: 1 }}
             className="bg-white p-6 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200"
           >
-            <h3 className="text-xl font-bold mb-2 text-gray-900">Reset Store Password</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Reset Store Password</h3>
+              <button
+                onClick={() => {
+                  setShowPasswordResetModal(false);
+                  setNewPassword("");
+                  setConfirmPassword("");
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XCircle className="h-6 w-6" />
+              </button>
+            </div>
             <p className="text-sm text-gray-600 mb-6">
               Enter a new password for this store. The merchant will need to use this password to log in.
             </p>

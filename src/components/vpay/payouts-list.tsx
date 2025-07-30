@@ -129,7 +129,7 @@ const MobilePayoutCard = ({
         <div className="space-y-3">
           {/* Wallet Number */}
           <div className="flex items-center space-x-2">
-                            <Hash className="h-4 w-4 text-gray-600" />
+            <Hash className="h-4 w-4 text-gray-400" />
             <span className="text-sm font-medium text-gray-500">Identifier:</span>
             <div className="flex items-center flex-1 min-w-0 bg-gray-50 rounded px-2 py-1">
               <span className="text-sm font-mono text-gray-700 truncate flex-1">
@@ -150,7 +150,7 @@ const MobilePayoutCard = ({
 
           {/* Date */}
           <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4 text-gray-600" />
+            <Calendar className="h-4 w-4 text-gray-400" />
             <span className="text-sm font-medium text-gray-500">Created:</span>
             <span className="text-sm text-gray-700">{formatDate(payout.createdAt)}</span>
           </div>
@@ -457,7 +457,7 @@ export default function PayoutsList({ payouts, updateStatus, currentPage, totalP
         {payouts.length === 0 ? (
           <ResponsiveCard padding="md" className="text-center">
             <div className="py-8">
-              <Wallet className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+              <Wallet className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No payouts found</h3>
               <p className="text-gray-500">Payouts will appear here when they&apos;re processed</p>
             </div>
@@ -491,7 +491,7 @@ export default function PayoutsList({ payouts, updateStatus, currentPage, totalP
       <div className="hidden lg:block">
         {payouts.length === 0 ? (
           <div className="text-center py-10 bg-white rounded-xl border border-gray-100">
-                          <Wallet className="h-16 w-16 text-gray-500 mx-auto mb-4" />
+            <Wallet className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-medium text-gray-900 mb-2">No payouts found</h3>
             <p className="text-gray-500">Payouts will appear here when they&apos;re processed</p>
           </div>

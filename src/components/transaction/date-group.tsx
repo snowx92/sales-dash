@@ -3,11 +3,43 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronDown, ChevronUp, Calendar } from "lucide-react"
-import { formatDisplayDate } from "@/lib/utils"
 import { TransactionCard } from "@/components/transaction/transaction-card"
-import type { DailyTransactions } from "../../lib/api/Subscribtions/types"
+// import type { DailyTransactions } from "../../lib/api/Subscribtions/types" // Commented out API types
 import { Button } from "@/components/transaction/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/transaction/ui/card"
+
+// Simple date formatting function
+const formatDisplayDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  } catch {
+    return dateString;
+  }
+};
+
+// Frontend-only type definition for daily transactions
+interface DailyTransactions {
+  date: string;
+  totalAmount: number;
+  transactions: Array<{
+    id: string;
+    currency: string;
+    createdAt: {
+      seconds?: number;
+      _nanoseconds: number;
+    };
+    amount: number;
+    status: string;
+    paymentMethod: string;
+    [key: string]: any;
+  }>;
+}
 
 interface DateGroupProps {
   day: DailyTransactions
@@ -60,16 +92,26 @@ export function DateGroup({ day }: DateGroupProps) {
             transition={{ duration: 0.3 }}
           >
             <CardContent className="px-0 py-0 divide-y divide-indigo-100/30 bg-white">
-              {day.transactions.map((transaction, index) => (
-                <motion.div
-                  key={`${transaction.id}-${transaction.createdAt._nanoseconds}`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: index * 0.05 }}
-                >
-                  <TransactionCard transaction={transaction} />
-                </motion.div>
-              ))}
+              {day.transactions.map((transaction, index) => {
+                // Ensure createdAt has both seconds and _nanoseconds
+                const fixedTransaction = {
+                  ...transaction,
+                  createdAt: {
+                    seconds: transaction.createdAt.seconds ?? 0,
+                    _nanoseconds: transaction.createdAt._nanoseconds,
+                  },
+                };
+                return (
+                  <motion.div
+                    key={`${transaction.id}-${transaction.createdAt._nanoseconds}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, delay: index * 0.05 }}
+                  >
+                    <TransactionCard transaction={fixedTransaction} />
+                  </motion.div>
+                );
+              })}
             </CardContent>
           </motion.div>
         )}

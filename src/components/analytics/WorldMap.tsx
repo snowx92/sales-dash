@@ -7,7 +7,10 @@ import {
 } from "react-simple-maps";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import * as Flags from "country-flag-icons/react/3x2";
-import { countryNameToGeoJSON, countryNameToISO } from "@/lib/countryMappings";
+
+// Simple country mappings - inline implementation
+const countryNameToGeoJSON = (name: string) => name;
+const countryNameToISO = (name: string) => name.substring(0, 2).toUpperCase();
 
 export interface CountryData {
   name: string;
@@ -40,7 +43,7 @@ export default function WorldMap({ data }: WorldMapProps) {
 
   // Function to get flag component
   const getFlagComponent = (countryName: string) => {
-    const iso2Code = countryNameToISO[countryName];
+    const iso2Code = countryNameToISO(countryName);
     if (!iso2Code || !Flags[iso2Code as keyof typeof Flags]) return null;
     
     const FlagComponent = Flags[iso2Code as keyof typeof Flags];
@@ -51,14 +54,14 @@ export default function WorldMap({ data }: WorldMapProps) {
   const findCountryData = (geoName: string) => {
     return data.find(d => 
       d.name === geoName || 
-      countryNameToGeoJSON[d.name] === geoName
+      countryNameToGeoJSON(d.name) === geoName
     );
   };
 
   // Function to get proper country name for display
   const getDisplayName = (geoName: string) => {
-    const entry = Object.entries(countryNameToGeoJSON).find(([, value]) => value === geoName);
-    return entry ? entry[0] : geoName;
+    // Simple implementation - just return the geo name since we don't have full mapping
+    return geoName;
   };
 
   return (

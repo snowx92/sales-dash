@@ -151,7 +151,7 @@ const StoreInfoPanel: React.FC<StoreInfoPanelProps> = ({ storeData }) => {
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-gray-500 mb-2">
+              <div className="flex items-center gap-2 text-gray-700 mb-2">
                 <Image 
                   src={storeData.storeCategory.icon} 
                   alt="Category" 
@@ -191,7 +191,7 @@ const StoreInfoPanel: React.FC<StoreInfoPanelProps> = ({ storeData }) => {
           >
             <Card className="shadow-md">
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className="flex items-center text-purple-600">
                   <Tag className="w-5 h-5 mr-2" />
                   Plan Information
                 </CardTitle>
@@ -199,21 +199,21 @@ const StoreInfoPanel: React.FC<StoreInfoPanelProps> = ({ storeData }) => {
               <CardContent >
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Plan Type</p>
-                    <p className="font-medium">{storeData.planName}</p>
+                    <p className="text-sm text-gray-600">Plan Type</p>
+                    <p className="font-medium text-gray-900">{storeData.planName}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Auto Renewal</p>
-                    <p className="font-medium">{storeData.renewEnabled ? "Enabled" : "Disabled"}</p>
+                    <p className="text-sm text-gray-600">Auto Renewal</p>
+                    <p className="font-medium text-gray-900">{storeData.renewEnabled ? "Enabled" : "Disabled"}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Subscription Date</p>
+                    <p className="text-sm text-gray-600">Subscription Date</p>
                     <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-100">
                       {storeData.lastSubscriptionDate}
                     </div>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Expiration Date</p>
+                    <p className="text-sm text-gray-600">Expiration Date</p>
                     <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                       showExpirationWarning 
                         ? "bg-red-50 text-red-700 border border-red-100" 
@@ -258,7 +258,7 @@ const StoreInfoPanel: React.FC<StoreInfoPanelProps> = ({ storeData }) => {
 
             <Card className="shadow-md">
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className="flex items-center text-purple-600">
                   <UserCircle className="w-5 h-5 mr-2" />
                   Owner Information
                 </CardTitle>
@@ -270,12 +270,12 @@ const StoreInfoPanel: React.FC<StoreInfoPanelProps> = ({ storeData }) => {
                     <AvatarFallback>{storeData.owner.name ? storeData.owner.name.charAt(0) : "U"}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{storeData.owner.name}</p>
+                    <p className="font-medium text-gray-900">{storeData.owner.name}</p>
                     <div className="flex items-center text-sm">
                       <span
                         className={`w-2 h-2 rounded-full mr-1 ${storeData.owner.isOnline ? "bg-green-500" : "bg-gray-300"}`}
                       ></span>
-                      <span className="text-muted-foreground">{storeData.owner.isOnline ? "Online" : "Offline"}</span>
+                      <span className="text-gray-600">{storeData.owner.isOnline ? "Online" : "Offline"}</span>
                     </div>
                   </div>
                 </div>
@@ -284,26 +284,26 @@ const StoreInfoPanel: React.FC<StoreInfoPanelProps> = ({ storeData }) => {
 
                 <div className="space-y-3">
                   <div className="flex items-center">
-                    <Phone className="w-4 h-4 mr-2 text-muted-foreground" />
-                    <span>{storeData.owner.phone}</span>
+                    <Phone className="w-4 h-4 mr-2 text-gray-600" />
+                    <span className="text-gray-900">{storeData.owner.phone}</span>
                   </div>
                   <div className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2 text-muted-foreground">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2 text-gray-600">
                       <rect width="20" height="16" x="2" y="4" rx="2" />
                       <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                     </svg>
-                    <span>{storeData.owner.email || 'No email available'}</span>
+                    <span className="text-gray-900">{storeData.owner.email || 'No email available'}</span>
                   </div>
                   <div className="flex items-center">
-                    <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
-                    <span>Last active: </span>
+                    <Clock className="w-4 h-4 mr-2 text-gray-600" />
+                    <span className="text-gray-900">Last active: </span>
                     <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-100 ml-2">
                       {storeData.lastActiveTime}
                     </div>
                   </div>
                   <div className="flex items-center">
-                    <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
-                    <span>Store created: </span>
+                    <Calendar className="w-4 h-4 mr-2 text-gray-600" />
+                    <span className="text-gray-900">Store created: </span>
                     <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-100 ml-2">
                       {storeData.createDate}
                     </div>
@@ -354,7 +354,7 @@ const MetricCard = ({ icon, label, value, color }: { icon: React.ReactNode; labe
       {icon}
     </div>
     <p className="text-gray-800 font-bold text-xl">{value}</p>
-    <p className="text-gray-500 text-sm">{label}</p>
+    <p className="text-gray-700 text-sm">{label}</p>
   </motion.div>
 );
 

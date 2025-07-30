@@ -1,11 +1,3 @@
-import { Metadata } from "next";
-import { PAGE_TITLES } from "@/lib/config/page-titles";
-
-export const metadata: Metadata = {
-  title: PAGE_TITLES.OVERVIEW,
-  description: "Sales overview and dashboard analytics",
-};
-
 "use client";
 
 import { motion } from "framer-motion";

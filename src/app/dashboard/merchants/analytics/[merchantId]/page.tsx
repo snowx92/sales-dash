@@ -25,6 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 // import type { Payout, PayoutStatus } from "@/lib/api/vpay/types"
 // import { PaginatedResponse } from "@/lib/api/services/commonTypes"
 import { ActionDropdown } from "@/components/ui/ActionDropdown"
+import { toast } from "sonner"
 
 // Local type definitions for static data
 interface Timestamp {
@@ -181,7 +182,6 @@ interface OrdersResponse {
   currentPage: number;
 }
 // import { storesActionsApi } from "@/lib/api/stores/actions/storesActions"
-import { toast } from "sonner"
 
 // const vPayService = new VPayService()
 
@@ -455,12 +455,12 @@ export default function MerchantAnalyticsPage() {
   const [isResettingPassword, setIsResettingPassword] = useState(false)
   
   // Data states - Initialize with static data
-  const [analyticsData, setAnalyticsData] = useState<ChartsData | null>(staticChartsData)
-  const [storeData, setStoreData] = useState<StoreAnalyticsResponse | null>(staticStoreData)
-  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryResponse | null>(staticPaymentHistory)
-  const [vPayTransactions, setVPayTransactions] = useState<VPayTransactionsResponse | null>(staticVPayTransactions)
-  const [orders, setOrders] = useState<OrdersResponse | null>(staticOrders)
-  const [payouts, setPayouts] = useState<PaginatedResponse<Payout> | null>(staticPayouts)
+  const [analyticsData] = useState<ChartsData | null>(staticChartsData)
+  const [storeData] = useState<StoreAnalyticsResponse | null>(staticStoreData)
+  const [paymentHistory] = useState<PaymentHistoryResponse | null>(staticPaymentHistory)
+  const [vPayTransactions] = useState<VPayTransactionsResponse | null>(staticVPayTransactions)
+  const [orders] = useState<OrdersResponse | null>(staticOrders)
+  const [payouts] = useState<PaginatedResponse<Payout> | null>(staticPayouts)
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
@@ -680,7 +680,7 @@ export default function MerchantAnalyticsPage() {
     },
     metrics: {
       totalProducts: storeData.counters.products,
-      totalCategories: storeData.store.category.id,
+      totalCategories: 1, // Convert category id to number
       totalEmployees: storeData.counters.employees,
       totalCouriers: storeData.counters.couriers,
       totalStorefronts: storeData.counters.storeFronts,
@@ -914,9 +914,9 @@ export default function MerchantAnalyticsPage() {
                 setDateRange({ ...dateRange, from: e.target.value })
                 refreshCharts()
               }}
-              className="border-none text-sm focus:outline-none"
+              className="border-none text-sm focus:outline-none text-gray-900"
             />
-            <span className="text-gray-500">to</span>
+            <span className="text-gray-800">to</span>
             <Input
               type="date"
               value={dateRange.to}
@@ -924,7 +924,7 @@ export default function MerchantAnalyticsPage() {
                 setDateRange({ ...dateRange, to: e.target.value })
                 refreshCharts()
               }}
-              className="border-none text-sm focus:outline-none"
+              className="border-none text-sm focus:outline-none text-gray-900"
             />
             <Button 
               variant="outline" 
@@ -966,7 +966,7 @@ export default function MerchantAnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <Card>
           <CardHeader>
-            <CardTitle>Orders Over Time</CardTitle>
+            <CardTitle className="text-purple-600">Orders Over Time</CardTitle>
           </CardHeader>
           <CardContent>
             <LineChartWithTooltip 
@@ -977,14 +977,13 @@ export default function MerchantAnalyticsPage() {
                 borderColor: '#3b82f6',
                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
               }]}
-              labels={ordersChart.labels}
               dateRange={dateRange}
             />
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>VPay Transactions</CardTitle>
+            <CardTitle className="text-purple-600">VPay Transactions</CardTitle>
           </CardHeader>
           <CardContent>
             <LineChartWithTooltip 
@@ -995,7 +994,6 @@ export default function MerchantAnalyticsPage() {
                 borderColor: '#10b981',
                 backgroundColor: 'rgba(16, 185, 129, 0.1)',
               }]}
-              labels={vPayChart.labels}
               dateRange={dateRange}
             />
           </CardContent>
@@ -1005,7 +1003,7 @@ export default function MerchantAnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <Card>
           <CardHeader>
-            <CardTitle>Last 5 Subscription Payments</CardTitle>
+            <CardTitle className="text-purple-600">Last 5 Subscription Payments</CardTitle>
           </CardHeader>
           <CardContent>
             {Object.entries(groupedTransactions)
@@ -1013,7 +1011,7 @@ export default function MerchantAnalyticsPage() {
               .slice(0, 5)
               .map(([date, payments]) => (
                 <div key={date} className="mb-6">
-                  <div className="text-sm font-medium text-gray-500 mb-3">{date}</div>
+                  <div className="text-sm font-medium text-gray-800 mb-3">{date}</div>
                   {payments.map((payment) => (
                     <TransactionCard
                       key={payment.id}
@@ -1021,7 +1019,10 @@ export default function MerchantAnalyticsPage() {
                         id: payment.id,
                         amount: payment.amount,
                         currency: payment.currency,
-                        createdAt: payment.createdAt,
+                        createdAt: {
+                          seconds: payment.createdAt._seconds,
+                          _nanoseconds: 0
+                        },
                         type: payment.type,
                         plan: payment.plan,
                         discountCode: "",
@@ -1035,14 +1036,16 @@ export default function MerchantAnalyticsPage() {
                           country: storeData?.store.defaultCountry || "",
                           link: ""
                         },
-                        admin: null
+                        admin: null,
+                        status: "completed",
+                        paymentMethod: "credit_card"
                       }}
                     />
                   ))}
                 </div>
               ))}
             {!paymentHistory?.items.length && (
-              <div className="text-center py-4 text-gray-500">
+              <div className="text-center py-4 text-gray-700">
                 No payment history available
               </div>
             )}
@@ -1050,7 +1053,7 @@ export default function MerchantAnalyticsPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle> VPay </CardTitle>
+            <CardTitle className="text-purple-600"> VPay </CardTitle>
           </CardHeader>
           <CardContent>
             <TransactionsList
@@ -1113,7 +1116,7 @@ export default function MerchantAnalyticsPage() {
             {payoutsLoading && (
               <div className="flex items-center justify-center py-8">
                 <RefreshCw className="h-6 w-6 animate-spin text-purple-600" />
-                <span className="ml-2 text-gray-600">Loading payouts...</span>
+                <span className="ml-2 text-gray-800">Loading payouts...</span>
               </div>
             )}
           </CardContent>
@@ -1123,20 +1126,20 @@ export default function MerchantAnalyticsPage() {
       <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Latest Orders</CardTitle>
+            <CardTitle className="text-purple-600">Latest Orders</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="rounded-lg border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50 hover:bg-gray-50">
-                    <TableHead className="font-semibold text-gray-600">Order ID</TableHead>
-                    <TableHead className="font-semibold text-gray-600">Products Count</TableHead>
-                    <TableHead className="font-semibold text-gray-600">Customer Name</TableHead>
-                    <TableHead className="font-semibold text-gray-600">Total Price</TableHead>
-                    <TableHead className="font-semibold text-gray-600">Date</TableHead>
-                    <TableHead className="font-semibold text-gray-600">Governorate</TableHead>
-                    <TableHead className="font-semibold text-gray-600">Status</TableHead>
+                    <TableHead className="font-semibold text-gray-800">Order ID</TableHead>
+                    <TableHead className="font-semibold text-gray-800">Products Count</TableHead>
+                    <TableHead className="font-semibold text-gray-800">Customer Name</TableHead>
+                    <TableHead className="font-semibold text-gray-800">Total Price</TableHead>
+                    <TableHead className="font-semibold text-gray-800">Date</TableHead>
+                    <TableHead className="font-semibold text-gray-800">Governorate</TableHead>
+                    <TableHead className="font-semibold text-gray-800">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1154,11 +1157,11 @@ export default function MerchantAnalyticsPage() {
                           {order.productsCount}
                         </span>
                       </TableCell>
-                      <TableCell className="font-medium">{order.customer.name}</TableCell>
+                      <TableCell className="font-medium text-gray-900">{order.customer.name}</TableCell>
                       <TableCell>
                         <span className="font-semibold text-gray-900">
                           {order.payment.totalPrice.toLocaleString()} 
-                          <span className="text-gray-500 ml-1">{order.payment.currency}</span>
+                          <span className="text-gray-700 ml-1">{order.payment.currency}</span>
                         </span>
                       </TableCell>
                       <TableCell>
@@ -1185,9 +1188,9 @@ export default function MerchantAnalyticsPage() {
               </Table>
             </div>
             {!orders?.items.length && (
-              <div className="text-center py-8 text-gray-500">
-                <Package className="w-12 h-12 mx-auto mb-3 text-gray-500" />
-                <p className="text-gray-600 font-medium">No orders available</p>
+              <div className="text-center py-8 text-gray-700">
+                <Package className="w-12 h-12 mx-auto mb-3 text-gray-700" />
+                <p className="text-gray-800 font-medium">No orders available</p>
               </div>
             )}
           </CardContent>
@@ -1213,7 +1216,7 @@ export default function MerchantAnalyticsPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
-              className="mb-6 text-base"
+              className="mb-6 text-base text-gray-900"
             />
             <div className="flex justify-end space-x-3">
               <Button
@@ -1257,12 +1260,12 @@ export default function MerchantAnalyticsPage() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="New password"
-                  className="w-full pr-10 text-base"
+                  className="w-full pr-10 text-base text-gray-900"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-gray-800"
                 >
                   {showNewPassword ? <EyeOff className="h-4 w-4 text-gray-600" /> : <Eye className="h-4 w-4 text-gray-600" />}
                 </button>
@@ -1273,12 +1276,12 @@ export default function MerchantAnalyticsPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
-                  className="w-full pr-10 text-base"
+                  className="w-full pr-10 text-base text-gray-900"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-gray-800"
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4 text-gray-600" /> : <Eye className="h-4 w-4 text-gray-600" />}
                 </button>

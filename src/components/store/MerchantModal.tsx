@@ -75,21 +75,13 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
   const handleAddSubscription = async () => {
     // Validate inputs
     if (!planType || !duration || !amount) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please fill in all fields',
-        variant: 'destructive'
-      });
+      toast.error('Validation Error: Please fill in all fields');
       return;
     }
 
     const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
-      toast({
-        title: 'Invalid Amount',
-        description: 'Please enter a valid amount',
-        variant: 'destructive'
-      });
+      toast.error('Invalid Amount: Please enter a valid amount');
       return;
     }
 
@@ -116,10 +108,14 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
       // await subscriptionService.createSubscription(storeData.id, subscriptionData);
       
       // Show success toast
-      toast({
-        title: 'Subscription Created (Static Mode)',
-        description: `Successfully subscribed to ${planType} plan for ${DURATION_LABELS[duration as keyof typeof DURATION_LABELS]} duration with amount $${numericAmount}`
-      });
+      toast(
+        <>
+          <div className="font-bold">Subscription Created (Static Mode)</div>
+          <div>
+            Successfully subscribed to {planType} plan for {DURATION_LABELS[duration as keyof typeof DURATION_LABELS]} duration with amount ${numericAmount}
+          </div>
+        </>
+      );
 
       // Then refresh the data before closing the modal
       if (onSubscriptionComplete) {
@@ -127,11 +123,12 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
           await onSubscriptionComplete();
         } catch (refreshError) {
           console.error('Failed to refresh store list:', refreshError);
-          toast({
-            title: 'Refresh Failed',
-            description: 'Store list could not be refreshed. Please reload the page.',
-            variant: 'destructive'
-          });
+          toast(
+            <div>
+              <div className="font-bold text-red-700">Refresh Failed</div>
+              <div>Store list could not be refreshed. Please reload the page.</div>
+            </div>
+          );
         }
       }
 
@@ -148,11 +145,12 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
       // Show error toast and keep modal open
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       setError(errorMessage);
-      toast({
-        title: 'Subscription Failed',
-        description: 'Failed to create subscription. Please try again.',
-        variant: 'destructive'
-      });
+      toast(
+        <div>
+          <div className="font-bold text-red-700">Subscription Failed</div>
+          <div>Failed to create subscription. Please try again.</div>
+        </div>
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -216,9 +214,9 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
                 <SelectValue placeholder="Choose a plan" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="starter">StartUp Plan</SelectItem>
-                <SelectItem value="plus">Plus Plan</SelectItem>
-                <SelectItem value="pro">Pro Plan</SelectItem>
+                <SelectItem value="starter" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">StartUp Plan</SelectItem>
+                <SelectItem value="plus" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Plus Plan</SelectItem>
+                <SelectItem value="pro" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Pro Plan</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -235,9 +233,9 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
                 <SelectValue placeholder="Select duration" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="month">Monthly</SelectItem>
-                <SelectItem value="quartar">Quarterly</SelectItem>
-                <SelectItem value="year">Yearly</SelectItem>
+                <SelectItem value="month" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Monthly</SelectItem>
+                <SelectItem value="quartar" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Quarterly</SelectItem>
+                <SelectItem value="year" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Yearly</SelectItem>
               </SelectContent>
             </Select>
           </div>

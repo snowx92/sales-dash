@@ -1,13 +1,4 @@
 "use client";
-import { Metadata } from "next";
-import { PAGE_TITLES } from "@/lib/config/page-titles";
-
-export const metadata: Metadata = {
-  title: PAGE_TITLES.LEADS,
-  description: "Manage and track sales leads",
-};
-
-
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";

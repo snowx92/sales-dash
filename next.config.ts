@@ -1,5 +1,6 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
   images: {
     domains: [
       "vondera-bucket.s3.amazonaws.com",
@@ -46,7 +47,7 @@ const nextConfig = {
     formats: ['image/webp'],
   },
   
-  webpack: (config, { isServer }) => {
+  webpack: (config: any, { isServer }: { isServer: boolean }) => {
     // Fix for Node.js modules being bundled in client-side code
     if (!isServer) {
       config.resolve.fallback = {
