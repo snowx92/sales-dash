@@ -218,170 +218,251 @@ const MobileStatsCollapse = ({ planCounts }: MobileStatsCollapseProps) => {
               </div>
             </div>
           </div>
-
-          {/* Sales Team Section */}
-          <div className="space-y-2">
-            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wider px-2">Sales Performance</div>
-            <div className="space-y-2">
-              {/* Affiliate Link */}
-              <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
-                <div className="text-xs text-purple-600 mb-1">Your Affiliate Link</div>
-                <div className="flex items-center gap-2">
-                  <code className="text-xs text-purple-700 truncate flex-1">{currentUser.affiliateLink}</code>
-                  <button className="p-1 hover:bg-purple-100 rounded">
-                    <Copy className="h-3 w-3 text-purple-600" />
-                  </button>
-                </div>
-              </div>
-
-                             {/* Target Progress */}
-               <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
-                 <div className="text-xs text-blue-600 mb-1">Target Progress</div>
-                 <div className="text-sm font-medium text-blue-700">{currentUser.currentRevenue.toLocaleString()} EGP / {currentUser.targetRevenue.toLocaleString()} EGP</div>
-                 <div className="w-full bg-blue-200 rounded-full h-1.5 mt-1">
-                   <div 
-                     className="bg-blue-600 h-1.5 rounded-full"
-                     style={{ width: `${(currentUser.currentRevenue / currentUser.targetRevenue) * 100}%` }}
-                   ></div>
-                 </div>
-               </div>
-            </div>
-          </div>
         </motion.div>
       )}
     </div>
   );
 };
 
-// Enhanced Leaderboard Component with animations
-const CompactLeaderboard = () => {
+// Mobile Leaderboard and Bonus Components
+const MobileLeaderboardAndBonus = () => {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-      className="bg-gradient-to-br from-white via-yellow-50/30 to-white p-4 rounded-xl shadow-lg border border-yellow-100/50 mb-4"
-    >
-      <div className="flex items-center gap-3 mb-4">
-        <motion.div
-          animate={{ rotateY: [0, 360] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="relative"
-        >
-          <Trophy className="h-5 w-5 text-yellow-600" />
+    <div className="lg:hidden space-y-4 mb-4">
+      {/* Mobile Compact Leaderboard */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="bg-gradient-to-br from-white via-yellow-50/30 to-white p-4 rounded-xl shadow-lg border border-yellow-100/50"
+      >
+        <div className="flex items-center gap-3 mb-4">
           <motion.div
-            animate={{ scale: [1, 1.3, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="absolute -inset-1 bg-yellow-400/20 rounded-full blur-sm"
-          />
-        </motion.div>
-        <h3 className="text-sm font-bold bg-gradient-to-r from-yellow-600 to-orange-500 bg-clip-text text-transparent">
-          🏆 Top Performers
-        </h3>
-      </div>
-      
-      <div className="space-y-3">
-        {leaderboard.slice(0, 3).map((member, index) => (
-          <motion.div 
-            key={member.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-            whileHover={{ scale: 1.02, y: -2 }}
-            className={`relative p-3 rounded-xl border-2 transition-all duration-300 ${
-              member.name === currentUser.name 
-                ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-300 shadow-lg' 
-                : 'bg-gradient-to-r from-gray-50 to-white border-gray-200 hover:shadow-md'
-            }`}
+            animate={{ rotateY: [0, 360] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            className="relative"
           >
-            {/* Rank badge with special effects for top position */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <motion.div 
-                  animate={index === 0 ? { 
-                    scale: [1, 1.2, 1],
-                    rotate: [0, 5, -5, 0]
-                  } : {}}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className={`relative w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                    index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-lg' :
-                    index === 1 ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-800' :
-                    'bg-gradient-to-r from-orange-300 to-orange-400 text-white'
-                  }`}
-                >
-                  {index + 1}
-                  {index === 0 && (
-                    <motion.div
-                      animate={{ scale: [1, 1.5, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                      className="absolute -inset-1 bg-yellow-400/30 rounded-full blur-sm"
-                    />
-                  )}
-                </motion.div>
-                
-                {member.isTop && (
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 1, repeat: Infinity }}
-                  >
-                    <Flame className="h-4 w-4 text-red-500" />
-                  </motion.div>
-                )}
-                
-                <span className="font-medium text-gray-900 text-xs">{member.name}</span>
-                
-                {member.name === currentUser.name && (
-                  <motion.span
-                    animate={{ opacity: [0.7, 1, 0.7] }}
+            <Trophy className="h-5 w-5 text-yellow-600" />
+            <motion.div
+              animate={{ scale: [1, 1.3, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="absolute -inset-1 bg-yellow-400/20 rounded-full blur-sm"
+            />
+          </motion.div>
+          <h3 className="text-sm font-bold bg-gradient-to-r from-yellow-600 to-orange-500 bg-clip-text text-transparent">
+            🏆 Top Performers
+          </h3>
+        </div>
+        
+        <div className="space-y-3">
+          {leaderboard.slice(0, 3).map((member, index) => (
+            <motion.div 
+              key={member.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              whileHover={{ scale: 1.02, y: -2 }}
+              className={`relative p-3 rounded-xl border-2 transition-all duration-300 ${
+                member.name === currentUser.name 
+                  ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-300 shadow-lg' 
+                  : 'bg-gradient-to-r from-gray-50 to-white border-gray-200 hover:shadow-md'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <motion.div 
+                    animate={index === 0 ? { 
+                      scale: [1, 1.2, 1],
+                      rotate: [0, 5, -5, 0]
+                    } : {}}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium"
+                    className={`relative w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-lg' :
+                      index === 1 ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-800' :
+                      'bg-gradient-to-r from-orange-300 to-orange-400 text-white'
+                    }`}
                   >
-                    You
-                  </motion.span>
-                )}
-              </div>
-              
-              <motion.div 
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ duration: 3, repeat: Infinity }}
-                className={`text-xs font-bold px-2 py-1 rounded-full ${
-                  member.percentage >= 100 ? 'bg-green-100 text-green-700' : 
-                  member.percentage >= 75 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                }`}
-              >
-                {member.percentage.toFixed(0)}%
-              </motion.div>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="text-xs text-gray-600 font-medium">
-                {member.revenue.toLocaleString()} EGP / {member.target.toLocaleString()} EGP
-              </div>
-              
-              {/* Enhanced progress bar */}
-              <div className="relative w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    {index + 1}
+                  </motion.div>
+                  
+                  {member.isTop && (
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 1, repeat: Infinity }}
+                    >
+                      <Flame className="h-4 w-4 text-red-500" />
+                    </motion.div>
+                  )}
+                  
+                  <span className="font-medium text-gray-900 text-xs">{member.name}</span>
+                  
+                  {member.name === currentUser.name && (
+                    <motion.span
+                      animate={{ opacity: [0.7, 1, 0.7] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium"
+                    >
+                      You
+                    </motion.span>
+                  )}
+                </div>
+                
                 <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(member.percentage, 100)}%` }}
-                  transition={{ duration: 1.5, ease: "easeOut", delay: index * 0.2 }}
-                  className={`h-2 rounded-full relative overflow-hidden ${
-                    member.percentage >= 100 ? 'bg-gradient-to-r from-green-400 to-green-500' : 
-                    member.percentage >= 75 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' : 
-                    'bg-gradient-to-r from-red-400 to-red-500'
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                  className={`text-xs font-bold px-2 py-1 rounded-full ${
+                    member.percentage >= 100 ? 'bg-green-100 text-green-700' : 
+                    member.percentage >= 75 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
                   }`}
                 >
-                  <motion.div
-                    animate={{ x: ['-100%', '100%'] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-1/3"
-                  />
+                  {member.percentage.toFixed(0)}%
                 </motion.div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="text-xs text-gray-600 font-medium">
+                  {member.revenue.toLocaleString()} EGP / {member.target.toLocaleString()} EGP
+                </div>
+                
+                <div className="relative w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(member.percentage, 100)}%` }}
+                    transition={{ duration: 1.5, ease: "easeOut", delay: index * 0.2 }}
+                    className={`h-2 rounded-full relative overflow-hidden ${
+                      member.percentage >= 100 ? 'bg-gradient-to-r from-green-400 to-green-500' : 
+                      member.percentage >= 75 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' : 
+                      'bg-gradient-to-r from-red-400 to-red-500'
+                    }`}
+                  >
+                    <motion.div
+                      animate={{ x: ['-100%', '100%'] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-1/3"
+                    />
+                  </motion.div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Mobile Bonus Incentives Section */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        className="relative bg-gradient-to-br from-emerald-50 via-white to-emerald-50 p-4 rounded-xl shadow-lg border-2 border-emerald-200/50 overflow-hidden"
+      >
+        <div className="absolute inset-0 opacity-10">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute -top-4 -right-4 w-16 h-16 bg-emerald-300 rounded-full"
+          />
+          <motion.div
+            animate={{ rotate: -360 }}
+            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            className="absolute -bottom-4 -left-4 w-12 h-12 bg-emerald-400 rounded-full"
+          />
+        </div>
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-3">
+            <motion.div
+              animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              🎁
+            </motion.div>
+            <h3 className="text-sm font-bold bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent">
+              Daily Bonus Challenge
+            </h3>
+          </div>
+          
+          <motion.div
+            animate={{ y: [0, -2, 0] }}
+            transition={{ duration: 3, repeat: Infinity }}
+            className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-emerald-200/50 mb-3"
+          >
+            <div className="text-center space-y-2">
+              <motion.div
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="text-lg font-bold text-emerald-700"
+              >
+                🔥 TODAY&apos;S BONUS
+              </motion.div>
+              
+              <div className="text-xs text-gray-600 leading-relaxed">
+                <span className="font-semibold text-emerald-600">Reach 2,000 EGP</span> today
+                <br />
+                <span className="text-gray-500">and unlock</span>
+                <br />
+                <motion.span
+                  animate={{ color: ['#059669', '#10b981', '#059669'] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="text-lg font-bold"
+                >
+                  +500 EGP BONUS! 💰
+                </motion.span>
               </div>
             </div>
           </motion.div>
-        ))}
-      </div>
-    </motion.div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-gray-600">Today&apos;s Progress</span>
+              <span className="font-semibold text-emerald-600">750 / 2,000 EGP</span>
+            </div>
+            
+            <div className="relative w-full bg-emerald-100 rounded-full h-2 overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: '37.5%' }}
+                transition={{ duration: 2, ease: "easeOut", delay: 0.5 }}
+                className="bg-gradient-to-r from-emerald-400 to-emerald-500 h-2 rounded-full relative overflow-hidden"
+              >
+                <motion.div
+                  animate={{ x: ['-100%', '100%'] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent w-1/2"
+                />
+              </motion.div>
+            </div>
+            
+            <motion.div
+              animate={{ opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-center text-xs text-emerald-600 font-medium"
+            >
+              1,250 EGP to go! 🚀
+            </motion.div>
+          </div>
+          
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="mt-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-lg p-2 text-center cursor-pointer"
+          >
+            <div className="text-xs font-bold flex items-center justify-center gap-1">
+              <motion.span
+                animate={{ rotate: [0, 360] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              >
+                ⚡
+              </motion.span>
+              Beat Sarah&apos;s record: 1,850 EGP
+              <motion.span
+                animate={{ rotate: [0, -360] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              >
+                ⚡
+              </motion.span>
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+    </div>
   );
 };
 
@@ -536,6 +617,9 @@ export default function ReportsPage() {
               </div>
             </div>
             
+        {/* Mobile Leaderboard and Bonus - Show on small devices */}
+        <MobileLeaderboardAndBonus />
+
         {/* Compact Header Section */}
         <div className="bg-white p-3 rounded-xl shadow-sm">
           {/* Mobile Header */}
@@ -634,9 +718,9 @@ export default function ReportsPage() {
         <MobileStatsCollapse planCounts={planCounts} />
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {/* Main Content - Left Side */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-2 xl:col-span-3 space-y-6">
             {/* Stats Cards Section - 2 rows of cards */}
                          {/* Stats Cards Section - Single row of 3 cards */}
              <ResponsiveGrid cols={{ base: 1, sm: 2, md: 3 }} gap={4}>
@@ -717,41 +801,137 @@ export default function ReportsPage() {
         </ResponsiveCard>
           </div>
 
-                    {/* Right Sidebar */}
-          <div className="lg:col-span-1 space-y-4">
-            {/* Compact Leaderboard */}
-            <CompactLeaderboard />
-            
-            {/* Bonus Incentives Section */}
+          {/* Right Sidebar - Desktop Leaderboard and Bonus */}
+          <div className="hidden lg:block lg:col-span-1 xl:col-span-2 space-y-6">
+            {/* Desktop Leaderboard */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="bg-gradient-to-br from-white via-yellow-50/30 to-white p-6 lg:p-8 rounded-xl shadow-lg border border-yellow-100/50"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <motion.div
+                  animate={{ rotateY: [0, 360] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  className="relative"
+                >
+                  <Trophy className="h-6 w-6 lg:h-7 lg:w-7 text-yellow-600" />
+                  <motion.div
+                    animate={{ scale: [1, 1.3, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="absolute -inset-1 bg-yellow-400/20 rounded-full blur-sm"
+                  />
+                </motion.div>
+                <h3 className="text-lg lg:text-xl font-bold bg-gradient-to-r from-yellow-600 to-orange-500 bg-clip-text text-transparent">
+                  🏆 Team Leaderboard
+                </h3>
+              </div>
+              
+              <div className="space-y-4 lg:space-y-5">
+                {leaderboard.map((member, index) => (
+                  <motion.div 
+                    key={member.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    className={`relative p-4 lg:p-5 rounded-xl border-2 transition-all duration-300 ${
+                      member.name === currentUser.name 
+                        ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-300 shadow-lg' 
+                        : 'bg-gradient-to-r from-gray-50 to-white border-gray-200 hover:shadow-md'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3 lg:mb-4">
+                      <div className="flex items-center gap-3 lg:gap-4">
+                        <motion.div 
+                          animate={index === 0 ? { 
+                            scale: [1, 1.2, 1],
+                            rotate: [0, 5, -5, 0]
+                          } : {}}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className={`relative w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center text-sm lg:text-base font-bold ${
+                            index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-lg' :
+                            index === 1 ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-800' :
+                            'bg-gradient-to-r from-orange-300 to-orange-400 text-white'
+                          }`}
+                        >
+                          {index + 1}
+                        </motion.div>
+                        
+                        <div>
+                          <span className="font-medium text-gray-900 text-sm lg:text-base">{member.name}</span>
+                          {member.name === currentUser.name && (
+                            <span className="ml-2 text-xs lg:text-sm bg-purple-100 text-purple-700 px-2 py-1 rounded-full">You</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <motion.div 
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                        className={`text-sm lg:text-base font-bold px-3 py-1 lg:px-4 lg:py-2 rounded-full ${
+                          member.percentage >= 100 ? 'bg-green-100 text-green-700' : 
+                          member.percentage >= 75 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                        }`}
+                      >
+                        {member.percentage.toFixed(0)}%
+                      </motion.div>
+                    </div>
+                    
+                    <div className="space-y-2 lg:space-y-3">
+                      <div className="text-sm lg:text-base text-gray-600 font-medium">
+                        {member.revenue.toLocaleString()} EGP / {member.target.toLocaleString()} EGP
+                      </div>
+                      
+                      <div className="relative w-full bg-gray-200 rounded-full h-2 lg:h-3 overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(member.percentage, 100)}%` }}
+                          transition={{ duration: 1.5, ease: "easeOut", delay: index * 0.2 }}
+                          className={`h-2 lg:h-3 rounded-full ${
+                            member.percentage >= 100 ? 'bg-gradient-to-r from-green-400 to-green-500' :
+                            member.percentage >= 75 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' :
+                            'bg-gradient-to-r from-red-400 to-red-500'
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Desktop Bonus Incentives Section */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="relative bg-gradient-to-br from-emerald-50 via-white to-emerald-50 p-4 rounded-xl shadow-lg border-2 border-emerald-200/50 overflow-hidden"
+              className="relative bg-gradient-to-br from-emerald-50 via-white to-emerald-50 p-6 lg:p-8 rounded-xl shadow-lg border-2 border-emerald-200/50 overflow-hidden"
             >
-              {/* Animated background pattern */}
               <div className="absolute inset-0 opacity-10">
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                  className="absolute -top-4 -right-4 w-16 h-16 bg-emerald-300 rounded-full"
+                  className="absolute -top-4 -right-4 w-16 h-16 lg:w-20 lg:h-20 bg-emerald-300 rounded-full"
                 />
                 <motion.div
                   animate={{ rotate: -360 }}
                   transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-                  className="absolute -bottom-4 -left-4 w-12 h-12 bg-emerald-400 rounded-full"
+                  className="absolute -bottom-4 -left-4 w-12 h-12 lg:w-16 lg:h-16 bg-emerald-400 rounded-full"
                 />
               </div>
               
               <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-3 lg:gap-4 mb-4 lg:mb-6">
                   <motion.div
                     animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
                     transition={{ duration: 2, repeat: Infinity }}
+                    className="text-xl lg:text-2xl"
                   >
                     🎁
                   </motion.div>
-                  <h3 className="text-sm font-bold bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent">
+                  <h3 className="text-lg lg:text-xl font-bold bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent">
                     Daily Bonus Challenge
                   </h3>
                 </div>
@@ -759,18 +939,18 @@ export default function ReportsPage() {
                 <motion.div
                   animate={{ y: [0, -2, 0] }}
                   transition={{ duration: 3, repeat: Infinity }}
-                  className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-emerald-200/50 mb-3"
+                  className="bg-white/80 backdrop-blur-sm rounded-lg p-4 lg:p-6 border border-emerald-200/50 mb-4 lg:mb-6"
                 >
-                  <div className="text-center space-y-2">
+                  <div className="text-center space-y-3 lg:space-y-4">
                     <motion.div
                       animate={{ scale: [1, 1.05, 1] }}
                       transition={{ duration: 2, repeat: Infinity }}
-                      className="text-lg font-bold text-emerald-700"
+                      className="text-xl lg:text-2xl font-bold text-emerald-700"
                     >
-                                             🔥 TODAY&apos;S BONUS
+                      🔥 TODAY&apos;S BONUS
                     </motion.div>
                     
-                    <div className="text-xs text-gray-600 leading-relaxed">
+                    <div className="text-sm lg:text-base text-gray-600 leading-relaxed">
                       <span className="font-semibold text-emerald-600">Reach 2,000 EGP</span> today
                       <br />
                       <span className="text-gray-500">and unlock</span>
@@ -778,7 +958,7 @@ export default function ReportsPage() {
                       <motion.span
                         animate={{ color: ['#059669', '#10b981', '#059669'] }}
                         transition={{ duration: 2, repeat: Infinity }}
-                        className="text-lg font-bold"
+                        className="text-xl lg:text-2xl font-bold"
                       >
                         +500 EGP BONUS! 💰
                       </motion.span>
@@ -786,19 +966,18 @@ export default function ReportsPage() {
                   </div>
                 </motion.div>
                 
-                {/* Progress towards bonus */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                                         <span className="text-gray-600">Today&apos;s Progress</span>
+                <div className="space-y-3 lg:space-y-4">
+                  <div className="flex justify-between items-center text-sm lg:text-base">
+                    <span className="text-gray-600">Today&apos;s Progress</span>
                     <span className="font-semibold text-emerald-600">750 / 2,000 EGP</span>
                   </div>
                   
-                  <div className="relative w-full bg-emerald-100 rounded-full h-2 overflow-hidden">
+                  <div className="relative w-full bg-emerald-100 rounded-full h-3 lg:h-4 overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: '37.5%' }}
                       transition={{ duration: 2, ease: "easeOut", delay: 0.5 }}
-                      className="bg-gradient-to-r from-emerald-400 to-emerald-500 h-2 rounded-full relative overflow-hidden"
+                      className="bg-gradient-to-r from-emerald-400 to-emerald-500 h-3 lg:h-4 rounded-full relative overflow-hidden"
                     >
                       <motion.div
                         animate={{ x: ['-100%', '100%'] }}
@@ -811,28 +990,29 @@ export default function ReportsPage() {
                   <motion.div
                     animate={{ opacity: [0.7, 1, 0.7] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="text-center text-xs text-emerald-600 font-medium"
+                    className="text-center text-sm lg:text-base text-emerald-600 font-medium"
                   >
                     1,250 EGP to go! 🚀
                   </motion.div>
                 </div>
                 
-                {/* Competition element */}
                 <motion.div
                   whileHover={{ scale: 1.02 }}
-                  className="mt-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-lg p-2 text-center cursor-pointer"
+                  className="mt-4 lg:mt-6 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-lg p-3 lg:p-4 text-center cursor-pointer"
                 >
-                  <div className="text-xs font-bold flex items-center justify-center gap-1">
+                  <div className="text-sm lg:text-base font-bold flex items-center justify-center gap-2">
                     <motion.span
                       animate={{ rotate: [0, 360] }}
                       transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="text-base lg:text-lg"
                     >
                       ⚡
                     </motion.span>
-                                         Beat Sarah&apos;s record: 1,850 EGP
+                    Beat Sarah&apos;s record: 1,850 EGP
                     <motion.span
                       animate={{ rotate: [0, -360] }}
                       transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="text-base lg:text-lg"
                     >
                       ⚡
                     </motion.span>

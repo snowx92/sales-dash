@@ -10,7 +10,8 @@ import {
   LayoutDashboard,
   ShoppingBag,
   UserPlus,
-  RefreshCw
+  RefreshCw,
+  Banknote
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 // Use direct string path for public assets
@@ -30,6 +31,7 @@ const navigationItems: NavigationItem[] = [
   { href: "/dashboard/merchants", label: "Merchants", icon: ShoppingBag, count: 127 },
   { href: "/dashboard/leads", label: "Leads", icon: UserPlus, count: 45 },
   { href: "/dashboard/retention", label: "Retention", icon: RefreshCw, count: 23 },
+  { href: "/dashboard/transactions", label: "Transactions", icon: Banknote, count: 23 },
 ];
 
 interface SidebarProps {
