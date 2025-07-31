@@ -2,7 +2,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { usePageTitle } from "@/lib/hooks/usePageTitle"
 import { PAGE_TITLES } from "@/lib/config/page-titles"
 import { Input } from "@/components/ui/input"
@@ -189,7 +188,6 @@ const MobileFilters = ({
 
 export default function MerchantListingPage() {
   usePageTitle(PAGE_TITLES.MERCHANT_LIST);
-  const router = useRouter();
   
   const {
     merchants,
@@ -918,7 +916,7 @@ export default function MerchantListingPage() {
               </button>
 
               <div className="text-center text-xs text-gray-500 mb-4">
-                ⚠️ Please save these credentials securely. You won't be able to see the password again.
+                ⚠️ Please save these credentials securely. You won&apos;t be able to see the password again.
               </div>
 
               <button
