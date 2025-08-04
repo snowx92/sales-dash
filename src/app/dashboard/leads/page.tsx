@@ -13,7 +13,7 @@ import {
 import { SimpleFeedbackModal } from "@/components/leads/SimpleFeedbackModal";
 import { leadsService } from "@/lib/api/leads/leadsService";
 import { mapApiLeadToLead, mapApiLeadToUpcomingLead, getApiId } from "@/lib/api/leads/utils";
-import type { LeadStatus, ApiLead } from "@/lib/api/leads/types";
+import type { LeadStatus, LeadSource, LeadPriority, ApiLead } from "@/lib/api/leads/types";
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -35,18 +35,6 @@ export default function LeadsPage() {
   const [feedbackLeadId, setFeedbackLeadId] = useState<number | null>(null);
   const [feedbackLeadName, setFeedbackLeadName] = useState<string>('');
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
-
-  // Load leads on component mount and when filters change
-  useEffect(() => {
-    loadLeads();
-  }, []);
-
-  // Reload when filters change
-  useEffect(() => {
-    if (searchTerm || statusFilter || dateFilter) {
-      loadLeads();
-    }
-  }, [searchTerm, statusFilter, dateFilter]);
 
   const loadLeads = useCallback(async () => {
     try {
@@ -111,12 +99,24 @@ export default function LeadsPage() {
     }
   }, [searchTerm, statusFilter, dateFilter]);
 
+  // Load leads on component mount and when filters change
+  useEffect(() => {
+    loadLeads();
+  }, [loadLeads]);
+
+  // Reload when filters change
+  useEffect(() => {
+    if (searchTerm || statusFilter || dateFilter) {
+      loadLeads();
+    }
+  }, [searchTerm, statusFilter, dateFilter, loadLeads]);
+
   const handleAddLead = async (newLead: Lead) => {
     try {
       setLoading(true);
       
       // Map component status to API status
-      const statusMap: Record<string, string> = {
+      const statusMap: Record<string, Exclude<LeadStatus, "NEW">> = {
         'interested': 'INTERSTED',
         'subscribed': 'SUBSCRIBED', 
         'not_interested': 'NOT_INTERSTED',
@@ -125,7 +125,7 @@ export default function LeadsPage() {
       };
       
       // Map component priority to API priority
-      const priorityMap: Record<string, string> = {
+      const priorityMap: Record<string, LeadPriority> = {
         'high': 'HIGH',
         'mid': 'MEDIUM',
         'low': 'LOW'
@@ -138,9 +138,9 @@ export default function LeadsPage() {
         phone: newLead.phone,
         websiteUrl: newLead.website || undefined,
         socialMediaUrls: newLead.socialUrls ? newLead.socialUrls.split(',').map(url => url.trim()).filter(Boolean) : undefined,
-        leadSource: newLead.leadSource.toUpperCase() as any,
-        priority: priorityMap[newLead.priority] || newLead.priority.toUpperCase() as any,
-        status: statusMap[newLead.status] || newLead.status.toUpperCase() as any,
+        leadSource: newLead.leadSource.toUpperCase() as LeadSource,
+        priority: (priorityMap[newLead.priority] || newLead.priority.toUpperCase()) as LeadPriority,
+        status: (statusMap[newLead.status] || 'FOLLOW_UP') as Exclude<LeadStatus, "NEW">,
         feedback: newLead.feedback || undefined
       };
       
@@ -167,7 +167,7 @@ export default function LeadsPage() {
       }
 
       // Convert component Lead format to API UpdateLeadRequest format
-      const statusMap: Record<string, string> = {
+      const statusMap: Record<string, LeadStatus> = {
         'interested': 'INTERSTED',
         'subscribed': 'SUBSCRIBED', 
         'not_interested': 'NOT_INTERSTED',
@@ -175,7 +175,7 @@ export default function LeadsPage() {
         'follow_up': 'FOLLOW_UP'
       };
       
-      const priorityMap: Record<string, string> = {
+      const priorityMap: Record<string, LeadPriority> = {
         'high': 'HIGH',
         'mid': 'MEDIUM',
         'low': 'LOW'
@@ -187,9 +187,9 @@ export default function LeadsPage() {
         phone: updates.phone,
         websiteUrl: updates.website || undefined,
         socialMediaUrls: updates.socialUrls ? updates.socialUrls.split(',').map(url => url.trim()).filter(Boolean) : undefined,
-        leadSource: updates.leadSource.toUpperCase() as any,
-        priority: priorityMap[updates.priority] || updates.priority.toUpperCase() as any,
-        status: statusMap[updates.status] || updates.status.toUpperCase() as any,
+        leadSource: updates.leadSource.toUpperCase() as LeadSource,
+        priority: (priorityMap[updates.priority] || updates.priority.toUpperCase()) as LeadPriority,
+        status: (statusMap[updates.status] || updates.status.toUpperCase()) as LeadStatus,
         feedback: updates.feedback || undefined
       };
 
