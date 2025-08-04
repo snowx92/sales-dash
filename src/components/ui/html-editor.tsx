@@ -120,7 +120,6 @@ export function HtmlEditor({ value, onChange, placeholder = "Start writing here.
       handleInput()
       editorRef.current?.focus()
     } catch (error) {
-      console.error('Error converting image to base64:', error)
       alert('Failed to upload image')
     }
 

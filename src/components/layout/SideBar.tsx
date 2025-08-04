@@ -11,7 +11,8 @@ import {
   ShoppingBag,
   UserPlus,
   RefreshCw,
-  Banknote
+  Banknote,
+  User
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 // Use direct string path for public assets
@@ -32,6 +33,7 @@ const navigationItems: NavigationItem[] = [
   { href: "/dashboard/leads", label: "Leads", icon: UserPlus, count: 45 },
   { href: "/dashboard/retention", label: "Retention", icon: RefreshCw, count: 23 },
   { href: "/dashboard/transactions", label: "Transactions", icon: Banknote, count: 23 },
+  { href: "/dashboard/profile", label: "Profile", icon: User },
 ];
 
 interface SidebarProps {

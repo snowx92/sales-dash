@@ -12,7 +12,8 @@ import {
   Trash2,
   Phone,
   Mail,
-  Clock
+  Clock,
+  MessageSquare
 } from "lucide-react";
 import { Lead, leadSources, priorities, statuses } from './types';
 
@@ -22,6 +23,7 @@ interface LeadsTableProps {
   onToggleRowExpansion: (leadId: number) => void;
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (id: number) => void;
+  onAddFeedback: (id: number, leadName: string) => void;
 }
 
 export const LeadsTable: React.FC<LeadsTableProps> = ({
@@ -29,7 +31,8 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
   expandedRows,
   onToggleRowExpansion,
   onEditLead,
-  onDeleteLead
+  onDeleteLead,
+  onAddFeedback
 }) => {
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -138,7 +141,7 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                     {/* Attempts */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-medium">
-                        {lead.attempts}
+                        {isNaN(lead.attempts) ? 0 : lead.attempts}
                       </span>
                     </td>
 
@@ -153,6 +156,16 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                     {/* Actions */}
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAddFeedback(lead.id, lead.name);
+                          }}
+                          className="text-blue-600 hover:text-blue-900 transition-colors"
+                          title="Add Feedback"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

@@ -14,6 +14,9 @@ import {
   User,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { logout } from "@/lib/api/auth/utils";
+import { profileService, type UserProfile } from "@/lib/api/profile/profileService";
+import { SessionManager } from "@/lib/utils/session";
 
 // Add this mapping object for prettier labels
 const routeLabels: { [key: string]: string } = {
@@ -35,6 +38,49 @@ export default function Navbar({ isMobileMenuOpen, setIsMobileMenuOpen }: Navbar
   const [breadcrumbs, setBreadcrumbs] = useState<
     { label: string; href: string }[]
   >([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  // Fetch user profile data
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        // Add a small delay to ensure token is available after login
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        console.log("🔍 Navbar: Fetching user profile...");
+        
+        // Check if we have a token before making the request
+        const sessionManager = SessionManager.getInstance();
+        const token = sessionManager.getToken();
+        console.log("🔐 Navbar: Has token:", token ? "YES" : "NO");
+        
+        if (!token) {
+          console.log("⚠️ Navbar: No token found, skipping profile fetch");
+          return;
+        }
+        
+        const response = await profileService.getProfile();
+        console.log("📋 Navbar: Profile response:", response);
+        
+        if (response && response.status && response.data) {
+          setUserProfile(response.data);
+          console.log("✅ Navbar: Profile loaded successfully:", response.data);
+        } else {
+          console.log("❌ Navbar: Invalid profile response:", response);
+        }
+      } catch (error) {
+        console.error("🚨 Navbar: Profile fetch error:", error);
+        // Don't show error to user in navbar, just fallback to default
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  // Handle logout
+  const handleLogout = async () => {
+    await logout();
+  };
 
   // Updated breadcrumbs generation for sales dashboard
   useEffect(() => {
@@ -212,13 +258,25 @@ export default function Navbar({ isMobileMenuOpen, setIsMobileMenuOpen }: Navbar
                 data-profile-button
               >
                 <div className="relative w-8 h-8 overflow-hidden rounded-full bg-purple-100 border border-purple-200 ring-2 ring-white">
-                  <div className="w-full h-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
+                  {userProfile?.profilePic ? (
+                    <img 
+                      src={userProfile.profilePic} 
+                      alt={userProfile.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to default avatar if image fails to load
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <div className={`w-full h-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center ${userProfile?.profilePic ? 'hidden' : ''}`}>
                     <User className="h-4 w-4 text-white" />
                   </div>
                 </div>
                 <div className="hidden sm:flex items-center">
                   <span className="text-sm font-medium text-gray-700">
-                    Sales User
+                    {userProfile?.name || 'Sales User'}
                   </span>
                   <ChevronDown className="ml-1 h-4 w-4 text-gray-500" />
                 </div>
@@ -261,29 +319,28 @@ export default function Navbar({ isMobileMenuOpen, setIsMobileMenuOpen }: Navbar
                       </Link>
 
                       <div className="border-t border-gray-100 my-1"></div>
-                      <Link href="/login">
-                        <motion.div
-                          whileHover={{
-                            x: 5,
-                            backgroundColor: "rgba(239, 68, 68, 0.1)",
-                          }}
-                          whileTap={{ scale: 0.97 }}
-                          className="flex items-center px-3 py-3 rounded-lg text-gray-600 hover:text-red-500 group transition-colors"
-                        >
-                          <LogOut className="w-5 h-5 text-gray-500 group-hover:text-red-500" />
-                          <AnimatePresence>
-                            <motion.span
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: -10 }}
-                              transition={{ duration: 0.2 }}
-                              className="ml-3 font-medium"
-                            >
-                              Logout
-                            </motion.span>
-                          </AnimatePresence>
-                        </motion.div>
-                      </Link>
+                      <motion.button
+                        onClick={handleLogout}
+                        whileHover={{
+                          x: 5,
+                          backgroundColor: "rgba(239, 68, 68, 0.1)",
+                        }}
+                        whileTap={{ scale: 0.97 }}
+                        className="w-full flex items-center px-3 py-3 rounded-lg text-gray-600 hover:text-red-500 group transition-colors"
+                      >
+                        <LogOut className="w-5 h-5 text-gray-500 group-hover:text-red-500" />
+                        <AnimatePresence>
+                          <motion.span
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="ml-3 font-medium"
+                          >
+                            Logout
+                          </motion.span>
+                        </AnimatePresence>
+                      </motion.button>
                     </div>
                   </motion.div>
                 )}

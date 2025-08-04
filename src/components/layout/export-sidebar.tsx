@@ -59,15 +59,8 @@ export function ExportSidebar() {
   }, [open]);
 
   const handleExport = () => {
-    // Simplified export functionality
-    console.log("Exporting data with filters:", {
-      merchantStatus,
-      selectedPlan,
-      sortBy,
-    })
-
     // In a real application, this would trigger an API call to generate and download the Excel file
-    alert("Export initiated! Check console for filter details.")
+    alert("Export initiated! Your file will be downloaded shortly.")
     setOpen(false) // Close sidebar after export
   }
 

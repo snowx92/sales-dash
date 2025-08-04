@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Mail, Lock, Loader2 } from "lucide-react";
+import { authService } from "@/lib/api/auth/authService";
+import { SessionManager } from "@/lib/utils/session";
+import { handleAuthError } from "@/lib/api/auth/utils";
+import { useIsClient } from "@/lib/hooks/useIsClient";
+import ResetPasswordModal from "./ResetPasswordModal";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
@@ -11,29 +16,75 @@ const LoginForm = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [showResetModal, setShowResetModal] = useState(false);
   const router = useRouter();
+  const isClient = useIsClient();
 
   const handleLogin = async (e: React.FormEvent) => {
+    // Prevent form submission and page refresh
     e.preventDefault();
+    e.stopPropagation();
+    
+    // Ensure we're on the client side
+    if (!isClient) {
+      return false;
+    }
+    
+    // Prevent multiple submissions
+    if (isLoading) {
+      return false;
+    }
+    
     setError("");
     setIsLoading(true);
 
     try {
-      // Simulate loading for UX
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Validate input
+      if (!email || !password) {
+        setError("Please fill in all fields");
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("🔐 LoginForm: Starting Firebase auth login process...");
       
-      // Frontend-only login - no validation required
-      // Redirect directly to dashboard
+      // Use the complete Firebase authentication flow
+      const loginResponse = await authService.login(email, password);
+      console.log("🔐 LoginForm: Login response:", loginResponse);
+      
+      if (!loginResponse || !loginResponse.status || !loginResponse.data?.token) {
+        console.error("❌ LoginForm: Login failed - invalid response");
+        setError(loginResponse?.message || "Login failed. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("✅ LoginForm: Firebase auth login successful");
+      
+      // Wait a moment for all async operations to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log("🚀 LoginForm: Redirecting to dashboard...");
+      
+      // Use router.push for proper navigation
       router.push("/dashboard/overview");
-    } catch {
-      setError("An error occurred. Please try again.");
+        
+    } catch (error: any) {
+      console.error("❌ LoginForm: Login error:", error);
+      setError(handleAuthError(error));
     } finally {
       setIsLoading(false);
     }
   };
 
+
+
   return (
-    <form onSubmit={handleLogin} className="space-y-6">
+    <>
+      <form 
+        onSubmit={handleLogin}
+        className="space-y-6"
+      >
       {error && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -103,11 +154,6 @@ const LoginForm = () => {
               Keep me signed in
             </label>
           </div>
-          <div className="text-sm">
-            <a href="#" className="font-medium text-purple-600 hover:text-purple-500">
-              Forgot password?
-            </a>
-          </div>
         </div>
       </div>
 
@@ -116,9 +162,9 @@ const LoginForm = () => {
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.99 }}
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || !isClient}
           className={`relative w-full flex items-center justify-center px-4 py-3 text-white rounded-lg text-sm font-medium transition-all
-            ${isLoading 
+            ${isLoading || !isClient
               ? 'bg-gradient-to-r from-purple-400 to-indigo-400 cursor-not-allowed' 
               : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 active:from-purple-800 active:to-indigo-800 shadow-lg hover:shadow-xl'
             }`}
@@ -128,10 +174,23 @@ const LoginForm = () => {
               <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
               Signing you in...
             </>
+          ) : !isClient ? (
+            'Loading...'
           ) : (
             'Access Sales Dashboard'
           )}
         </motion.button>
+      </div>
+
+      {/* Forgot Password Link */}
+      <div className="text-center">
+        <button
+          type="button"
+          onClick={() => setShowResetModal(true)}
+          className="text-sm text-purple-600 hover:text-purple-700 hover:underline transition-colors"
+        >
+          Forgot your password?
+        </button>
       </div>
 
       <div className="text-center">
@@ -143,6 +202,13 @@ const LoginForm = () => {
         </p>
       </div>
     </form>
+
+    {/* Reset Password Modal */}
+    <ResetPasswordModal 
+      isOpen={showResetModal} 
+      onClose={() => setShowResetModal(false)} 
+    />
+    </>
   );
 };
 

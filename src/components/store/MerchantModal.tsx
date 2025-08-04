@@ -95,16 +95,6 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
     };
 
     try {
-      // Add detailed logging before API call
-      console.log('[Subscription Debug] About to call API with:', {
-        storeId: storeData.id,
-        subscriptionData,
-        planTypeSelected: planType,
-        durationSelected: duration,
-        amount: numericAmount,
-        timestamp: new Date().toISOString()
-      });
-      
       // await subscriptionService.createSubscription(storeData.id, subscriptionData);
       
       // Show success toast
@@ -122,7 +112,6 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
         try {
           await onSubscriptionComplete();
         } catch (refreshError) {
-          console.error('Failed to refresh store list:', refreshError);
           toast(
             <div>
               <div className="font-bold text-red-700">Refresh Failed</div>
@@ -136,12 +125,6 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
       onClose();
       
     } catch (err) {
-      console.error('Subscription error:', {
-        error: err,
-        requestData: subscriptionData,
-        timestamp: new Date().toISOString()
-      });
-
       // Show error toast and keep modal open
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       setError(errorMessage);

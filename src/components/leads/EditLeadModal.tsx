@@ -18,23 +18,11 @@ export const EditLeadModal: React.FC<EditLeadModalProps> = ({ isOpen, onClose, l
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // If there's feedback in the main feedback field, add it to history and clear the field
-    let updatedLead = { ...formData };
-    if (formData.feedback.trim() && formData.feedback !== lead.feedback) {
-      const newFeedback = {
-        id: Date.now(),
-        message: formData.feedback,
-        date: new Date().toISOString().split('T')[0]
-      };
-      
-      updatedLead = {
-        ...formData,
-        feedback: '', // Clear the feedback field after adding to history
-        feedbackHistory: [...formData.feedbackHistory, newFeedback],
-        attempts: formData.attempts + 1,
-        lastContact: new Date().toISOString().split('T')[0]
-      };
-    }
+    // Update the lead with current form data
+    const updatedLead = {
+      ...formData,
+      lastContact: new Date().toISOString().split('T')[0]
+    };
     
     onUpdate(lead.id, updatedLead);
     onClose();
@@ -190,23 +178,6 @@ export const EditLeadModal: React.FC<EditLeadModalProps> = ({ isOpen, onClose, l
                   ))}
                 </div>
               </div>
-            </div>
-
-            {/* Current Feedback */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Add New Feedback
-              </label>
-              <textarea
-                value={formData.feedback}
-                onChange={(e) => setFormData((prev: Lead) => ({ ...prev, feedback: e.target.value }))}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
-                placeholder="Add new feedback about this lead... (This will increase attempts by 1)"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Submitting new feedback will automatically increase attempts by 1 and add to feedback history.
-              </p>
             </div>
 
             {/* Submit Buttons */}

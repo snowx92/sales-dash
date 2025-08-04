@@ -1,5 +1,7 @@
 export { AddLeadModal } from './AddLeadModal';
 export { EditLeadModal } from './EditLeadModal';
+export { AddFeedbackModal } from './AddFeedbackModal';
+export { BulkUploadModal } from './BulkUploadModal';
 export { LeadsTable } from './LeadsTable';
 export { UpcomingLeadsTable } from './UpcomingLeadsTable';
 export { LeadStats } from './LeadStats';

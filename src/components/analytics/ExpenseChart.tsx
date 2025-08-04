@@ -38,9 +38,6 @@ interface ExpenseChartProps {
 }
 
 export default function ExpenseChart({ data, staticData, title = "Monthly Expenses Breakdown" }: ExpenseChartProps) {
-  console.log('ExpenseChart - Raw data:', data);
-  console.log('ExpenseChart - Static data:', staticData);
-  
   // Transform API data to chart format if provided, otherwise use static data
   const chartData: ExpenseChartItem[] = data 
     ? data
@@ -52,8 +49,6 @@ export default function ExpenseChart({ data, staticData, title = "Monthly Expens
           ...(EXPENSE_COLORS[item.name] || EXPENSE_COLORS.default)
         }))
     : staticData || [];
-  
-  console.log('ExpenseChart - Processed chart data:', chartData);
   
   // If no data available, show a message
   if (chartData.length === 0) {

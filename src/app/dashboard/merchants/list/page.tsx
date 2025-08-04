@@ -348,7 +348,7 @@ export default function MerchantListingPage() {
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
-      console.error('Failed to copy: ', err);
+      // Failed to copy to clipboard
     }
   };
 
@@ -361,7 +361,7 @@ export default function MerchantListingPage() {
       setCopiedBoth(true);
       setTimeout(() => setCopiedBoth(false), 2000);
     } catch (err) {
-      console.error('Failed to copy: ', err);
+      // Failed to copy to clipboard
     }
   };
 
@@ -382,7 +382,6 @@ export default function MerchantListingPage() {
   const confirmDelete = () => {
     if (selectedMerchantId) {
       // Implement delete logic here
-      console.log(`Deleting merchant with ID: ${selectedMerchantId}`)
     }
     setShowDeleteToast(false)
   }
@@ -390,7 +389,6 @@ export default function MerchantListingPage() {
   const confirmRestore = () => {
     if (selectedMerchantId) {
       // Implement restore logic here
-      console.log(`Restoring data for merchant with ID: ${selectedMerchantId}`)
     }
     setShowRestoreToast(false)
   }
@@ -400,7 +398,6 @@ export default function MerchantListingPage() {
       setSelectedMerchant(null);
       await refetchMerchants();
     } catch (error) {
-      console.error('Failed to refresh merchants:', error);
       Toast.error({
         message: 'Refresh Failed',
         description: 'Failed to refresh merchant list. Please reload the page.'
@@ -452,8 +449,6 @@ export default function MerchantListingPage() {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                console.log("[Page] Enter key pressed with localKeyword:", localKeyword);
-                
                 const searchEvent = {
                   ...e,
                   localKeywordValue: localKeyword
@@ -485,8 +480,6 @@ export default function MerchantListingPage() {
               size="icon"
               onClick={(e) => {
                 e.preventDefault();
-                
-                console.log("[Page] Search button clicked with localKeyword:", localKeyword);
                 
                 const searchEvent = {
                   key: "Enter",

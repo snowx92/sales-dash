@@ -230,15 +230,12 @@ export const useMerchants = () => {
   const fetchStores = useCallback(async (directSearchTerm?: string) => {
     // Prevent concurrent fetch calls
     if (isFetchingRef.current) {
-      console.log("[Stores API] Fetch already in progress, skipping");
       return;
     }
     
     try {
       // Set the direct search flag if a direct search term is provided
       if (directSearchTerm !== undefined) {
-        console.log("[Stores API] Direct search term provided:", directSearchTerm);
-        
         // Even if directSearchTerm is empty, we consider this a direct search
         // to prevent filter effects from triggering another fetch
         directSearchJustPerformedRef.current = true;
@@ -248,7 +245,6 @@ export const useMerchants = () => {
           directSearchJustPerformedRef.current = false;
         }, 100); // Use a slightly longer timeout to ensure event processing completes
       } else {
-        console.log("[Stores API] No direct search term, using searchTerm from state:", searchTerm);
       }
       
       isFetchingRef.current = true;
@@ -272,8 +268,6 @@ export const useMerchants = () => {
 
       // Use directSearchTerm if provided, otherwise use searchTerm from state
       const effectiveSearchTerm = directSearchTerm !== undefined ? directSearchTerm : searchTerm;
-      
-      console.log("[Stores API] Using static data with effective search term:", effectiveSearchTerm);
       
       // Filter static data based on search term and filters
       let filteredMerchants = [...staticMerchantsData];
@@ -329,12 +323,6 @@ export const useMerchants = () => {
       setTotalItems(filteredMerchants.length);
       setMerchants(paginatedMerchants);
       
-      console.log("[Stores API] Static data processed:", {
-        total: filteredMerchants.length,
-        currentPage: currentPage,
-        returned: paginatedMerchants.length
-      });
-
       // COMMENTED OUT: Original API call
       // const apiParams: GetStoresParams = {
       //   pageNo: currentPage,
@@ -354,7 +342,6 @@ export const useMerchants = () => {
       // console.log("[Stores API] Response:", response);
 
     } catch (error) {
-      console.error("[Stores API] Fetch error:", error);
       // COMMENTED OUT: Authentication error handling
       // if (error instanceof Error && error.message.includes("Unauthorized")) {
       //   router.push("/login");
@@ -376,11 +363,8 @@ export const useMerchants = () => {
     
     // Skip if a direct search was just performed to prevent duplicate fetches
     if (directSearchJustPerformedRef.current) {
-      console.log("[Effect] Skipping filter effect because a direct search was just performed");
       return;
     }
-    
-    console.log("[Effect] Filter change detected, calling fetchStores with current searchTerm:", searchTerm);
     
     // Only trigger API call for filter changes (sortBy, filterPlan, filterStatus)
     // or page changes, but NOT for keyword/search input changes
@@ -409,11 +393,8 @@ export const useMerchants = () => {
       // Use localKeywordValue if provided, otherwise use the keyword from state
       const searchKeyword = e.localKeywordValue !== undefined ? e.localKeywordValue : keyword;
       
-      console.log("[Search] Enter pressed, handleSearch called with keyword:", searchKeyword);
-      
       // Set the search term from the current keyword
       const searchValue = searchKeyword.trim();
-      console.log("[Search] Search value:", searchValue, "Previous search term:", searchTerm);
       
       // Update the searchTerm state for future reference
       // Note: This happens asynchronously and won't be available immediately
@@ -423,15 +404,12 @@ export const useMerchants = () => {
       
       // Call fetchStores directly with the new search value
       // This bypasses the need to wait for the state update
-      console.log("[Search] Calling fetchStores with direct search term:", searchValue);
       fetchStores(searchValue);
     }
   }, [keyword, fetchStores, setCurrentPage, searchTerm]);
 
   // Function to clear search and reset to default state
   const clearSearch = useCallback(() => {
-    console.log("[Search] Clearing search");
-    
     // Update state for future reference (happens asynchronously)
     setKeywordState("");
     setSearchTerm("");
@@ -439,7 +417,6 @@ export const useMerchants = () => {
     
     // Call fetchStores with empty search term to clear search
     // This bypasses the need to wait for state updates
-    console.log("[Search] Fetching with cleared search term");
     fetchStores("");
   }, [fetchStores]);
 
@@ -456,7 +433,6 @@ export const useMerchants = () => {
       // }
       
       if (!initialFetchCompleted) {
-        console.log("[Init] Performing initial fetch with static data");
         initialFetchCompleted = true;
         fetchStores();
       }

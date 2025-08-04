@@ -218,16 +218,12 @@ export function MerchantCard({
       const mockToken = "static_demo_token_12345";
       
       if (mockToken) {
-        console.log("[Login] Using static token:", mockToken.substring(0, 20) + "...");
-        
         // Redirect to login page with login token
         window.open(`https://dashboard.vondera.app/auth/login?token`, "_blank");
       } else {
-        console.log("[Login] Invalid response: No token received");
         toast.error("Failed to get store login token");
       }
     } catch (error) {
-      console.error("[Login] Error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to get store credentials");
     }
   };

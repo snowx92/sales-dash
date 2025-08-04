@@ -41,6 +41,7 @@ interface LeadsTabsProps {
   // Actions
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (id: number) => void;
+  onAddFeedback: (id: number, leadName: string) => void;
   onConvertToLead: (lead: UpcomingLead) => void;
   onDeleteUpcomingLead: (id: number) => void;
   onAddLead: () => void;
@@ -66,6 +67,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
   onToggleRowExpansion,
   onEditLead,
   onDeleteLead,
+  onAddFeedback,
   onConvertToLead,
   onDeleteUpcomingLead,
   onAddLead
@@ -196,6 +198,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
               onToggleRowExpansion={onToggleRowExpansion}
               onEditLead={onEditLead}
               onDeleteLead={onDeleteLead}
+              onAddFeedback={onAddFeedback}
             />
             
             {totalItems > 0 && (

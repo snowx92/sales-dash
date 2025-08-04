@@ -4,59 +4,102 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { SessionManager } from "@/lib/utils/session";
-import { onAuthStateChanged } from "firebase/auth";
+import { authService } from "@/lib/api/auth/authService";
+import { logout } from "@/lib/api/auth/utils";
+import { onAuthStateChanged, User } from "firebase/auth";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const sessionManager = SessionManager.getInstance();
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    
     let unsubscribe: (() => void) | undefined;
     
-    // Check token in SessionManager first
-    const checkSession = async () => {
+    // Check if we have a valid API token
+    const checkApiToken = async () => {
       try {
-        // First try to get a token from the session manager
-        const token = await sessionManager.getCurrentToken();
+        const token = sessionManager.getToken();
         if (token) {
+          // We have a token, assume it's valid for now
+          // TODO: You might want to add token validation here
           setIsLoading(false);
           return true;
         }
         return false;
       } catch (error) {
-        console.error("Error checking session:", error);
         return false;
+      }
+    };
+
+    // Handle Firebase auth state changes
+    const handleAuthStateChange = async (user: User | null) => {
+      if (!user) {
+        // No Firebase user, clear session and redirect
+        sessionManager.clearSession();
+        router.push("/login");
+        return;
+      }
+
+      try {
+        // Get Firebase ID token
+        const firebaseToken = await user.getIdToken(true);
+        
+        // Store Firebase refresh token for future use
+        if (user.refreshToken) {
+          sessionManager.setFirebaseRefreshToken(user.refreshToken);
+        }
+
+        // Check if we have an API token
+        const hasApiToken = await checkApiToken();
+        
+        if (!hasApiToken) {
+          // Try to refresh API token using Firebase token
+          try {
+            const refreshResponse = await authService.refreshToken(firebaseToken);
+            if (refreshResponse && refreshResponse.status && refreshResponse.data.token) {
+              sessionManager.setToken(refreshResponse.data.token);
+              setIsLoading(false);
+            } else {
+              // Refresh failed, but we can still use Firebase token directly
+              sessionManager.setToken(firebaseToken);
+              setIsLoading(false);
+            }
+          } catch (refreshError) {
+            // If refresh completely fails, use Firebase token as fallback
+            sessionManager.setToken(firebaseToken);
+            setIsLoading(false);
+          }
+        } else {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        await logout();
       }
     };
 
     // Set up auth state listener
     const setupAuthListener = () => {
-      // Listen for auth state changes
-      unsubscribe = onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          // No authenticated user, redirect to login
-          router.push("/login");
-        } else {
-          // User is authenticated, ensure we have the latest token
-          try {
-            await user.getIdToken(true);
-            setIsLoading(false);
-          } catch (error) {
-            console.error("Error refreshing token:", error);
-            router.push("/login");
-          }
-        }
-      });
+      unsubscribe = onAuthStateChanged(auth, handleAuthStateChange);
     };
 
     // Main initialization flow
     const initialize = async () => {
-      // First try to restore session from localStorage
-      const hasSession = await checkSession();
+      // First check if we have a valid API token
+      const hasApiToken = await checkApiToken();
       
-      // If we don't have a valid session, set up the auth listener
-      if (!hasSession) {
+      if (hasApiToken) {
+        // We have an API token, but still set up Firebase listener for token refresh
+        setupAuthListener();
+      } else {
+        // No API token, set up Firebase listener to handle authentication
         setupAuthListener();
       }
     };
@@ -69,13 +112,16 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         unsubscribe();
       }
     };
-  }, [router, sessionManager]);
+  }, [router, sessionManager, isMounted]);
 
-  // Show loading state or children
-  if (isLoading) {
+  // Show loading state while checking authentication or during hydration
+  if (isLoading || !isMounted) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Authenticating...</p>
+        </div>
       </div>
     );
   }

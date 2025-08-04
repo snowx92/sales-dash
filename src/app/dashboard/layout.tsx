@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/SideBar";
 import Navbar from "@/components/layout/Navbar";
+import { SessionManager } from "@/lib/utils/session";
 
 export default function DashboardLayout({
   children,
@@ -10,6 +12,49 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const sessionManager = SessionManager.getInstance();
+      const token = sessionManager.getToken();
+      console.log("🔐 DashboardLayout: Checking authentication, token:", token ? "EXISTS" : "NOT_FOUND");
+      
+      if (!token) {
+        console.log("❌ DashboardLayout: No token found, redirecting to login");
+        router.replace("/login");
+        return;
+      }
+      
+      console.log("✅ DashboardLayout: Token found, user authenticated");
+      setIsAuthenticated(true);
+      setIsLoading(false);
+    };
+
+    // Add a small delay to ensure all auth processes are complete
+    const timer = setTimeout(() => {
+      checkAuth();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect to login
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
