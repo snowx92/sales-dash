@@ -46,7 +46,7 @@ const LoginForm = () => {
 
   // Expose debug function to window in production for troubleshooting
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-    (window as any).debugSalesApi = handleTestConnectivity;
+    (window as Window & { debugSalesApi?: () => Promise<void> }).debugSalesApi = handleTestConnectivity;
   }
 
   const handleLogin = async (e: React.FormEvent) => {
