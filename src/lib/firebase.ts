@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
@@ -10,9 +10,40 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase only on client side and only if not already initialized
+function getFirebaseApp() {
+  if (typeof window === 'undefined') {
+    // Server-side: return null or throw error
+    return null;
+  }
+  
+  // Client-side: initialize if needed
+  const apps = getApps();
+  if (apps.length > 0) {
+    return getApp();
+  }
+  
+  // Validate config before initializing
+  if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'undefined') {
+    console.warn('Firebase config is not properly set. Skipping initialization.');
+    return null;
+  }
+  
+  return initializeApp(firebaseConfig);
+}
 
-// Initialize Firebase Authentication and get a reference to the service
-export const auth = getAuth(app);
-export default app; 
+// Lazy initialization of Firebase Auth
+export function getFirebaseAuth() {
+  const app = getFirebaseApp();
+  if (!app) {
+    throw new Error('Firebase not available on server side');
+  }
+  return getAuth(app);
+}
+
+// For backward compatibility
+export const auth = typeof window !== 'undefined' ? getFirebaseAuth() : null;
+
+// Export app getter for other uses
+export { getFirebaseApp };
+export default getFirebaseApp; 

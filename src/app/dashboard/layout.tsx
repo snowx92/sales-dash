@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/SideBar";
-import Navbar from "@/components/layout/Navbar";
+import DynamicNavbar from "@/components/layout/DynamicNavbar";
 import { SessionManager } from "@/lib/utils/session";
 
 export default function DashboardLayout({
@@ -67,7 +67,7 @@ export default function DashboardLayout({
       {/* Main Content Area - with left margin for sidebar */}
       <div className="lg:ml-80 flex flex-col min-h-screen">
         {/* Navbar */}
-        <Navbar 
+        <DynamicNavbar 
           isMobileMenuOpen={isMobileMenuOpen}
           setIsMobileMenuOpen={setIsMobileMenuOpen}
         />

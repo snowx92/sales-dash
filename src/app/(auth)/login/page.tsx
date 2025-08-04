@@ -1,6 +1,6 @@
 "use client";
 
-import LoginForm from "@/components/auth/LoginForm"
+import DynamicLoginForm from "@/components/auth/DynamicLoginForm"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { usePageTitle } from "@/lib/hooks/usePageTitle"
@@ -43,7 +43,7 @@ export default function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <LoginForm />
+            <DynamicLoginForm />
           </motion.div>
         </div>
       </div>

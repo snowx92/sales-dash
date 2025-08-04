@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebase";
+import { getFirebaseAuth } from "@/lib/firebase";
 import { SessionManager } from "@/lib/utils/session";
 import { authService } from "@/lib/api/auth/authService";
 import { logout } from "@/lib/api/auth/utils";
@@ -87,7 +87,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
     // Set up auth state listener
     const setupAuthListener = () => {
-      unsubscribe = onAuthStateChanged(auth, handleAuthStateChange);
+      try {
+        const auth = getFirebaseAuth();
+        unsubscribe = onAuthStateChanged(auth, handleAuthStateChange);
+      } catch (error) {
+        console.warn('Firebase not available:', error);
+        // If Firebase is not available, skip auth state listening
+        setIsLoading(false);
+      }
     };
 
     // Main initialization flow

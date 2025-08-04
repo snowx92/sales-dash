@@ -1,4 +1,4 @@
-import { auth } from "@/lib/firebase";
+import { getFirebaseAuth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { SessionManager } from "@/lib/utils/session";
 import AUTH_CONFIG from "@/lib/config/auth";
@@ -10,8 +10,11 @@ export const logout = async (): Promise<void> => {
     // Clear local session data
     sessionManager.clearSession();
     
-    // Sign out from Firebase
-    await signOut(auth);
+    // Sign out from Firebase (only on client side)
+    if (typeof window !== 'undefined') {
+      const auth = getFirebaseAuth();
+      await signOut(auth);
+    }
     
     // Redirect to login page
     if (typeof window !== 'undefined') {

@@ -2,7 +2,7 @@ import { ApiService } from "../services/ApiService";
 import AUTH_CONFIG from "@/lib/config/auth";
 import { SessionManager } from "@/lib/utils/session";
 import { signInWithCustomToken } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { getFirebaseAuth } from "@/lib/firebase";
 
 interface LoginResponse {
   status: boolean;
@@ -151,6 +151,7 @@ export class AuthService extends ApiService {
       console.log("🔐 AuthService: Received custom token from API");
       
       // Step 2: Use custom token with Firebase auth
+      const auth = getFirebaseAuth();
       const userCredential = await signInWithCustomToken(auth, loginResponse.data.token);
       console.log("🔐 AuthService: Successfully signed in with Firebase");
       
