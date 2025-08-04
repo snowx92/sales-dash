@@ -69,10 +69,10 @@ const mockLeads = [
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     console.log(`📋 API: Fetching single lead with ID: ${id}`);
 
     const lead = mockLeads.find(l => l.id === id);
@@ -97,10 +97,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     console.log(`📝 API: Updating lead ${id} with:`, body);
 
@@ -132,10 +132,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     console.log(`🗑️ API: Deleting lead with ID: ${id}`);
 
     const leadIndex = mockLeads.findIndex(l => l.id === id);
