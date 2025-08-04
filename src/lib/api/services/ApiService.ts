@@ -52,9 +52,10 @@ export class ApiService {
       // For auth endpoints (except login), try to get Firebase ID token
       try {
         if (typeof window !== 'undefined') {
-          const { auth } = await import("@/lib/firebase");
+          const { getFirebaseAuth } = await import("@/lib/firebase");
           
           // Check if user is signed in with Firebase
+          const auth = getFirebaseAuth();
           const currentUser = auth.currentUser;
           if (currentUser) {
             const firebaseIdToken = await currentUser.getIdToken(true); // Force refresh
@@ -159,8 +160,8 @@ export class ApiService {
           // Token refresh failed, try fresh Firebase token approach
           try {
             // Check if we have Firebase auth
-            const { getAuth } = await import('firebase/auth');
-            const auth = getAuth();
+            const { getFirebaseAuth } = await import("@/lib/firebase");
+            const auth = getFirebaseAuth();
             const currentUser = auth.currentUser;
             
             if (currentUser) {

@@ -1,10 +1,24 @@
 "use client";
 
+import { Suspense } from "react";
 import DynamicLoginForm from "@/components/auth/DynamicLoginForm"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { usePageTitle } from "@/lib/hooks/usePageTitle"
 import { PAGE_TITLES } from "@/lib/config/page-titles"
+import { Loader2 } from "lucide-react"
+
+// Loading component for suspense boundary
+function LoginLoading() {
+  return (
+    <div className="flex items-center justify-center min-h-64">
+      <div className="text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-purple-600" />
+        <p className="mt-2 text-gray-600">Loading login form...</p>
+      </div>
+    </div>
+  );
+}
 
 export default function LoginPage() {
   usePageTitle(PAGE_TITLES.LOGIN);
@@ -43,7 +57,9 @@ export default function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <DynamicLoginForm />
+            <Suspense fallback={<LoginLoading />}>
+              <DynamicLoginForm />
+            </Suspense>
           </motion.div>
         </div>
       </div>

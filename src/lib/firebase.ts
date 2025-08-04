@@ -34,15 +34,25 @@ function getFirebaseApp() {
 
 // Lazy initialization of Firebase Auth
 export function getFirebaseAuth() {
+  if (typeof window === 'undefined') {
+    throw new Error('Firebase auth is only available on the client side');
+  }
+  
   const app = getFirebaseApp();
   if (!app) {
-    throw new Error('Firebase not available on server side');
+    throw new Error('Firebase app not initialized');
   }
   return getAuth(app);
 }
 
-// For backward compatibility
-export const auth = typeof window !== 'undefined' ? getFirebaseAuth() : null;
+// For backward compatibility - only initialize on client side
+export const auth = typeof window !== 'undefined' ? (() => {
+  try {
+    return getFirebaseAuth();
+  } catch {
+    return null;
+  }
+})() : null;
 
 // Export app getter for other uses
 export { getFirebaseApp };
