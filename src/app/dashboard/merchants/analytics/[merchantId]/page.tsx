@@ -570,7 +570,7 @@ export default function MerchantAnalyticsPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [merchantId])
 
   const refreshCharts = async () => {
     try {

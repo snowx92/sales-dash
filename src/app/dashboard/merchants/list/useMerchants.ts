@@ -406,7 +406,7 @@ export const useMerchants = () => {
       // This bypasses the need to wait for the state update
       fetchStores(searchValue);
     }
-  }, [keyword, fetchStores, setCurrentPage, searchTerm]);
+  }, [keyword, fetchStores, setCurrentPage]);
 
   // Function to clear search and reset to default state
   const clearSearch = useCallback(() => {

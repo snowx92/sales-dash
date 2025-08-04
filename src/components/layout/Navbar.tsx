@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Bell,
@@ -259,9 +260,11 @@ export default function Navbar({ isMobileMenuOpen, setIsMobileMenuOpen }: Navbar
               >
                 <div className="relative w-8 h-8 overflow-hidden rounded-full bg-purple-100 border border-purple-200 ring-2 ring-white">
                   {userProfile?.profilePic ? (
-                    <img 
+                    <Image 
                       src={userProfile.profilePic} 
                       alt={userProfile.name}
+                      width={32}
+                      height={32}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         // Fallback to default avatar if image fails to load

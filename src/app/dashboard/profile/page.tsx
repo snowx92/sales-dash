@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   User, 
@@ -495,9 +496,11 @@ export default function ProfilePage() {
                   <div className="flex-shrink-0 relative">
                     <div className="w-24 h-24 bg-white border-4 border-white rounded-full overflow-hidden shadow-lg">
                       {profile?.profilePic ? (
-                        <img 
+                        <Image 
                           src={profile.profilePic} 
                           alt={profile.name}
+                          width={96}
+                          height={96}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -688,9 +691,18 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                     {editForm.image ? (
-                      <img src={`data:image/jpeg;base64,${editForm.image}`} alt="Preview" className="w-full h-full object-cover" />
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={`data:image/jpeg;base64,${editForm.image}`} alt="Preview" className="w-full h-full object-cover" />
+                      </>
                     ) : profile?.profilePic ? (
-                      <img src={profile.profilePic} alt="Current" className="w-full h-full object-cover" />
+                      <Image 
+                        src={profile.profilePic} 
+                        alt="Current" 
+                        width={64}
+                        height={64}
+                        className="w-full h-full object-cover" 
+                      />
                     ) : (
                       <User className="h-8 w-8 text-gray-400" />
                     )}
