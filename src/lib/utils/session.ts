@@ -1,5 +1,3 @@
-import AUTH_CONFIG from "@/lib/config/auth";
-
 export enum SessionKeys {
   AUTH_TOKEN = 'vondera_auth_token',
   AUTH_EMAIL = 'vondera_auth_email',

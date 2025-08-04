@@ -84,10 +84,6 @@ export async function GET(
       );
     }
 
-    const response = {
-      success: true,
-      data: lead
-    };
 
     return NextResponse.json(lead);
   } catch (error) {
@@ -124,11 +120,6 @@ export async function PUT(
       updatedAt: { _seconds: Math.floor(Date.now() / 1000) }
     };
 
-    const response = {
-      success: true,
-      data: mockLeads[leadIndex]
-    };
-
     return NextResponse.json(mockLeads[leadIndex]);
   } catch (error) {
     console.error('❌ API: Error updating lead:', error);
@@ -159,10 +150,6 @@ export async function DELETE(
     // Remove the lead
     const deletedLead = mockLeads.splice(leadIndex, 1)[0];
 
-    const response = {
-      success: true,
-      data: deletedLead
-    };
 
     return NextResponse.json(deletedLead);
   } catch (error) {

@@ -88,12 +88,6 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
     setIsSubmitting(true);
     setError("");
 
-    const subscriptionData = {
-      planId: planType,
-      durationId: duration,
-      paidAmount: numericAmount
-    };
-
     try {
       // await subscriptionService.createSubscription(storeData.id, subscriptionData);
       
@@ -111,7 +105,7 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
       if (onSubscriptionComplete) {
         try {
           await onSubscriptionComplete();
-        } catch (refreshError) {
+        } catch {
           toast(
             <div>
               <div className="font-bold text-red-700">Refresh Failed</div>

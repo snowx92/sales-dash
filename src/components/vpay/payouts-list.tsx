@@ -65,7 +65,7 @@ const CopyIdentifierButton = ({ identifier }: { identifier: string }) => {
         description: 'Wallet identifier has been copied to clipboard'
       })
       setTimeout(() => setCopied(false), 2000)
-    } catch (error) {
+    } catch {
       Toast.error({
         message: 'Copy failed',
         description: 'Unable to copy identifier to clipboard'
@@ -404,7 +404,7 @@ export default function PayoutsList({ payouts, updateStatus, currentPage, totalP
     try {
       setAnimatingId(id)
       await updateStatus(id, status)
-    } catch (error) {
+    } catch {
       // Error handled silently - status change failed
     } finally {
       // Clear animating state after animation completes

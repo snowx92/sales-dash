@@ -347,7 +347,7 @@ export default function MerchantListingPage() {
       await navigator.clipboard.writeText(text);
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
-    } catch (err) {
+    } catch {
       // Failed to copy to clipboard
     }
   };
@@ -360,7 +360,7 @@ export default function MerchantListingPage() {
       await navigator.clipboard.writeText(credentials);
       setCopiedBoth(true);
       setTimeout(() => setCopiedBoth(false), 2000);
-    } catch (err) {
+    } catch {
       // Failed to copy to clipboard
     }
   };
@@ -397,7 +397,7 @@ export default function MerchantListingPage() {
     try {
       setSelectedMerchant(null);
       await refetchMerchants();
-    } catch (error) {
+    } catch {
       Toast.error({
         message: 'Refresh Failed',
         description: 'Failed to refresh merchant list. Please reload the page.'

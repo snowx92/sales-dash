@@ -34,7 +34,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
           return true;
         }
         return false;
-      } catch (error) {
+      } catch {
         return false;
       }
     };
@@ -72,7 +72,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
               sessionManager.setToken(firebaseToken);
               setIsLoading(false);
             }
-          } catch (refreshError) {
+          } catch {
             // If refresh completely fails, use Firebase token as fallback
             sessionManager.setToken(firebaseToken);
             setIsLoading(false);
@@ -80,7 +80,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         } else {
           setIsLoading(false);
         }
-      } catch (error) {
+      } catch {
         await logout();
       }
     };

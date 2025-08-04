@@ -85,11 +85,12 @@ export class AuthService extends ApiService {
       const data = await response.json();
       console.log(`✅ AuthService: Request successful`, data);
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`❌ AuthService: Request failed to ${AUTH_CONFIG.API.BASE_URL}${endpoint}`, error);
       
       // Add specific error messages for common issues
-      if (error.message === 'Failed to fetch') {
+      if (errorMessage === 'Failed to fetch') {
         console.error(`🚨 AuthService: Network Error - Check if the API URL is correct and accessible`);
         console.error(`🔗 AuthService: Current API URL: ${AUTH_CONFIG.API.BASE_URL}`);
         throw new Error(`Cannot connect to sales API. Please check your network connection and API configuration.`);
@@ -186,7 +187,7 @@ export class AuthService extends ApiService {
         }
       };
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ AuthService: Login failed:", error);
       throw error;
     }
@@ -263,10 +264,11 @@ export class AuthService extends ApiService {
       );
       
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If the refresh endpoint doesn't exist (404), try alternative approach
-      if (error.message?.includes('404') || error.message?.includes('Not Found') || 
-          error.message?.includes('Cannot POST')) {
+      const errorMessage = error instanceof Error ? error.message : '';
+      if (errorMessage?.includes('404') || errorMessage?.includes('Not Found') || 
+          errorMessage?.includes('Cannot POST')) {
         
         // The refresh-token endpoint doesn't exist, use Firebase auth directly
         try {
@@ -296,7 +298,7 @@ export class AuthService extends ApiService {
               }
             } as LoginResponse;
           }
-        } catch (firebaseError) {
+        } catch {
           // Firebase approach failed, user needs to login again
           throw new Error("Authentication session expired. Please login again.");
         }

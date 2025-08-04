@@ -32,7 +32,7 @@ export class TransactionService extends ApiService {
   /**
    * Get transaction by ID
    */
-  async getTransactionById(transactionId: string): Promise<any> {
+  async getTransactionById(transactionId: string): Promise<unknown> {
     try {
       console.log("📊 TransactionService: Fetching transaction:", transactionId);
 

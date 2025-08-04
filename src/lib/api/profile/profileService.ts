@@ -12,8 +12,8 @@ export interface UserProfile {
   profilePic: string;
   isOnline: boolean;
   needStoreCreating: boolean;
-  accessLevels: any;
-  authProviders: any;
+  accessLevels: Record<string, unknown>;
+  authProviders: string[];
 }
 
 export interface ProfileResponse {
@@ -71,10 +71,13 @@ export class ProfileService extends ApiService {
     try {
       const response = await this.get<ProfileResponse>("/auth/profile");
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      // Type guard for error properties
+      const errorObj = error as { status?: number; message?: string };
+      
       // If API is completely unavailable or returns auth errors, provide fallback
-      if (error.status === 401 || error.message?.includes('Unauthorized') || 
-          error.message?.includes('Invalid Firebase token')) {
+      if (errorObj.status === 401 || errorObj.message?.includes('Unauthorized') || 
+          errorObj.message?.includes('Invalid Firebase token')) {
         
         // Try to get user info from Firebase as fallback
         try {
@@ -108,7 +111,7 @@ export class ProfileService extends ApiService {
             
             return fallbackResponse;
           }
-        } catch (firebaseError) {
+        } catch {
           // Firebase also failed
         }
       }
@@ -164,11 +167,14 @@ export class ProfileService extends ApiService {
         { "Skip-Auth": "true" }
       );
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      // Type guard for error properties
+      const errorObj = error as { status?: number; message?: string };
+      
       // If API is unavailable, try Firebase password reset as fallback
-      if (error.status === 404 || error.message?.includes('404') || 
-          error.message?.includes('Cannot POST') || 
-          error.message?.includes('Not Found')) {
+      if (errorObj.status === 404 || errorObj.message?.includes('404') || 
+          errorObj.message?.includes('Cannot POST') || 
+          errorObj.message?.includes('Not Found')) {
         
         try {
           const { getAuth, sendPasswordResetEmail } = await import('firebase/auth');
@@ -182,7 +188,7 @@ export class ProfileService extends ApiService {
             message: "Password reset email sent successfully via Firebase",
             data: null
           };
-        } catch (firebaseError) {
+        } catch {
           throw new Error("Failed to send password reset email. Please try again later.");
         }
       }

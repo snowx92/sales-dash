@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Plus, Upload, Download } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Plus, Upload } from "lucide-react";
 import { 
   Lead, 
   UpcomingLead, 
@@ -13,6 +13,7 @@ import {
 import { SimpleFeedbackModal } from "@/components/leads/SimpleFeedbackModal";
 import { leadsService } from "@/lib/api/leads/leadsService";
 import { mapApiLeadToLead, mapApiLeadToUpcomingLead, getApiId } from "@/lib/api/leads/utils";
+import type { LeadStatus, ApiLead } from "@/lib/api/leads/types";
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -47,13 +48,20 @@ export default function LeadsPage() {
     }
   }, [searchTerm, statusFilter, dateFilter]);
 
-  const loadLeads = async () => {
+  const loadLeads = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
       // Prepare filter parameters
-      const params: any = {
+      const params: {
+        page: number;
+        limit: number;
+        searchQuery?: string;
+        status?: LeadStatus;
+        from?: string;
+        to?: string;
+      } = {
         page: 1,
         limit: 100 // Get more items to handle local pagination
       };
@@ -64,7 +72,7 @@ export default function LeadsPage() {
 
       if (statusFilter) {
         // Map component status to API status
-        const statusApiMap: Record<string, string> = {
+        const statusApiMap: Record<string, LeadStatus> = {
           'interested': 'INTERSTED',
           'subscribed': 'SUBSCRIBED', 
           'not_interested': 'NOT_INTERSTED',
@@ -72,7 +80,7 @@ export default function LeadsPage() {
           'follow_up': 'FOLLOW_UP',
           'new': 'NEW'
         };
-        params.status = statusApiMap[statusFilter] || statusFilter.toUpperCase();
+        params.status = statusApiMap[statusFilter] || 'NEW';
       }
 
       if (dateFilter) {
@@ -85,8 +93,8 @@ export default function LeadsPage() {
       
       if (response?.items) {
         // Separate leads by status - NEW status goes to upcoming, others to leads
-        const upcomingApiLeads = response.items.filter((lead: any) => lead.status === 'NEW');
-        const regularApiLeads = response.items.filter((lead: any) => lead.status !== 'NEW');
+        const upcomingApiLeads = response.items.filter((lead: ApiLead) => lead.status === 'NEW');
+        const regularApiLeads = response.items.filter((lead: ApiLead) => lead.status !== 'NEW');
         
         // Convert to component format
         const convertedLeads = regularApiLeads.map(mapApiLeadToLead);
@@ -101,7 +109,7 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm, statusFilter, dateFilter]);
 
   const handleAddLead = async (newLead: Lead) => {
     try {

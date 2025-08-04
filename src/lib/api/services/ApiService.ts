@@ -68,7 +68,7 @@ export class ApiService {
             }
           }
         }
-      } catch (firebaseError) {
+      } catch {
         // Fall back to API token
       }
     }
@@ -155,7 +155,7 @@ export class ApiService {
               return jsonResponse.data;
             }
           }
-        } catch (refreshError) {
+        } catch {
           // Token refresh failed, try fresh Firebase token approach
           try {
             // Check if we have Firebase auth
@@ -194,7 +194,7 @@ export class ApiService {
                 throw new Error(`Authentication failed after token refresh: ${firebaseRetryResponse.status}`);
               }
             }
-          } catch (firebaseError) {
+          } catch {
             // Both refresh attempts failed
             throw new Error("Session expired. Please login again.");
           }
@@ -229,7 +229,7 @@ export class ApiService {
           } else if (errorData.error) {
             errorMessage = errorData.error;
           }
-        } catch (parseError) {
+        } catch {
           // If we can't parse the error response, use the status text
         }
         
@@ -250,7 +250,7 @@ export class ApiService {
         // For other endpoints, return just the data property
         const apiResponse = jsonResponse as ApiResponse<T>;
         return apiResponse.data;
-      } catch (parseError) {
+      } catch {
         throw new Error(`Invalid JSON response from ${fullUrl}. This usually means the API endpoint doesn't exist or returned HTML.`);
       }
     } catch (error) {

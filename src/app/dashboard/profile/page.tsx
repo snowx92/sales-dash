@@ -7,21 +7,14 @@ import {
   Mail, 
   Phone, 
   Shield, 
-  Calendar,
-  Globe,
   Building,
-  Target,
-  TrendingUp,
-  Trophy,
   Loader2,
   RefreshCw,
   Edit3,
-  Camera,
   Key,
   Eye,
   EyeOff,
   Check,
-  X,
   Upload,
   Save
 } from "lucide-react";
@@ -95,9 +88,10 @@ export default function ProfilePage() {
         } else {
           setError("Failed to load profile data");
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("🚨 ProfilePage: Error fetching profile:", err);
-        setError(err.message || "Failed to load profile");
+        const errorMessage = err instanceof Error ? err.message : "Failed to load profile";
+        setError(errorMessage);
       } finally {
         setIsLoading(false);
       }
@@ -122,8 +116,9 @@ export default function ProfilePage() {
             image: ""
           });
         }
-      } catch (err: any) {
-        setError(err.message || "Failed to load profile");
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to load profile";
+        setError(errorMessage);
       } finally {
         setIsLoading(false);
       }
@@ -328,13 +323,13 @@ export default function ProfilePage() {
       } else {
         setEditErrors({general: response?.message || "Failed to update profile"});
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("🚨 Profile update error:", err);
       let errorMessage = "Failed to update profile";
       
-      if (err.status === 500) {
+      if (err && typeof err === 'object' && 'status' in err && err.status === 500) {
         errorMessage = "Server error occurred. Please try again or contact support.";
-      } else if (err.message) {
+      } else if (err instanceof Error && err.message) {
         errorMessage = err.message;
       }
       
@@ -373,8 +368,9 @@ export default function ProfilePage() {
       } else {
         setPasswordErrors({general: "Failed to change password"});
       }
-    } catch (err: any) {
-      setPasswordErrors({general: err.message || "Failed to change password"});
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to change password";
+      setPasswordErrors({general: errorMessage});
     } finally {
       setPasswordLoading(false);
     }

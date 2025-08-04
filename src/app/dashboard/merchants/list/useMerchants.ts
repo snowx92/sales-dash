@@ -341,7 +341,7 @@ export const useMerchants = () => {
       // const response = await storesApi.getStores(apiParams);
       // console.log("[Stores API] Response:", response);
 
-    } catch (error) {
+    } catch {
       // COMMENTED OUT: Authentication error handling
       // if (error instanceof Error && error.message.includes("Unauthorized")) {
       //   router.push("/login");

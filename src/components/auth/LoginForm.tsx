@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Mail, Lock, Loader2 } from "lucide-react";
 import { authService } from "@/lib/api/auth/authService";
-import { SessionManager } from "@/lib/utils/session";
 import { handleAuthError } from "@/lib/api/auth/utils";
 import { useIsClient } from "@/lib/hooks/useIsClient";
 import ResetPasswordModal from "./ResetPasswordModal";
@@ -69,7 +68,7 @@ const LoginForm = () => {
       // Use router.push for proper navigation
       router.push("/dashboard/overview");
         
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ LoginForm: Login error:", error);
       setError(handleAuthError(error));
     } finally {

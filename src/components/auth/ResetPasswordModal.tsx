@@ -45,9 +45,10 @@ export default function ResetPasswordModal({ isOpen, onClose }: ResetPasswordMod
       } else {
         setError("Failed to send reset email. Please try again.");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If we get unauthorized error, try Firebase directly as fallback
-      if (error.message?.includes('Unauthorized') || error.message?.includes('Invalid Firebase token')) {
+      const errorMessage = error instanceof Error ? error.message : '';
+      if (errorMessage?.includes('Unauthorized') || errorMessage?.includes('Invalid Firebase token')) {
         try {
           // Import Firebase auth and send reset email directly
           const { getAuth, sendPasswordResetEmail } = await import('firebase/auth');
@@ -55,12 +56,13 @@ export default function ResetPasswordModal({ isOpen, onClose }: ResetPasswordMod
           
           await sendPasswordResetEmail(auth, email);
           setIsSuccess(true);
-        } catch (firebaseError: any) {
-          if (firebaseError.code === 'auth/user-not-found') {
+        } catch (firebaseError: unknown) {
+          const fbError = firebaseError as { code?: string };
+          if (fbError.code === 'auth/user-not-found') {
             setError("No account found with this email address.");
-          } else if (firebaseError.code === 'auth/invalid-email') {
+          } else if (fbError.code === 'auth/invalid-email') {
             setError("Please enter a valid email address.");
-          } else if (firebaseError.code === 'auth/too-many-requests') {
+          } else if (fbError.code === 'auth/too-many-requests') {
             setError("Too many reset attempts. Please try again later.");
           } else {
             setError("Failed to send reset email. Please try again later.");
@@ -108,7 +110,7 @@ export default function ResetPasswordModal({ isOpen, onClose }: ResetPasswordMod
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">Reset Password</h3>
-                    <p className="text-sm text-gray-500">We'll send you a reset link</p>
+                    <p className="text-sm text-gray-500">We&apos;ll send you a reset link</p>
                   </div>
                 </div>
                 <button
@@ -184,7 +186,7 @@ export default function ResetPasswordModal({ isOpen, onClose }: ResetPasswordMod
 
               <h3 className="text-xl font-bold text-gray-900 mb-2">Email Sent!</h3>
               <p className="text-gray-600 mb-6">
-                We've sent a password reset link to <strong>{email}</strong>. 
+                We&apos;ve sent a password reset link to <strong>{email}</strong>. 
                 Please check your email and follow the instructions to reset your password.
               </p>
 
