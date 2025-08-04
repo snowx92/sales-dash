@@ -7,6 +7,8 @@ import { Mail, Lock, Loader2 } from "lucide-react";
 import { authService } from "@/lib/api/auth/authService";
 import { handleAuthError } from "@/lib/api/auth/utils";
 import { useIsClient } from "@/lib/hooks/useIsClient";
+import { debugApiConfiguration, testApiConnectivity } from "@/lib/utils/api-debug";
+import { validateEnvironment } from "@/lib/utils/environment";
 import ResetPasswordModal from "./ResetPasswordModal";
 
 const LoginForm = () => {
@@ -18,6 +20,34 @@ const LoginForm = () => {
   const [showResetModal, setShowResetModal] = useState(false);
   const router = useRouter();
   const isClient = useIsClient();
+
+  // Debug function for production troubleshooting
+  const handleTestConnectivity = async () => {
+    console.log('🔍 Starting API connectivity test...');
+    debugApiConfiguration();
+    validateEnvironment();
+    
+    try {
+      const result = await testApiConnectivity();
+      console.log('📊 Connectivity test result:', result);
+      
+      if (result.success) {
+        alert('✅ API connectivity test passed!');
+      } else if (result.fallbackSuccess) {
+        alert('⚠️ Primary URL failed but fallback works. Check environment variables.');
+      } else {
+        alert('❌ API connectivity test failed. Check console for details.');
+      }
+    } catch (error) {
+      console.error('❌ Connectivity test error:', error);
+      alert('❌ Connectivity test failed with error. Check console.');
+    }
+  };
+
+  // Expose debug function to window in production for troubleshooting
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+    (window as any).debugSalesApi = handleTestConnectivity;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     // Prevent form submission and page refresh
@@ -46,6 +76,12 @@ const LoginForm = () => {
       }
 
       console.log("🔐 LoginForm: Starting Firebase auth login process...");
+      
+      // Debug API configuration in production
+      if (process.env.NODE_ENV === 'production') {
+        debugApiConfiguration();
+        validateEnvironment();
+      }
       
       // Use the complete Firebase authentication flow
       const loginResponse = await authService.login(email, password);

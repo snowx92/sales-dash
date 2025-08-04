@@ -12,9 +12,17 @@ export class ApiService {
   protected sessionManager: SessionManager;
 
   constructor() {
-    // Check if the environment variable is defined
-    const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api/sales';
-    console.log('🔧 ApiService: Base URL configured as:', baseURL);
+    // Get base URL with smart fallback logic
+    let baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
+    
+    if (!baseURL) {
+      // If no environment variable is set, use relative API routes
+      baseURL = '/api/sales';
+      console.log('🔧 ApiService: No API_BASE_URL env var found, using relative path:', baseURL);
+    } else {
+      console.log('🔧 ApiService: Using API_BASE_URL from environment:', baseURL);
+    }
+    
     this.baseURL = baseURL;
     this.sessionManager = SessionManager.getInstance();
   }

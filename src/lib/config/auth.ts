@@ -1,8 +1,29 @@
 // Authentication configuration for the Sales Dashboard
+import { getRecommendedApiUrl } from '../utils/environment';
+
+// Determine the base URL based on environment
+const getApiBaseUrl = () => {
+  // First priority: explicit environment variable
+  if (process.env.NEXT_PUBLIC_SALES_API_URL) {
+    console.log('🔗 Using NEXT_PUBLIC_SALES_API_URL:', process.env.NEXT_PUBLIC_SALES_API_URL);
+    return process.env.NEXT_PUBLIC_SALES_API_URL;
+  }
+  
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    console.log('🔗 Using NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+  
+  // Use the recommended URL based on environment detection
+  const recommendedUrl = getRecommendedApiUrl();
+  console.log('🔗 Using recommended API URL:', recommendedUrl);
+  return recommendedUrl;
+};
+
 export const AUTH_CONFIG = {
   // API Configuration
   API: {
-    BASE_URL: process.env.NEXT_PUBLIC_SALES_API_URL || "https://sales-api.vondera.app", // Update to match your salesUrl
+    BASE_URL: getApiBaseUrl(),
     ENDPOINTS: {
       LOGIN: "/auth/login",
       SESSION: "/auth/on-login", // This maps to your save session endpoint

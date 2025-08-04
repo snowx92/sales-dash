@@ -93,6 +93,30 @@ export class AuthService extends ApiService {
       if (errorMessage === 'Failed to fetch') {
         console.error(`🚨 AuthService: Network Error - Check if the API URL is correct and accessible`);
         console.error(`🔗 AuthService: Current API URL: ${AUTH_CONFIG.API.BASE_URL}`);
+        
+        // Try fallback URL if the original fails and we're not already using relative path
+        if (!AUTH_CONFIG.API.BASE_URL.startsWith('/api') && !AUTH_CONFIG.API.BASE_URL.includes('localhost')) {
+          console.log(`🔄 AuthService: Trying fallback to relative API path`);
+          try {
+            const fallbackUrl = `/api/sales${endpoint}`;
+            console.log(`🌐 AuthService: Making fallback request to ${fallbackUrl}`);
+            
+            const fallbackResponse = await fetch(fallbackUrl, {
+              method,
+              headers,
+              body: body ? JSON.stringify(body) : undefined,
+            });
+            
+            if (fallbackResponse.ok) {
+              const fallbackData = await fallbackResponse.json();
+              console.log(`✅ AuthService: Fallback request successful`);
+              return fallbackData;
+            }
+          } catch {
+            console.error(`❌ AuthService: Fallback request also failed`);
+          }
+        }
+        
         throw new Error(`Cannot connect to sales API. Please check your network connection and API configuration.`);
       }
       
