@@ -7,4 +7,3 @@ export * from './use-toast';
 export * from './button';
 export * from './table';
 export * from './badge'; 
-export * from './html-editor'; 
