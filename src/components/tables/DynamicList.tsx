@@ -49,7 +49,7 @@ export default function DynamicList({ items, type }: DynamicListProps) {
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-lg font-bold text-blue-600">${item.sales.toLocaleString()}</p>
+                <p className="text-lg font-bold text-blue-600">{item.sales.toLocaleString()} EGP</p>
                 <p className="text-sm text-gray-500 flex items-center justify-end">
                   {type === "stores" ? <ShoppingBag className="w-4 h-4 mr-1" /> : <Package className="w-4 h-4 mr-1" />}
                   {item.count} {type === "stores" ? "orders" : "units"}

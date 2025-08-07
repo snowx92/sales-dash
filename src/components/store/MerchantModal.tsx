@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-// import { SubscriptionService } from '@/lib/api/stores/subscriptions/SubscriptionService'
+import { SubscriptionService } from '@/lib/api/stores/subscriptions/SubscriptionService'
 import { toast } from 'sonner';
-// const subscriptionService = new SubscriptionService();
+
+const subscriptionService = new SubscriptionService();
 
 interface StoreData {
   id: string;
@@ -73,6 +74,8 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
   if (!isOpen) return null;
 
   const handleAddSubscription = async () => {
+    console.log("[Subscription Modal] Starting subscription process...");
+    
     // Validate inputs
     if (!planType || !duration || !amount) {
       toast.error('Validation Error: Please fill in all fields');
@@ -85,20 +88,27 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
       return;
     }
 
+    console.log("[Subscription Modal] Validation passed:", { planType, duration, numericAmount });
+
     setIsSubmitting(true);
     setError("");
 
     try {
-      // await subscriptionService.createSubscription(storeData.id, subscriptionData);
+      // Create subscription request
+      const subscriptionData = {
+        planId: planType, // e.g., "starter", "plus", "pro"
+        durationId: duration, // e.g., "month", "quartar", "year"
+        paidAmount: numericAmount
+      };
+
+      console.log("[Subscription] Creating subscription:", subscriptionData);
+      
+      // Call the subscription API
+      await subscriptionService.createSubscription(storeData.id, subscriptionData);
       
       // Show success toast
-      toast(
-        <>
-          <div className="font-bold">Subscription Created (Static Mode)</div>
-          <div>
-            Successfully subscribed to {planType} plan for {DURATION_LABELS[duration as keyof typeof DURATION_LABELS]} duration with amount ${numericAmount}
-          </div>
-        </>
+      toast.success(
+        `Successfully subscribed to ${planType} plan for ${DURATION_LABELS[duration as keyof typeof DURATION_LABELS]} duration with amount ${numericAmount} EGP`
       );
 
       // Then refresh the data before closing the modal
@@ -106,12 +116,7 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
         try {
           await onSubscriptionComplete();
         } catch {
-          toast(
-            <div>
-              <div className="font-bold text-red-700">Refresh Failed</div>
-              <div>Store list could not be refreshed. Please reload the page.</div>
-            </div>
-          );
+          toast.error("Store list could not be refreshed. Please reload the page.");
         }
       }
 
@@ -122,12 +127,7 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
       // Show error toast and keep modal open
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       setError(errorMessage);
-      toast(
-        <div>
-          <div className="font-bold text-red-700">Subscription Failed</div>
-          <div>Failed to create subscription. Please try again.</div>
-        </div>
-      );
+      toast.error(`Failed to create subscription: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -187,10 +187,10 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
               onValueChange={setPlanType}
               disabled={isSubmitting}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Choose a plan" />
+              <SelectTrigger className="w-full bg-white text-gray-900 border border-gray-300">
+                <SelectValue placeholder="Choose a plan" className="text-gray-900" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 <SelectItem value="starter" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">StartUp Plan</SelectItem>
                 <SelectItem value="plus" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Plus Plan</SelectItem>
                 <SelectItem value="pro" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Pro Plan</SelectItem>
@@ -206,10 +206,10 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
               onValueChange={setDuration}
               disabled={isSubmitting}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select duration" />
+              <SelectTrigger className="w-full bg-white text-gray-900 border border-gray-300">
+                <SelectValue placeholder="Select duration" className="text-gray-900" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 <SelectItem value="month" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Monthly</SelectItem>
                 <SelectItem value="quartar" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Quarterly</SelectItem>
                 <SelectItem value="year" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Yearly</SelectItem>
@@ -223,7 +223,8 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
             </label>
             <Input
               type="number"
-              className="bg-gray-50"
+              className="bg-white text-gray-900 border border-gray-300 placeholder:text-gray-500"
+              placeholder="Enter amount"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               disabled={isSubmitting}

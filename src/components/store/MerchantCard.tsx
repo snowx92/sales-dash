@@ -1,10 +1,9 @@
 /* eslint-disable @next/next/no-img-element */
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, ShoppingBag, Globe, Box, Eye, Calendar, Clock, LogIn, Trash2, RotateCcw, BarChart, Key, EyeOff, MapPin, Building2, Copy, XCircle } from "lucide-react";
+import { Users, ShoppingBag, Globe, Box, Eye, Calendar, Clock, LogIn, BarChart, Key, EyeOff, MapPin, Building2, XCircle, CreditCard } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 import { ActionDropdown } from "@/components/ui/ActionDropdown";
-import ConfirmToast from "@/components/ui/confirm-toast";
 // import logo from "@/lib/images/logo.png";
 // import { Timestamp } from "@/lib/api/services/commonTypes";
 // import { Category } from "@/lib/api/stores/types";
@@ -19,13 +18,13 @@ interface Category {
   icon: string;
   name: string;
 }
-import { MerchantModal } from "./MerchantModal";
 import { LucideIcon } from "lucide-react";
-// import { storesActionsApi } from "@/lib/api/stores/actions/storesActions";
+import { storesActionsApi } from "@/lib/api/stores/actions/storesActions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { MerchantModal } from "./MerchantModal";
 
 export interface MerchantCardProps {
   id: string;
@@ -50,9 +49,6 @@ export interface MerchantCardProps {
   renewEnabled: boolean;
   localMarkets: string[];
   hiddenOrders: number;
-  onSubscribe: () => void;
-  onDelete: () => void;
-  onReset: () => void;
 }
 
 // Function to generate a unique color based on a string value with opacity and a matching text color
@@ -111,20 +107,11 @@ export function MerchantCard({
   defaultCurrency,
   renewEnabled,
   localMarkets,
-  onDelete,
-  onReset,
   hiddenOrders,
 }: MerchantCardProps) {
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage] = useState("");
-  const [toastAction] = useState<() => void>(() => {});
   const [imageError, setImageError] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [password, setPassword] = useState("");
-  const [actionType, setActionType] = useState<"delete" | "reset" | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -134,51 +121,6 @@ export function MerchantCard({
   const hasHiddenOrders = hiddenOrders > 0;
   const progressPercentage = Math.round((currentOrders / ordersLimit) * 100);
   const isExpiringSoon = new Date(planExpirationDate) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-  const handleDelete = () => {
-    setActionType("delete");
-    setShowPasswordModal(true);
-  };
-
-  const handleReset = () => {
-    setActionType("reset");
-    setShowPasswordModal(true);
-  };
-
-  const handlePasswordSubmit = async () => {
-    if (!password.trim()) {
-      toast.error("Please enter your password");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      if (actionType === "delete") {
-        // await storesActionsApi.deleteStore(id, password);
-        toast.success("Store deleted successfully (static mode)");
-        onDelete();
-      } else if (actionType === "reset") {
-        // await storesActionsApi.resetStore(id, password);
-        toast.success("Store data reset successfully (static mode)");
-        onReset();
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "An error occurred");
-    } finally {
-      setIsLoading(false);
-      setShowPasswordModal(false);
-      setPassword("");
-      setActionType(null);
-    }
-  };
-
-  const handleOpenModal = () => {
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-  };
 
   const handleForcePasswordReset = () => {
     setShowPasswordResetModal(true);
@@ -197,11 +139,16 @@ export function MerchantCard({
 
     setIsResettingPassword(true);
     try {
-      // await storesActionsApi.forcePasswordReset(id, newPassword);
-      toast.success("Password reset successfully (static mode)");
-      setShowPasswordResetModal(false);
-      setNewPassword("");
-      setConfirmPassword("");
+      const response = await storesActionsApi.forcePasswordReset(id, newPassword);
+      
+      if (response && response.status === 200) {
+        toast.success("Password reset successfully");
+        setShowPasswordResetModal(false);
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        toast.error("Failed to reset password");
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to reset password");
     } finally {
@@ -209,42 +156,32 @@ export function MerchantCard({
     }
   };
 
-  const handleLoginWithCredentials = async () => {
+  const handleLoginToStore = async () => {
     try {
-      // const response = await storesActionsApi.getStoreCredentials(id);
-      // console.log("[Login] API Response:", response);
+      const token = await storesActionsApi.getStoreCredentials(id);
+      console.log("[Login] API Response:", token);
       
-      // Static mode - simulate successful token response
-      const mockToken = "static_demo_token_12345";
-      
-      if (mockToken) {
-        // Redirect to login page with login token
-        window.open(`https://dashboard.vondera.app/auth/login?token`, "_blank");
+      if (token && typeof token === 'string') {
+        // The token is returned directly
+        window.open(`https://dashboard.vondera.app/auth/login?token=${token}`, "_blank");
+        toast.success("Successfully opened store dashboard!");
       } else {
         toast.error("Failed to get store login token");
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to get store credentials");
+      toast.error(error instanceof Error ? error.message : "Failed to login to store");
     }
   };
 
-  const handleCopyStoreId = async () => {
-    try {
-      await navigator.clipboard.writeText(id);
-      toast.success("Store ID copied to clipboard");
-    } catch {
-      toast.error("Failed to copy Store ID");
-    }
+  const handleSubscribeStore = () => {
+    setShowSubscriptionModal(true);
   };
 
   const actions = [
-    { icon: ShoppingBag, label: "Subscribe", onClick: handleOpenModal, color: "blue" },
-    { icon: LogIn, label: "Login to Store", onClick: handleLoginWithCredentials, color: "green" },
+    { icon: LogIn, label: "Login to Store", onClick: handleLoginToStore, color: "green" },
+    { icon: CreditCard, label: "Subscribe Store", onClick: handleSubscribeStore, color: "blue" },
+    { icon: Key, label: "Force Reset Password", onClick: handleForcePasswordReset, color: "indigo" },
     { icon: BarChart, label: "Analytics", onClick: () => window.open(`/dashboard/merchants/analytics/${id}`, "_blank"), color: "purple" },
-    { icon: Copy, label: "Copy Store ID", onClick: handleCopyStoreId, color: "gray" },
-    { icon: RotateCcw, label: "Reset Data", onClick: handleReset, color: "yellow" },
-    { icon: Key, label: "Reset Password", onClick: handleForcePasswordReset, color: "indigo" },
-    { icon: Trash2, label: "Delete", onClick: handleDelete, color: "red" },
   ];
 
   const getStatusConfig = (status: string, planName: string) => {
@@ -423,75 +360,7 @@ export function MerchantCard({
         </Card>
       </motion.div>
 
-      <MerchantModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        storeData={{
-          id: id,
-          storeName: storeName,
-          storeLogo: storeLogo,
-          planName: planName,
-          currentOrders: currentOrders,
-          ordersLimit: ordersLimit,
-        }}
-      />
-
-      {showPasswordModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white p-6 rounded-2xl shadow-2xl max-w-md w-full border border-gray-200"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">
-                {actionType === "delete" ? "Delete Store" : "Reset Store Data"}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowPasswordModal(false);
-                  setPassword("");
-                  setActionType(null);
-                }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <XCircle className="h-6 w-6" />
-              </button>
-            </div>
-            <p className="text-sm text-gray-600 mb-6">
-              Please enter your admin password to confirm this action.
-            </p>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              className="mb-6 text-base"
-            />
-            <div className="flex justify-end space-x-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowPasswordModal(false);
-                  setPassword("");
-                  setActionType(null);
-                }}
-                className="px-6"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handlePasswordSubmit}
-                disabled={isLoading}
-                className="bg-red-600 hover:bg-red-700 text-white px-6"
-              >
-                {isLoading ? "Processing..." : actionType === "delete" ? "Delete" : "Reset"}
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
+      {/* Password Reset Modal */}
       {showPasswordResetModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div 
@@ -573,16 +442,25 @@ export function MerchantCard({
         </div>
       )}
 
-      {showToast && (
-        <ConfirmToast
-          message={toastMessage}
-          onConfirm={() => {
-            toastAction();
-            setShowToast(false);
-          }}
-          onCancel={() => setShowToast(false)}
-        />
-      )}
+      {/* Subscription Modal */}
+      <MerchantModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        storeData={{
+          id,
+          storeName,
+          storeLogo,
+          planName,
+          currentOrders,
+          ordersLimit,
+        }}
+        onSubscriptionComplete={async () => {
+          // Refresh store data after subscription
+          toast.success("Store subscription updated successfully!");
+          // You can add a callback here to refresh the merchants list if needed
+          // For example: window.location.reload(); or call a refresh function
+        }}
+      />
     </>
   );
 }

@@ -6,17 +6,20 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Bell,
-  Search,
   ChevronDown,
   ChevronRight,
   Menu,
   X,
   LogOut,
   User,
+  Copy,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { logout } from "@/lib/api/auth/utils";
 import { profileService, type UserProfile } from "@/lib/api/profile/profileService";
+import { overviewService } from "@/lib/api/overview/overviewService";
+import { notificationService, type NotificationItem } from "@/lib/api/notifications";
+import { firebaseMessaging } from "@/lib/firebase/messaging";
 import { SessionManager } from "@/lib/utils/session";
 
 // Add this mapping object for prettier labels
@@ -33,17 +36,28 @@ interface NavbarProps {
   setIsMobileMenuOpen: (open: boolean) => void;
 }
 
-export default function Navbar({ isMobileMenuOpen, setIsMobileMenuOpen }: NavbarProps) {
+export default function Navbar({ 
+  isMobileMenuOpen, 
+  setIsMobileMenuOpen
+}: NavbarProps) {
   const pathname = usePathname();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [navbarAffiliateLink, setNavbarAffiliateLink] = useState<string>("");
+  const [unreadNotifications, setUnreadNotifications] = useState<number>(0);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationLoading, setNotificationLoading] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [hasMoreNotifications, setHasMoreNotifications] = useState<boolean>(true);
+  const [readAllLoading, setReadAllLoading] = useState<boolean>(false);
   const [breadcrumbs, setBreadcrumbs] = useState<
     { label: string; href: string }[]
   >([]);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  // Fetch user profile data
+  // Fetch user profile and affiliate link data
   useEffect(() => {
-    const fetchUserProfile = async () => {
+    const fetchUserData = async () => {
       try {
         // Add a small delay to ensure token is available after login
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -59,7 +73,8 @@ export default function Navbar({ isMobileMenuOpen, setIsMobileMenuOpen }: Navbar
           console.log("⚠️ Navbar: No token found, skipping profile fetch");
           return;
         }
-        
+
+        // Fetch profile data
         const response = await profileService.getProfile();
         console.log("📋 Navbar: Profile response:", response);
         
@@ -69,18 +84,169 @@ export default function Navbar({ isMobileMenuOpen, setIsMobileMenuOpen }: Navbar
         } else {
           console.log("❌ Navbar: Invalid profile response:", response);
         }
+
+        // Fetch overview data for affiliate link
+        try {
+          const overviewResponse = await overviewService.getOverview();
+          if (overviewResponse?.user?.refferLink) {
+            setNavbarAffiliateLink(overviewResponse.user.refferLink);
+            console.log("✅ Navbar: Affiliate link loaded:", overviewResponse.user.refferLink);
+          }
+        } catch (overviewError) {
+          console.log("⚠️ Navbar: Could not fetch affiliate link:", overviewError);
+          // Not critical, so we don't show error to user
+        }
+
+        // Fetch unread notifications count
+        try {
+          const unreadCount = await notificationService.getUnreadCount();
+          setUnreadNotifications(unreadCount);
+          console.log("🔔 Navbar: Unread notifications count:", unreadCount);
+        } catch (notificationError) {
+          console.log("⚠️ Navbar: Could not fetch notifications count:", notificationError);
+          // Not critical, so we don't show error to user
+        }
+
+        // Initialize FCM token (optional - only in production/when needed)
+        try {
+          if (process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_FCM === 'true') {
+            console.log("📱 Navbar: Initializing FCM token...");
+            await firebaseMessaging.requestPermissionAndGetToken();
+          }
+        } catch (fcmError) {
+          console.log("⚠️ Navbar: Could not initialize FCM:", fcmError);
+          // Not critical, so we don't show error to user
+        }
       } catch (error) {
         console.error("🚨 Navbar: Profile fetch error:", error);
         // Don't show error to user in navbar, just fallback to default
       }
     };
 
-    fetchUserProfile();
+    fetchUserData();
   }, []);
 
   // Handle logout
   const handleLogout = async () => {
     await logout();
+  };
+
+  // Handle copy affiliate link
+  const handleCopyAffiliateLink = async (link: string) => {
+    try {
+      await navigator.clipboard.writeText(link);
+      // Could add a toast notification here
+    } catch (err) {
+      console.error('Failed to copy affiliate link:', err);
+    }
+  };
+
+  // Handle copy referral code
+  const handleCopyReferralCode = async () => {
+    try {
+      // Extract referral code from affiliate link
+      // Assuming the referral code is the last part of the URL or after 'ref=' parameter
+      let referralCode = '';
+      if (navbarAffiliateLink) {
+        const url = new URL(navbarAffiliateLink);
+        referralCode = url.searchParams.get('ref') || url.pathname.split('/').pop() || navbarAffiliateLink;
+      }
+      
+      await navigator.clipboard.writeText(referralCode);
+      // Could add a toast notification here
+    } catch (err) {
+      console.error('Failed to copy referral code:', err);
+    }
+  };
+
+  // Load notifications
+  const loadNotifications = async (page: number = 1, append: boolean = false) => {
+    try {
+      setNotificationLoading(true);
+      console.log(`🔔 Loading notifications page ${page}...`);
+      
+      const response = await notificationService.getNotifications({
+        pageNo: page,
+        limit: 5
+      });
+      
+      if (response?.data) {
+        const newNotifications = response.data.items || [];
+        
+        if (append) {
+          setNotifications(prev => [...prev, ...newNotifications]);
+        } else {
+          setNotifications(newNotifications);
+        }
+        
+        setUnreadNotifications(response.data.newNotifications || 0);
+        setHasMoreNotifications(!response.data.isLastPage);
+        setCurrentPage(page);
+        
+        console.log(`✅ Loaded ${newNotifications.length} notifications`);
+      }
+    } catch (error) {
+      console.error('🚨 Error loading notifications:', error);
+    } finally {
+      setNotificationLoading(false);
+    }
+  };
+
+  // Handle notification dropdown toggle
+  const handleNotificationClick = async () => {
+    if (!isNotificationOpen) {
+      // Load initial notifications when opening
+      await loadNotifications(1, false);
+    }
+    setIsNotificationOpen(!isNotificationOpen);
+  };
+
+  // Load more notifications
+  const handleLoadMore = async () => {
+    if (!notificationLoading && hasMoreNotifications) {
+      await loadNotifications(currentPage + 1, true);
+    }
+  };
+
+  // Mark all notifications as read
+  const handleReadAll = async () => {
+    try {
+      setReadAllLoading(true);
+      console.log('🔔 Marking all notifications as read...');
+      
+      await notificationService.readAllNotifications();
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(notification => ({
+          ...notification,
+          isNew: false
+        }))
+      );
+      setUnreadNotifications(0);
+      
+      console.log('✅ All notifications marked as read');
+    } catch (error) {
+      console.error('🚨 Error marking notifications as read:', error);
+    } finally {
+      setReadAllLoading(false);
+    }
+  };
+
+  // Format notification date
+  const formatNotificationDate = (timestamp: { _seconds: number; _nanoseconds: number }): string => {
+    const date = new Date(timestamp._seconds * 1000);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
   };
 
   // Updated breadcrumbs generation for sales dashboard
@@ -142,10 +308,22 @@ export default function Navbar({ isMobileMenuOpen, setIsMobileMenuOpen }: Navbar
           }
         }
       }
+
+      // Check if click is outside notification dropdown
+      if (isNotificationOpen) {
+        const notificationDropdown = document.querySelector('[data-notification-dropdown]');
+        const notificationButton = document.querySelector('[data-notification-button]');
+        
+        if (notificationDropdown && notificationButton) {
+          if (!notificationDropdown.contains(target) && !notificationButton.contains(target)) {
+            setIsNotificationOpen(false);
+          }
+        }
+      }
     };
 
     // Add event listener when dropdowns are open
-    if (isProfileOpen) {
+    if (isProfileOpen || isNotificationOpen) {
       document.addEventListener("click", handleClickOutside);
     }
 
@@ -153,7 +331,7 @@ export default function Navbar({ isMobileMenuOpen, setIsMobileMenuOpen }: Navbar
     return () => {
       document.removeEventListener("click", handleClickOutside);
     };
-  }, [isProfileOpen]);
+  }, [isProfileOpen, isNotificationOpen]);
 
   return (
     <nav className="bg-white border-b border-gray-100 shadow-sm relative z-40">
@@ -214,36 +392,152 @@ export default function Navbar({ isMobileMenuOpen, setIsMobileMenuOpen }: Navbar
             ))}
           </div>
 
-          {/* Search Bar - Responsive */}
-          <div className="hidden md:flex items-center flex-1 px-4 lg:px-8">
-            <div className="relative w-full max-w-md lg:max-w-lg">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                placeholder="Search everything..."
-              />
-            </div>
-          </div>
-
-          {/* Right section with notifications and profile */}
+          {/* Right section with affiliate link, notifications and profile */}
           <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Mobile Search Button */}
-            <button className="md:hidden p-2 rounded-md text-gray-500 hover:text-purple-600 hover:bg-purple-50">
-              <Search className="h-5 w-5" />
-            </button>
+            {/* Affiliate Link - Text on desktop, icon only on mobile */}
+            {navbarAffiliateLink && (
+              <>
+                {/* Desktop version - text with copy icon */}
+                <div className="hidden sm:flex items-center gap-2 text-xs text-gray-600">
+                  <span className="truncate max-w-[120px] lg:max-w-[200px]">
+                    {navbarAffiliateLink}
+                  </span>
+                  <button
+                    onClick={() => handleCopyAffiliateLink(navbarAffiliateLink)}
+                    className="p-1 rounded text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                    title="Copy affiliate link"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </div>
+                
+                {/* Mobile version - copy icon only */}
+                <button
+                  onClick={() => handleCopyAffiliateLink(navbarAffiliateLink)}
+                  className="sm:hidden p-2 rounded-md text-gray-500 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                  title="Copy affiliate link"
+                >
+                  <Copy className="h-5 w-5" />
+                </button>
+              </>
+            )}
 
             {/* Notifications */}
             <div className="relative">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNotificationClick();
+                }}
                 className="p-2 rounded-full text-gray-500 hover:text-purple-600 focus:outline-none relative transition-colors"
+                data-notification-button
               >
                 <Bell className="h-5 w-5 sm:h-6 sm:w-6" />
+                {/* Notification badge */}
+                {unreadNotifications > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                  </span>
+                )}
               </motion.button>
+
+              {/* Notification Dropdown */}
+              <AnimatePresence>
+                {isNotificationOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="origin-top-right absolute right-0 mt-2 w-80 sm:w-96 rounded-lg shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 max-h-96"
+                    data-notification-dropdown
+                  >
+                    {/* Header */}
+                    <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                      {unreadNotifications > 0 && (
+                        <button
+                          onClick={handleReadAll}
+                          disabled={readAllLoading}
+                          className="text-xs text-purple-600 hover:text-purple-700 font-medium disabled:opacity-50"
+                        >
+                          {readAllLoading ? 'Reading...' : 'Mark all read'}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Notifications List */}
+                    <div className="max-h-64 overflow-y-auto">
+                      {notificationLoading && notifications.length === 0 ? (
+                        <div className="p-4 text-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mx-auto"></div>
+                          <p className="text-xs text-gray-500 mt-2">Loading notifications...</p>
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="p-6 text-center">
+                          <Bell className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500">No notifications yet</p>
+                        </div>
+                      ) : (
+                        <>
+                          {notifications.map((notification, index) => (
+                            <motion.div
+                              key={notification.id}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.1 }}
+                              className={`p-3 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${
+                                notification.isNew ? 'bg-purple-50' : ''
+                              }`}
+                            >
+                              <div className="flex items-start space-x-3">
+                                <div className={`mt-1 w-2 h-2 rounded-full ${notification.isNew ? 'bg-purple-600' : 'bg-transparent'}`} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {notification.content.title}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1 overflow-hidden" style={{
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical' as const
+                                  }}>
+                                    {notification.content.body}
+                                  </p>
+                                  <p className="text-xs text-gray-400 mt-1">
+                                    {formatNotificationDate(notification.date)}
+                                  </p>
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))}
+
+                          {/* Load More Button */}
+                          {hasMoreNotifications && (
+                            <div className="p-3 border-t border-gray-100">
+                              <button
+                                onClick={handleLoadMore}
+                                disabled={notificationLoading}
+                                className="w-full text-center text-sm text-purple-600 hover:text-purple-700 font-medium py-2 disabled:opacity-50"
+                              >
+                                {notificationLoading ? (
+                                  <div className="flex items-center justify-center space-x-2">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                                    <span>Loading...</span>
+                                  </div>
+                                ) : (
+                                  'Load more'
+                                )}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Profile Dropdown */}
@@ -321,6 +615,32 @@ export default function Navbar({ isMobileMenuOpen, setIsMobileMenuOpen }: Navbar
                         </motion.div>
                       </Link>
 
+                      {/* Copy Referral Code option */}
+                      {navbarAffiliateLink && (
+                        <motion.button
+                          onClick={handleCopyReferralCode}
+                          whileHover={{
+                            x: 5,
+                            backgroundColor: "rgba(128, 0, 128, 0.1)"
+                          }}
+                          whileTap={{ scale: 0.97 }}
+                          className="w-full flex items-center px-3 py-3 rounded-lg text-gray-600 hover:text-purple-500 group transition-colors"
+                        >
+                          <Copy className="w-5 h-5 text-gray-500 group-hover:text-purple-500" />
+                          <AnimatePresence>
+                            <motion.span
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -10 }}
+                              transition={{ duration: 0.2 }}
+                              className="ml-3 font-medium"
+                            >
+                              Copy Referral Code
+                            </motion.span>
+                          </AnimatePresence>
+                        </motion.button>
+                      )}
+
                       <div className="border-t border-gray-100 my-1"></div>
                       <motion.button
                         onClick={handleLogout}
@@ -375,31 +695,6 @@ export default function Navbar({ isMobileMenuOpen, setIsMobileMenuOpen }: Navbar
           ))}
         </div>
       </div>
-
-      {/* Mobile Search Bar */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white border-b border-gray-100"
-          >
-            <div className="px-4 pt-2 pb-3">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                  placeholder="Search everything..."
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </nav>
   );
 }

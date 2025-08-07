@@ -1,5 +1,5 @@
 // StatCard.tsx
-import { LucideIcon } from "lucide-react"
+import { LucideIcon, TrendingUp, TrendingDown } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 
 interface SubValue {
@@ -22,7 +22,7 @@ interface StatCardProps {
 export default function StatCard({ 
   title, 
   value, 
-
+  change,
   icon: Icon,
   color,
   subValue,
@@ -32,6 +32,22 @@ export default function StatCard({
   // Format number to remove decimals
   const formatNumber = (num: number | string) => {
     return typeof num === 'number' ? Math.floor(num).toLocaleString() : num;
+  };
+
+  // Get change indicator component
+  const getChangeIndicator = () => {
+    if (change === undefined || change === 0) return null;
+    
+    const isPositive = change > 0;
+    const ArrowIcon = isPositive ? TrendingUp : TrendingDown;
+    const colorClass = isPositive ? "text-green-600" : "text-red-600";
+    
+    return (
+      <div className={`flex items-center gap-1 text-sm font-medium ${colorClass}`}>
+        <ArrowIcon className="h-4 w-4" />
+        <span>{Math.abs(change).toFixed(1)}%</span>
+      </div>
+    );
   };
 
   return (
@@ -52,6 +68,7 @@ export default function StatCard({
                   Transactions: {transactionCount}
                 </p>
               )}
+              {getChangeIndicator()}
             </div>
           </div>
           <div className={`p-3 rounded-full ${bgColor} bg-opacity-15`}>

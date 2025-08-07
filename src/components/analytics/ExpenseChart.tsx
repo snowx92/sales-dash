@@ -71,7 +71,7 @@ export default function ExpenseChart({ data, staticData, title = "Monthly Expens
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-purple-800">{title}</h3>
           <span className="text-sm text-gray-500 font-medium">
-            Total: {totalValue.toLocaleString()} Egp
+            Total: {totalValue.toLocaleString()} EGP
           </span>
         </div>
       </div>
@@ -84,7 +84,7 @@ export default function ExpenseChart({ data, staticData, title = "Monthly Expens
               <div key={expense.name} className="flex flex-col items-center gap-2 flex-1">
                 {/* Value Label */}
                 <div className="text-xs font-semibold text-gray-600 mb-1">
-                  {(expense.value / 1000).toFixed(1)}k Egp
+                  {(expense.value / 1000).toFixed(1)}k EGP
                 </div>
                 
                 {/* Bar Container */}

@@ -62,7 +62,7 @@ export function PaymentHistory({ payments }: PaymentHistoryProps) {
             </TableCell>
             <TableCell>
               <span className="px-3 py-1  bg-fuchsia-300 text-fuchsia-700 inline-flex text-xs leading-5 font-semibold rounded-full">
-                ${payment.amount.toFixed(2)}
+                {payment.amount.toFixed(2)} EGP
               </span>
             </TableCell>
             <TableCell>

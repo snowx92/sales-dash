@@ -143,7 +143,7 @@ export default function CreditCard({ balance, type, totalBalance }: CreditCardPr
                       exit={{ opacity: 0, y: 20 }}
                       transition={{ type: "spring", stiffness: 100 }}
                     >
-                      {Math.floor(balance).toLocaleString()} Egp
+                      {Math.floor(balance).toLocaleString()} EGP
                     </motion.p>
                   </AnimatePresence>
                   <motion.div
@@ -165,7 +165,7 @@ export default function CreditCard({ balance, type, totalBalance }: CreditCardPr
               </div>
               <div className="text-right">
                 <p className="text-purple-100 text-xs mb-1 opacity-80">Total Balance</p>
-                <p className="text-white font-bold text-xl">{Math.floor(totalBalance).toLocaleString()} Egp</p>
+                <p className="text-white font-bold text-xl">{Math.floor(totalBalance).toLocaleString()} EGP</p>
               </div>
             </div>
           </div>

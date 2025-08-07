@@ -37,6 +37,7 @@ interface Dataset {
   data: number[];
   borderColor: string;
   backgroundColor: string;
+  borderDash?: number[];
 }
 
 interface LineChartWithTooltipProps {

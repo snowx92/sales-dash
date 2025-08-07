@@ -86,11 +86,18 @@ export default function TransactionsList({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-800">Latest Transactions</h2>
-        <div className="text-sm text-gray-500">
+        <h2 className="text-xl font-semibold text-gray-900">Latest Transactions</h2>
+        <div className="text-sm text-gray-700">
           Total: {totalItems.toLocaleString()} transactions
         </div>
       </div>
+
+      {isLoading && (
+        <div className="text-center py-10">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="text-gray-700 mt-4">Loading transactions...</p>
+        </div>
+      )}
 
       <AnimatePresence>
         {transactions.map((transaction, index) => (
@@ -130,7 +137,7 @@ export default function TransactionsList({
               <div className="flex items-center space-x-4">
                 <div className="text-right">
                   <span className="font-bold text-purple-800">
-                    {Math.floor(transaction.totalAmount).toLocaleString()} Egp
+                    {Math.floor(transaction.totalAmount).toLocaleString()} EGP
                   </span>
                   <div className="text-xs text-gray-500">{formatDate(transaction.createdAt._seconds)}</div>
                 </div>
@@ -159,13 +166,13 @@ export default function TransactionsList({
                   <div className="bg-white/70 p-3 rounded-lg backdrop-blur-sm">
                     <p className="text-xs text-purple-500 font-medium mb-1">Amount After Fees</p>
                     <p className="font-medium text-gray-800">
-                      {Math.floor(transaction.amountAfterFees).toLocaleString()} Egp
+                      {Math.floor(transaction.amountAfterFees).toLocaleString()} EGP
                     </p>
                   </div>
                   <div className="bg-white/70 p-3 rounded-lg backdrop-blur-sm">
                     <p className="text-xs text-purple-500 font-medium mb-1">Commission</p>
                     <p className="font-medium text-gray-800">
-                      {Math.floor(transaction.commission).toLocaleString()} Egp
+                      {Math.floor(transaction.commission).toLocaleString()} EGP
                     </p>
                   </div>
                   <div className="bg-white/70 p-3 rounded-lg backdrop-blur-sm">
@@ -231,9 +238,9 @@ export default function TransactionsList({
         ))}
       </AnimatePresence>
 
-      {transactions.length === 0 && (
+      {transactions.length === 0 && !isLoading && (
         <div className="text-center py-10">
-          <p className="text-gray-500">No transactions found</p>
+          <p className="text-gray-700 font-medium">No transactions found</p>
         </div>
       )}
 

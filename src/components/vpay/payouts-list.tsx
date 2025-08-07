@@ -146,7 +146,7 @@ const MobilePayoutCard = ({
             <span className="text-sm font-medium text-purple-700">Payout Amount</span>
           </div>
           <div className="text-center">
-            <span className="text-2xl font-bold text-purple-800">{Math.floor(payout.amount).toLocaleString()} Egp</span>
+            <span className="text-2xl font-bold text-purple-800">{Math.floor(payout.amount).toLocaleString()} EGP</span>
           </div>
         </div>
 
@@ -326,7 +326,7 @@ const DesktopPayoutRow = ({
 
                   <div className="flex items-center gap-4">
           <div className="flex flex-col items-end">
-            <span className="font-bold text-2xl text-purple-800">{Math.floor(payout.amount).toLocaleString()} Egp</span>
+            <span className="font-bold text-2xl text-purple-800">{Math.floor(payout.amount).toLocaleString()} EGP</span>
           </div>
 
           <div className="flex items-center gap-3">

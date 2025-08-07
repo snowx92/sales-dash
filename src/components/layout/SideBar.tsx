@@ -15,6 +15,7 @@ import {
   User
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSidebarCounters } from "@/lib/hooks/useSidebarCounters";
 // Use direct string path for public assets
 const logoSrc = "/logo.png";
 
@@ -23,16 +24,24 @@ interface NavigationItem {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  count?: number;
+  countKey?: keyof SidebarCounters;
 }
 
-// Simplified navigation items for sales dashboard with counters
+interface SidebarCounters {
+  stores: number;
+  pendingLeads: number;
+  allTransactions: number;
+  newNotifications: number;
+  retention: number;
+}
+
+// Navigation items for sales dashboard with counter keys
 const navigationItems: NavigationItem[] = [
   { href: "/dashboard/overview", label: "Overview", icon: LayoutDashboard },
-  { href: "/dashboard/merchants", label: "Merchants", icon: ShoppingBag, count: 127 },
-  { href: "/dashboard/leads", label: "Leads", icon: UserPlus, count: 45 },
-  { href: "/dashboard/retention", label: "Retention", icon: RefreshCw, count: 23 },
-  { href: "/dashboard/transactions", label: "Transactions", icon: Banknote, count: 23 },
+  { href: "/dashboard/merchants/list", label: "Merchants", icon: ShoppingBag, countKey: "stores" },
+  { href: "/dashboard/leads", label: "Leads", icon: UserPlus, countKey: "pendingLeads" },
+  { href: "/dashboard/retention", label: "Retention", icon: RefreshCw, countKey: "retention" },
+  { href: "/dashboard/transactions", label: "Transactions", icon: Banknote, countKey: "allTransactions" },
   { href: "/dashboard/profile", label: "Profile", icon: User },
 ];
 
@@ -44,6 +53,7 @@ interface SidebarProps {
 export default function Sidebar({ isMobileMenuOpen, setIsMobileMenuOpen }: SidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { counters, isLoading } = useSidebarCounters();
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -240,10 +250,20 @@ export default function Sidebar({ isMobileMenuOpen, setIsMobileMenuOpen }: Sideb
                             className={`ml-3 font-medium ${isActiveRoute(item.href) ? 'text-purple-700' : 'text-gray-600'} flex items-center justify-between flex-1`}
                           >
                             {item.label}
-                            {item.count && (
-                              <span className="bg-purple-100 text-purple-700 text-xs font-semibold px-2 py-1 rounded-full">
-                                {item.count}
-                              </span>
+                            {item.countKey && (
+                              <>
+                                {isLoading ? (
+                                  <span className="bg-gray-100 text-gray-400 text-xs font-semibold px-2 py-1 rounded-full animate-pulse">
+                                    ...
+                                  </span>
+                                ) : (
+                                  counters && counters[item.countKey] > 0 && (
+                                    <span className="bg-purple-100 text-purple-700 text-xs font-semibold px-2 py-1 rounded-full">
+                                      {counters[item.countKey]}
+                                    </span>
+                                  )
+                                )}
+                              </>
                             )}
                           </motion.span>
                         )}
@@ -320,10 +340,20 @@ export default function Sidebar({ isMobileMenuOpen, setIsMobileMenuOpen }: Sideb
                           >
                             <span className="flex items-center justify-between w-full">
                               {item.label}
-                              {item.count && (
-                                <span className="bg-purple-100 text-purple-700 text-xs font-semibold px-2 py-1 rounded-full">
-                                  {item.count}
-                                </span>
+                              {item.countKey && (
+                                <>
+                                  {isLoading ? (
+                                    <span className="bg-gray-100 text-gray-400 text-xs font-semibold px-2 py-1 rounded-full animate-pulse">
+                                      ...
+                                    </span>
+                                  ) : (
+                                    counters && counters[item.countKey] > 0 && (
+                                      <span className="bg-purple-100 text-purple-700 text-xs font-semibold px-2 py-1 rounded-full">
+                                        {counters[item.countKey]}
+                                      </span>
+                                    )
+                                  )}
+                                </>
                               )}
                             </span>
                           </span>
