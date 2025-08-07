@@ -145,15 +145,31 @@ export default function Navbar({
   const handleCopyReferralCode = async () => {
     try {
       // Extract referral code from affiliate link
-      // Assuming the referral code is the last part of the URL or after 'ref=' parameter
       let referralCode = '';
       if (navbarAffiliateLink) {
-        const url = new URL(navbarAffiliateLink);
-        referralCode = url.searchParams.get('ref') || url.pathname.split('/').pop() || navbarAffiliateLink;
+        try {
+          const url = new URL(navbarAffiliateLink);
+          // Try to get referral code from different possible URL patterns
+          referralCode = url.searchParams.get('ref') || 
+                        url.searchParams.get('referral') || 
+                        url.searchParams.get('code') ||
+                        url.pathname.split('/').pop() || 
+                        navbarAffiliateLink.split('/').pop() ||
+                        'REF_CODE';
+        } catch {
+          // If URL parsing fails, try to extract from the end of the string
+          referralCode = navbarAffiliateLink.split('/').pop() || 'REF_CODE';
+        }
       }
       
       await navigator.clipboard.writeText(referralCode);
-      // Could add a toast notification here
+      
+      // Visual feedback - you could replace this with a toast notification
+      console.log('✅ Referral code copied:', referralCode);
+      
+      // Optional: Add a temporary tooltip or flash effect
+      // This could be enhanced with a toast notification library
+      
     } catch (err) {
       console.error('Failed to copy referral code:', err);
     }
@@ -170,8 +186,13 @@ export default function Navbar({
         limit: 5
       });
       
+      console.log(`🔔 Navbar: Raw notification response:`, response);
+      
       if (response?.data) {
         const newNotifications = response.data.items || [];
+        
+        console.log(`🔔 Navbar: Processing ${newNotifications.length} notifications`);
+        console.log(`🔔 Navbar: First notification:`, newNotifications[0]);
         
         if (append) {
           setNotifications(prev => [...prev, ...newNotifications]);
@@ -184,6 +205,9 @@ export default function Navbar({
         setCurrentPage(page);
         
         console.log(`✅ Loaded ${newNotifications.length} notifications`);
+        console.log(`🔔 Total notifications in state: ${append ? notifications.length + newNotifications.length : newNotifications.length}`);
+      } else {
+        console.warn(`⚠️ Navbar: No data in response:`, response);
       }
     } catch (error) {
       console.error('🚨 Error loading notifications:', error);
@@ -394,32 +418,54 @@ export default function Navbar({
 
           {/* Right section with affiliate link, notifications and profile */}
           <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Affiliate Link - Text on desktop, icon only on mobile */}
+            {/* Affiliate Actions - Enhanced Design */}
             {navbarAffiliateLink && (
-              <>
-                {/* Desktop version - text with copy icon */}
-                <div className="hidden sm:flex items-center gap-2 text-xs text-gray-600">
-                  <span className="truncate max-w-[120px] lg:max-w-[200px]">
-                    {navbarAffiliateLink}
-                  </span>
+              <div className="flex items-center gap-2">
+                {/* Desktop version - Enhanced buttons with affiliate link */}
+                <div className="hidden sm:flex items-center gap-2">
+                  {/* Affiliate Link Display */}
+                  <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200/50">
+                    <span className="text-xs text-gray-600 truncate max-w-[120px] lg:max-w-[180px]">
+                      {navbarAffiliateLink}
+                    </span>
+                    <button
+                      onClick={() => handleCopyAffiliateLink(navbarAffiliateLink)}
+                      className="p-1 rounded-md text-purple-500 hover:text-purple-700 hover:bg-purple-100 transition-all duration-200 group"
+                      title="Copy affiliate link"
+                    >
+                      <Copy className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                    </button>
+                  </div>
+                  
+                  {/* Copy Referral Code Button */}
                   <button
-                    onClick={() => handleCopyAffiliateLink(navbarAffiliateLink)}
-                    className="p-1 rounded text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
-                    title="Copy affiliate link"
+                    onClick={handleCopyReferralCode}
+                    className="flex items-center gap-1 px-3 py-2 bg-gradient-to-r from-orange-50 to-pink-50 text-orange-600 hover:text-orange-700 border border-orange-200/50 rounded-lg hover:bg-gradient-to-r hover:from-orange-100 hover:to-pink-100 transition-all duration-200 group"
+                    title="Copy referral code"
                   >
-                    <Copy className="h-3 w-3" />
+                    <Copy className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                    <span className="text-xs font-medium hidden lg:inline">Code</span>
                   </button>
                 </div>
                 
-                {/* Mobile version - copy icon only */}
-                <button
-                  onClick={() => handleCopyAffiliateLink(navbarAffiliateLink)}
-                  className="sm:hidden p-2 rounded-md text-gray-500 hover:text-purple-600 hover:bg-purple-50 transition-colors"
-                  title="Copy affiliate link"
-                >
-                  <Copy className="h-5 w-5" />
-                </button>
-              </>
+                {/* Mobile version - Compact buttons */}
+                <div className="sm:hidden flex items-center gap-1">
+                  <button
+                    onClick={() => handleCopyAffiliateLink(navbarAffiliateLink)}
+                    className="p-2 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-all duration-200"
+                    title="Copy affiliate link"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={handleCopyReferralCode}
+                    className="p-2 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all duration-200"
+                    title="Copy referral code"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
             )}
 
             {/* Notifications */}
@@ -614,32 +660,6 @@ export default function Navbar({
                           </AnimatePresence>
                         </motion.div>
                       </Link>
-
-                      {/* Copy Referral Code option */}
-                      {navbarAffiliateLink && (
-                        <motion.button
-                          onClick={handleCopyReferralCode}
-                          whileHover={{
-                            x: 5,
-                            backgroundColor: "rgba(128, 0, 128, 0.1)"
-                          }}
-                          whileTap={{ scale: 0.97 }}
-                          className="w-full flex items-center px-3 py-3 rounded-lg text-gray-600 hover:text-purple-500 group transition-colors"
-                        >
-                          <Copy className="w-5 h-5 text-gray-500 group-hover:text-purple-500" />
-                          <AnimatePresence>
-                            <motion.span
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: -10 }}
-                              transition={{ duration: 0.2 }}
-                              className="ml-3 font-medium"
-                            >
-                              Copy Referral Code
-                            </motion.span>
-                          </AnimatePresence>
-                        </motion.button>
-                      )}
 
                       <div className="border-t border-gray-100 my-1"></div>
                       <motion.button

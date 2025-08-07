@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { ResponsiveWrapper } from "@/components/layout/ResponsiveWrapper";
 import { Pagination } from "@/components/tables/Pagination";
 import { useRetention } from "@/lib/hooks/useRetention";
@@ -37,6 +38,24 @@ const priorities = [
   { id: 'MEDIUM' as Priority, name: 'Medium', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
   { id: 'LOW' as Priority, name: 'Low', color: 'bg-green-100 text-green-700 border-green-200' }
 ];
+
+// Helper function to format expired date
+const formatExpiredDate = (expiredAt: string | null | { _seconds: number; _nanoseconds: number }): string => {
+  if (!expiredAt) return 'N/A';
+  
+  // Handle Firebase timestamp format
+  if (typeof expiredAt === 'object' && expiredAt._seconds) {
+    const date = new Date(expiredAt._seconds * 1000);
+    return date.toLocaleDateString();
+  }
+  
+  // Handle string format
+  if (typeof expiredAt === 'string') {
+    return new Date(expiredAt).toLocaleDateString();
+  }
+  
+  return 'N/A';
+};
 
 // Edit Merchant Modal Component
 const EditMerchantModal = ({ isOpen, onClose, merchant, onUpdate }: {
@@ -457,7 +476,22 @@ export default function RetentionPage() {
                           {/* Store Name & Link */}
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                              {merchant.logo ? (
+                                <Image 
+                                  src={merchant.logo} 
+                                  alt={merchant.storeName}
+                                  width={32}
+                                  height={32}
+                                  className="w-8 h-8 rounded-full object-cover"
+                                  onError={(e) => {
+                                    // Fallback to initial if image fails to load
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.nextElementSibling?.classList.remove('hidden');
+                                  }}
+                                />
+                              ) : null}
+                              <div className={`w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm ${merchant.logo ? 'hidden' : ''}`}>
                                 {merchant.storeName.charAt(0).toUpperCase()}
                               </div>
                               <div className="ml-3">
@@ -510,7 +544,7 @@ export default function RetentionPage() {
                             <div className="flex items-center gap-1">
                               <Calendar className="h-3 w-3 text-red-400" />
                               <span className="text-sm text-gray-900">
-                                {merchant.expiredAt ? new Date(merchant.expiredAt).toLocaleDateString() : 'N/A'}
+                                {formatExpiredDate(merchant.expiredAt)}
                               </span>
                             </div>
                           </td>

@@ -50,19 +50,62 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
       const result = await leadsService.uploadBulkLeads(file);
       console.log('✅ Bulk upload result:', result);
       
-      setUploadResult(result);
-      
-      if (result.success && onSuccess) {
-        setTimeout(() => {
-          onSuccess();
-          handleClose();
-        }, 3000); // Give user time to read the success message
+      // Ensure we have a proper result object
+      if (result && typeof result === 'object') {
+        setUploadResult({
+          success: Boolean(result.success),
+          message: result.message || 'Upload completed',
+          count: result.count
+        });
+        
+        // Call onSuccess even if the result format is different but upload worked
+        if (result.success && onSuccess) {
+          setTimeout(() => {
+            onSuccess();
+            handleClose();
+          }, 2000); // Reduced timeout for better UX
+        }
+      } else {
+        // Fallback: if we get here without error, assume success
+        setUploadResult({
+          success: true,
+          message: 'Upload completed successfully',
+          count: undefined
+        });
+        
+        if (onSuccess) {
+          setTimeout(() => {
+            onSuccess();
+            handleClose();
+          }, 2000);
+        }
       }
     } catch (error) {
       console.error('❌ Upload error:', error);
+      
+      // Better error message handling
+      let errorMessage = 'Upload failed. Please try again.';
+      
+      if (error instanceof Error) {
+        // Check for specific error types
+        if (error.message.includes('401') || error.message.includes('Authentication')) {
+          errorMessage = 'Authentication failed. Please login again and try uploading.';
+        } else if (error.message.includes('403') || error.message.includes('permission')) {
+          errorMessage = 'You don\'t have permission to upload leads. Please contact your administrator.';
+        } else if (error.message.includes('413') || error.message.includes('too large')) {
+          errorMessage = 'File is too large. Please reduce the file size and try again.';
+        } else if (error.message.includes('400') || error.message.includes('Bad Request')) {
+          errorMessage = 'Invalid file format or data. Please check your Excel file and try again.';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+      }
+      
       setUploadResult({
         success: false,
-        message: error instanceof Error ? error.message : 'Upload failed. Please try again.'
+        message: errorMessage
       });
     } finally {
       setUploading(false);

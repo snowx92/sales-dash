@@ -25,9 +25,10 @@ export interface EndedSubscriptionItem {
   merchantId: string;
   storeId?: string;             // Keep for backward compatibility if needed
   email: string;
+  logo?: string;                // Store logo URL
   impact: number;
   attemps: number;
-  expiredAt: string | null;
+  expiredAt: string | null | { _seconds: number; _nanoseconds: number }; // Support both formats
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   renewCounts: number;
   link: string;

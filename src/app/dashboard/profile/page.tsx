@@ -38,6 +38,7 @@ export default function ProfilePage() {
     name: "",
     phone: "",
     phoneCountryCode: "+2",
+    refferCode: "",
     image: ""
   });
   const [passwordForm, setPasswordForm] = useState({
@@ -83,6 +84,7 @@ export default function ProfilePage() {
             name: response.data.name || "",
             phone: response.data.phone || "",
             phoneCountryCode: response.data.phoneCountryCode || "+2",
+            refferCode: response.data.refferCode || "",
             image: ""
           });
           console.log("✅ ProfilePage: Profile loaded successfully:", response.data);
@@ -114,6 +116,7 @@ export default function ProfilePage() {
             name: response.data.name || "",
             phone: response.data.phone || "",
             phoneCountryCode: response.data.phoneCountryCode || "+2",
+            refferCode: response.data.refferCode || "",
             image: ""
           });
         }
@@ -146,43 +149,28 @@ export default function ProfilePage() {
       // Convert to base64
       const reader = new FileReader();
       reader.onload = (e) => {
-        const base64 = e.target?.result as string;
+        const dataUrl = e.target?.result as string;
         
         console.log("📷 Original FileReader result:", {
-          length: base64.length,
-          startsWithData: base64.startsWith('data:'),
-          preview: base64.substring(0, 100)
+          length: dataUrl.length,
+          startsWithData: dataUrl.startsWith('data:'),
+          preview: dataUrl.substring(0, 100)
         });
         
-        // Extract just the base64 data, removing the data URL prefix
-        let cleanBase64 = base64;
-        if (base64.includes(',')) {
-          cleanBase64 = base64.split(',')[1];
-        }
-        
-        // Remove any remaining data URL prefixes
-        cleanBase64 = cleanBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-        
-        // Remove any whitespace, newlines, or other characters
-        cleanBase64 = cleanBase64.replace(/\s/g, '').replace(/\n/g, '').replace(/\r/g, '');
-        
-        // Validate base64 format
-        const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-        const isValidBase64 = base64Regex.test(cleanBase64) && cleanBase64.length > 0;
-        
-        console.log("📷 Image processing complete:", {
-          originalLength: base64.length,
-          cleanLength: cleanBase64.length,
-          isValidBase64: isValidBase64,
-          startsWithSlash: cleanBase64.startsWith('/'),
-          preview: cleanBase64.substring(0, 50),
-          endsWithEquals: cleanBase64.endsWith('=') || cleanBase64.endsWith('==')
-        });
-        
-        if (isValidBase64) {
-          setEditForm({...editForm, image: cleanBase64});
+        // Validate that we have a proper data URL
+        if (dataUrl && dataUrl.startsWith('data:image/') && dataUrl.includes('base64,')) {
+          console.log("📷 Image processing complete:", {
+            originalLength: dataUrl.length,
+            isValidDataUrl: true,
+            mimeType: dataUrl.substring(5, dataUrl.indexOf(';')),
+            preview: dataUrl.substring(0, 50)
+          });
+          
+          // Store the complete data URL
+          setEditForm({...editForm, image: dataUrl});
           setEditErrors({...editErrors, image: ""});
         } else {
+          console.error("📷 Invalid data URL format:", dataUrl?.substring(0, 100));
           setEditErrors({...editErrors, image: "Failed to process image. Please try a different image."});
         }
       };
@@ -200,6 +188,17 @@ export default function ProfilePage() {
     
     if (editForm.phone && !/^\d{10,15}$/.test(editForm.phone.replace(/\D/g, ''))) {
       errors.phone = "Please enter a valid phone number";
+    }
+    
+    if (editForm.refferCode && editForm.refferCode.trim()) {
+      // Validate referrer code format (letters and numbers only, no special characters)
+      if (!/^[A-Za-z0-9]+$/.test(editForm.refferCode.trim())) {
+        errors.refferCode = "Referrer code can only contain letters and numbers";
+      } else if (editForm.refferCode.trim().length < 3) {
+        errors.refferCode = "Referrer code must be at least 3 characters long";
+      } else if (editForm.refferCode.trim().length > 20) {
+        errors.refferCode = "Referrer code must be no more than 20 characters long";
+      }
     }
     
     setEditErrors(errors);
@@ -243,52 +242,28 @@ export default function ProfilePage() {
         phoneCountryCode: editForm.phoneCountryCode
       };
       
+      // Add referrer code if provided
+      if (editForm.refferCode && editForm.refferCode.trim()) {
+        updateData.refferCode = editForm.refferCode.trim();
+      }
+      
       // Handle image if provided
       if (editForm.image && editForm.image.trim()) {
-        let cleanImage = editForm.image.trim();
+        const imageData = editForm.image.trim();
         
-        // Remove any potential data URL prefix that might still be present
-        cleanImage = cleanImage.replace(/^data:image\/[a-z]+;base64,/, '');
-        
-        // Remove any whitespace, newlines, or control characters
-        cleanImage = cleanImage.replace(/\s/g, '').replace(/\n/g, '').replace(/\r/g, '').replace(/\t/g, '');
-        
-        // Validate base64 format more strictly
-        const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-        const isValidBase64 = base64Regex.test(cleanImage) && cleanImage.length > 0;
-        
-        // Additional validation: check if it's a proper length (base64 should be divisible by 4 when padding is added)
-        const paddedLength = cleanImage.length + (4 - (cleanImage.length % 4)) % 4;
-        const isProperLength = paddedLength % 4 === 0;
-        
-        // Test if the base64 can actually be decoded (final validation)
-        let canDecode = false;
-        try {
-          // Try to decode the base64 string to validate it's actually valid
-          const decoded = atob(cleanImage);
-          canDecode = decoded.length > 0;
-        } catch (decodeError) {
-          console.warn("📷 Base64 decode test failed:", decodeError);
-          canDecode = false;
-        }
-        
-        console.log("📷 Final image validation:", {
-          originalFormLength: editForm.image.length,
-          cleanLength: cleanImage.length,
-          isValidBase64: isValidBase64,
-          isProperLength: isProperLength,
-          canDecode: canDecode,
-          startsWithSlash: cleanImage.startsWith('/'),
-          preview: cleanImage.substring(0, 50),
-          willIncludeImage: isValidBase64 && isProperLength && canDecode
-        });
-        
-        // Only add image if it passes all validations
-        if (isValidBase64 && isProperLength && canDecode && cleanImage.length > 0) {
-          updateData.image = cleanImage;
-          console.log("✅ Image validation passed, including in request");
+        // Validate that it's a proper data URL format
+        if (imageData.startsWith('data:image/') && imageData.includes('base64,')) {
+          console.log("📷 Image validation:", {
+            hasDataPrefix: true,
+            length: imageData.length,
+            mimeType: imageData.substring(5, imageData.indexOf(';')),
+            preview: imageData.substring(0, 50)
+          });
+          
+          updateData.image = imageData;
+          console.log("✅ Image validation passed, including data URL in request");
         } else {
-          console.warn("❌ Image validation failed, excluding from request");
+          console.warn("❌ Image validation failed - not a proper data URL format");
           setEditErrors({...editErrors, image: "Invalid image format. Please try uploading a different image."});
           setUpdateLoading(false);
           return;
@@ -384,6 +359,7 @@ export default function ProfilePage() {
         name: profile.name || "",
         phone: profile.phone || "",
         phoneCountryCode: profile.phoneCountryCode || "+2",
+        refferCode: profile.refferCode || "",
         image: ""
       });
     }
@@ -602,8 +578,10 @@ export default function ProfilePage() {
                     </div>
                     
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Account Type</label>
-                      <p className="mt-1 text-gray-900">{profile.accountType}</p>
+                      <label className="text-sm font-medium text-gray-700">Referrer Code</label>
+                      <p className="mt-1 text-gray-900 font-mono text-sm bg-purple-50 p-2 rounded border border-purple-200">
+                        {profile.refferCode || 'Not set'}
+                      </p>
                     </div>
 
                     <div>
@@ -616,11 +594,6 @@ export default function ProfilePage() {
                       <p className="mt-1 text-gray-900">
                         {profile.phone ? `${profile.phoneCountryCode} ${profile.phone}` : 'Not provided'}
                       </p>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Store ID</label>
-                      <p className="mt-1 text-gray-900">{profile.storeId || 'Not assigned'}</p>
                     </div>
 
                     <div>
@@ -746,6 +719,26 @@ export default function ProfilePage() {
                 {editErrors.name && (
                   <p className="text-red-600 text-sm mt-1">{editErrors.name}</p>
                 )}
+              </div>
+
+              {/* Referrer Code */}
+              <div>
+                <label htmlFor="refferCode" className="text-sm font-medium text-gray-700 mb-1 block">
+                  Referrer Code
+                </label>
+                <Input
+                  id="refferCode"
+                  value={editForm.refferCode}
+                  onChange={(e) => setEditForm({...editForm, refferCode: e.target.value})}
+                  placeholder="Enter your referrer code (optional)"
+                  className={editErrors.refferCode ? "border-red-500" : ""}
+                />
+                {editErrors.refferCode && (
+                  <p className="text-red-600 text-sm mt-1">{editErrors.refferCode}</p>
+                )}
+                <p className="text-gray-500 text-xs mt-1">
+                  This unique code will be used by sales team when creating stores
+                </p>
               </div>
 
               {/* Phone Fields */}

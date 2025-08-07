@@ -379,7 +379,14 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Target Progress - Takes 2 columns */}
           <div className="lg:col-span-2">
-            <TargetProgressCard currentUserData={currentUserData} />
+            <TargetProgressCard 
+              currentUserData={currentUserData} 
+              overviewData={overviewData ? {
+                totalTarget: overviewData.totalTarget,
+                newSubscriptionTarget: overviewData.newSubscriptionTarget,
+                renewalsTarget: overviewData.renewalsTarget
+              } : null}
+            />
           </div>
           
           {/* Desktop Leaderboard - Takes 1 column, hidden on mobile */}

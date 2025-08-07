@@ -14,6 +14,7 @@ export interface UserProfile {
   needStoreCreating: boolean;
   accessLevels: Record<string, unknown>;
   authProviders: string[];
+  refferCode?: string;
 }
 
 export interface ProfileResponse {
@@ -26,7 +27,8 @@ export interface UpdateProfileRequest {
   name: string;
   phone: string;
   phoneCountryCode: string;
-  image?: string; // Base64 image
+  refferCode?: string;
+  image?: string; // Data URL format: data:image/{type};base64,{data}
   [key: string]: unknown;
 }
 

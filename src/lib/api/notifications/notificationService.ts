@@ -1,5 +1,5 @@
 import { ApiService } from "../services/ApiService";
-import { NotificationsResponse } from './types';
+import { NotificationsResponse, NotificationsData } from './types';
 
 export interface GetNotificationsRequest {
   pageNo?: number;
@@ -47,18 +47,39 @@ export class NotificationService extends ApiService {
 
       console.log("🔔 NotificationService: Fetching notifications with params:", queryParams);
 
-      const response = await this.get<NotificationsResponse>('/notifications', queryParams);
+      const response = await this.get<NotificationsResponse | NotificationsData>('/notifications', queryParams);
       
-      if (response && response.status === 200 && response.data) {
-        console.log("✅ NotificationService: Notifications fetched successfully");
-        console.log("📊 NotificationService: New notifications:", response.data.newNotifications);
-        console.log("📄 NotificationService: Page items:", response.data.pageItems);
-        console.log("📋 NotificationService: Total items:", response.data.totalItems);
-        return response;
-      } else {
-        console.warn("⚠️ NotificationService: Invalid response format:", response);
-        return null;
+      console.log("🔔 NotificationService: Raw response:", response);
+      
+      // Handle different response formats
+      if (response) {
+        // Check if response has the wrapped format (status + data)
+        if (typeof response === 'object' && 'status' in response && response.status === 200 && response.data) {
+          console.log("✅ NotificationService: Notifications fetched successfully (wrapped format)");
+          console.log("📊 NotificationService: New notifications:", response.data.newNotifications);
+          console.log("📄 NotificationService: Page items:", response.data.pageItems);
+          console.log("📋 NotificationService: Total items:", response.data.totalItems);
+          return response as NotificationsResponse;
+        }
+        // Check if response has the direct data format
+        else if (typeof response === 'object' && 'newNotifications' in response && 'items' in response) {
+          console.log("✅ NotificationService: Notifications fetched successfully (direct format)");
+          console.log("📊 NotificationService: New notifications:", response.newNotifications);
+          console.log("📄 NotificationService: Page items:", response.pageItems);
+          console.log("📋 NotificationService: Total items:", response.totalItems);
+          
+          // Wrap the response in the expected format
+          const wrappedResponse: NotificationsResponse = {
+            status: 200,
+            message: "Success",
+            data: response as NotificationsData
+          };
+          return wrappedResponse;
+        }
       }
+      
+      console.warn("⚠️ NotificationService: Invalid response format:", response);
+      return null;
     } catch (error) {
       console.error("🚨 NotificationService: Error fetching notifications:", error);
       return null;
