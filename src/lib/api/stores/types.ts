@@ -1,5 +1,23 @@
 import { PaginationParams, PaginatedResponse, Timestamp } from "../services/commonTypes";
 
+export interface StoreCategory {
+  id: number;
+  icon: string;
+  name: string;
+}
+
+export interface StoreCategoriesResponse {
+  status: number;
+  message: string;
+  data: StoreCategory[];
+}
+
+export interface AssignedSales {
+  id: string;
+  avatar: string;
+  name: string;
+}
+
 export interface Category {
   id: number;
   icon: string;
@@ -44,6 +62,7 @@ export interface Store {
   plan: Plan;
   counters: Counters;
   localMarkets: string[];
+  assignedSales?: AssignedSales;
 }
 
 export type StoresResponse = PaginatedResponse<Store>;
@@ -53,4 +72,5 @@ export interface GetStoresParams extends PaginationParams {
   sortBy?: 'date' | 'orders' | 'site' | 'products';
   planId?: 'pro' | 'free' | 'starter' | 'plus';
   keyword?: string;
+  storeCategoryNo?: number;
 } 

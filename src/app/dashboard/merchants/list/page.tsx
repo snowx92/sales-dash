@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -21,7 +22,10 @@ const MobileFilters = ({
   filterPlan, 
   setFilterPlan, 
   filterStatus, 
-  setFilterStatus 
+  setFilterStatus,
+  filterCategory,
+  setFilterCategory,
+  categories
 }: {
   sortBy: string;
   setSortBy: (value: string) => void;
@@ -29,6 +33,9 @@ const MobileFilters = ({
   setFilterPlan: (value: string) => void;
   filterStatus: string;
   setFilterStatus: (value: string) => void;
+  filterCategory: string;
+  setFilterCategory: (value: string) => void;
+  categories: Array<{ id: number; name: string; icon: string }>;
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -104,6 +111,26 @@ const MobileFilters = ({
                   </SelectContent>
                 </Select>
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Filter by category</label>
+                <Select value={filterCategory} onValueChange={setFilterCategory}>
+                  <SelectTrigger className="bg-white border border-gray-200 text-gray-900">
+                    <SelectValue placeholder="Filter by category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border border-gray-200">
+                    <SelectItem value="all" className="text-gray-900 hover:bg-gray-50">All Categories</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id.toString()} className="text-gray-900 hover:bg-gray-50">
+                        <div className="flex items-center space-x-2">
+                          <Image src={category.icon} alt={category.name} width={16} height={16} className="w-4 h-4" />
+                          <span>{category.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -124,11 +151,14 @@ export default function MerchantListingPage() {
     sortBy,
     filterPlan,
     filterStatus,
+    filterCategory,
+    categories,
     activeTab,
     setCurrentPage,
     setSortBy,
     setFilterPlan,
     setFilterStatus,
+    setFilterCategory,
     switchTab,
     handleSearch,
     clearSearch,
@@ -258,12 +288,15 @@ export default function MerchantListingPage() {
         setFilterPlan={setFilterPlan}
         filterStatus={filterStatus}
         setFilterStatus={setFilterStatus}
+        filterCategory={filterCategory}
+        setFilterCategory={setFilterCategory}
+        categories={categories}
       />
 
       {/* Desktop Filters */}
       <div className="hidden lg:block mb-6">
         <ResponsiveCard padding="sm">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="bg-white border border-gray-200 text-gray-900">
                 <SelectValue placeholder="Sort by" />
@@ -302,15 +335,28 @@ export default function MerchantListingPage() {
               </SelectContent>
             </Select>
             
-            <ExportSidebar />
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="bg-white border border-gray-200 text-gray-900">
+                <SelectValue placeholder="Filter by category" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-gray-200">
+                <SelectItem value="all" className="text-gray-900 hover:bg-gray-50">All Categories</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id.toString()} className="text-gray-900 hover:bg-gray-50">
+                    <div className="flex items-center space-x-2">
+                      <Image src={category.icon} alt={category.name} width={16} height={16} className="w-4 h-4" />
+                      <span>{category.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </ResponsiveCard>
       </div>
 
-      {/* Export Sidebar for Mobile */}
-      <div className="lg:hidden mb-4">
-        <ExportSidebar />
-      </div>
+      {/* Export Sidebar */}
+      <ExportSidebar />
 
       {/* Merchants Grid */}
       <div className="space-y-4 mb-8">

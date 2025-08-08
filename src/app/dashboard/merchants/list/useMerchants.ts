@@ -1,16 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { storesApi } from "@/lib/api/stores/storesApi";
-import { GetStoresParams, Store } from "@/lib/api/stores/types";
+import { GetStoresParams, Store, AssignedSales, StoreCategory } from "@/lib/api/stores/types";
 import { SessionManager } from "@/lib/utils/session";
 import { Timestamp } from "@/lib/api/services/commonTypes";
 
 // Fix the category interface
-interface Category {
-  id: number;
-  icon: string;
-  name: string;
-}
+type Category = StoreCategory;
 
 // Tab type for merchant view
 export type MerchantTab = "my" | "all";
@@ -50,6 +46,7 @@ interface Merchant {
   defaultCurrency: string;
   renewEnabled: boolean;
   localMarkets: string[];
+  assignedSales?: AssignedSales;
 }
 
 // Export Merchant type for use in other components 
@@ -110,6 +107,13 @@ export const useMerchants = () => {
     return "all";
   });
   
+  const [filterCategory, setFilterCategory] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('merchantsFilterCategory') || "all";
+    }
+    return "all";
+  });
+  
   const [searchTerm, setSearchTerm] = useState(() => {
     if (typeof window !== 'undefined') {
       return sessionStorage.getItem('merchantsSearchTerm') || "";
@@ -122,6 +126,7 @@ export const useMerchants = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [myMerchantsTotal, setMyMerchantsTotal] = useState(0);
   const [allMerchantsTotal, setAllMerchantsTotal] = useState(0);
+  const [categories, setCategories] = useState<StoreCategory[]>([]);
   const itemsPerPage = 10;
   
   // Track if we're currently fetching to prevent duplicate calls
@@ -136,9 +141,10 @@ export const useMerchants = () => {
       sessionStorage.setItem('merchantsSortBy', sortBy);
       sessionStorage.setItem('merchantsFilterPlan', filterPlan);
       sessionStorage.setItem('merchantsFilterStatus', filterStatus);
+      sessionStorage.setItem('merchantsFilterCategory', filterCategory);
       sessionStorage.setItem('merchantsSearchTerm', searchTerm);
     }
-  }, [activeTab, keyword, currentPage, sortBy, filterPlan, filterStatus, searchTerm]);
+  }, [activeTab, keyword, currentPage, sortBy, filterPlan, filterStatus, filterCategory, searchTerm]);
 
   const fetchStores = useCallback(async (directSearchTerm?: string) => {
     // Prevent concurrent fetch calls
@@ -203,6 +209,9 @@ export const useMerchants = () => {
         ...(filterPlan !== "all" && {
           planId: filterPlan as "pro" | "free" | "starter" | "plus",
         }),
+        ...(filterCategory !== "all" && {
+          storeCategoryNo: parseInt(filterCategory),
+        }),
       };
 
       console.log("[Stores API] Fetching with params:", apiParams);
@@ -262,6 +271,7 @@ export const useMerchants = () => {
           defaultCurrency: store.defaultCurrency || "",
           renewEnabled: store.plan?.renewEnabled || false,
           localMarkets: store.localMarkets || [],
+          assignedSales: store.assignedSales || undefined,
         }));
         console.log("[Stores API] Processed merchants:", apiMerchants);
         setMerchants(apiMerchants);
@@ -281,7 +291,7 @@ export const useMerchants = () => {
       setIsLoading(false);
       isFetchingRef.current = false;
     }
-  }, [activeTab, currentPage, filterStatus, sortBy, filterPlan, searchTerm, router, saveFiltersToSession]);
+  }, [activeTab, currentPage, filterStatus, sortBy, filterPlan, filterCategory, searchTerm, router, saveFiltersToSession]);
 
   // Effect for filter changes (except searchTerm which has its own handler)
   useEffect(() => {
@@ -301,7 +311,7 @@ export const useMerchants = () => {
     // Only trigger API call for filter changes (sortBy, filterPlan, filterStatus, activeTab)
     // or page changes, but NOT for keyword/search input changes
     fetchStores();
-  }, [activeTab, currentPage, filterStatus, sortBy, filterPlan, searchTerm, fetchStores]);
+  }, [activeTab, currentPage, filterStatus, sortBy, filterPlan, filterCategory, searchTerm, fetchStores]);
 
   // Custom setKeyword function that doesn't trigger API calls
   const setKeyword = useCallback((value: string) => {
@@ -366,6 +376,27 @@ export const useMerchants = () => {
     setCurrentPage(1); // Reset to first page when switching tabs
   }, []);
 
+  // Function to fetch store categories
+  const fetchCategories = useCallback(async () => {
+    try {
+      console.log("[Categories] Fetching store categories");
+      const categoriesData = await storesApi.getStoreCategories();
+      
+      console.log("[Categories] Raw response:", categoriesData);
+      
+      if (categoriesData && Array.isArray(categoriesData)) {
+        console.log("[Categories] Fetched categories:", categoriesData);
+        setCategories(categoriesData);
+      } else {
+        console.warn("[Categories] No categories data received or invalid format:", categoriesData);
+        setCategories([]);
+      }
+    } catch (error) {
+      console.error("[Categories] Error fetching categories:", error);
+      setCategories([]);
+    }
+  }, []);
+
   const fetchInitialTotals = useCallback(async () => {
     try {
       const sessionManager = SessionManager.getInstance();
@@ -418,9 +449,12 @@ export const useMerchants = () => {
         
         // Also fetch totals for both tabs
         fetchInitialTotals();
+        
+        // Fetch categories
+        fetchCategories();
       }
     }
-  }, [router, fetchStores, fetchInitialTotals]);
+  }, [router, fetchStores, fetchInitialTotals, fetchCategories]);
 
   // Export the search handler
   return {
@@ -435,12 +469,15 @@ export const useMerchants = () => {
     sortBy,
     filterPlan,
     filterStatus,
+    filterCategory,
+    categories,
     activeTab,
     setCurrentPage,
     setKeyword,
     setSortBy,
     setFilterPlan,
     setFilterStatus,
+    setFilterCategory,
     switchTab,
     handleSearch,
     clearSearch,

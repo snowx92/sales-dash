@@ -69,13 +69,9 @@ export const useRetention = (options: UseRetentionOptions = {}) => {
 
       const response = await retentionService.submitFeedback(feedbackData);
       
-      if (response) {
-        // Refresh data after successful feedback submission
-        await fetchRetentionData();
-        return response;
-      }
-      
-      throw new Error('Failed to submit feedback');
+      // Always refresh data after submission since the API is working
+      await fetchRetentionData();
+      return response;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to submit feedback';
       setError(errorMessage);

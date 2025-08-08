@@ -13,7 +13,8 @@ import {
   Phone,
   Mail,
   Clock,
-  MessageSquare
+  MessageSquare,
+  MessageCircle
 } from "lucide-react";
 import { Lead, leadSources, priorities, statuses } from './types';
 
@@ -156,6 +157,26 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                     {/* Actions */}
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(`tel:${lead.phone}`, '_self');
+                          }}
+                          className="text-green-600 hover:text-green-900 transition-colors"
+                          title="Call"
+                        >
+                          <Phone className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(`https://wa.me/${lead.phone.replace(/[^0-9]/g, '')}`, '_blank');
+                          }}
+                          className="text-green-600 hover:text-green-900 transition-colors"
+                          title="WhatsApp"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

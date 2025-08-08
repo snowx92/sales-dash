@@ -6,7 +6,8 @@ import {
   Phone, 
   Mail, 
   ArrowRight, 
-  Trash2
+  Trash2,
+  MessageCircle
 } from "lucide-react";
 import { UpcomingLead, leadSources, priorities } from './types';
 
@@ -94,18 +95,31 @@ export const UpcomingLeadsTable: React.FC<UpcomingLeadsTableProps> = ({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                   <button
+                    onClick={() => window.open(`tel:${lead.phone}`, '_self')}
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                    title="Call"
+                  >
+                    <Phone className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => window.open(`https://wa.me/${lead.phone.replace(/[^0-9]/g, '')}`, '_blank')}
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                    title="WhatsApp"
+                  >
+                    <MessageCircle className="h-3 w-3" />
+                  </button>
+                  <button
                     onClick={() => onConvertToLead(lead)}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                   >
                     <ArrowRight className="h-3 w-3" />
-                    Convert to Lead
+                    Convert
                   </button>
                   <button
                     onClick={() => onDeleteLead(lead.id)}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
                   >
                     <Trash2 className="h-3 w-3" />
-                    Delete
                   </button>
                 </td>
               </tr>

@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, ShoppingBag, Globe, Box, Eye, Calendar, Clock, LogIn, BarChart, Key, EyeOff, MapPin, Building2, XCircle, CreditCard } from "lucide-react";
+import { Users, ShoppingBag, Globe, Box, Eye, Calendar, Clock, LogIn, BarChart, Key, EyeOff, MapPin, Building2, XCircle, CreditCard, User } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 import { ActionDropdown } from "@/components/ui/ActionDropdown";
@@ -49,6 +49,11 @@ export interface MerchantCardProps {
   renewEnabled: boolean;
   localMarkets: string[];
   hiddenOrders: number;
+  assignedSales?: {
+    id: string;
+    avatar: string;
+    name: string;
+  };
 }
 
 // Function to generate a unique color based on a string value with opacity and a matching text color
@@ -108,6 +113,7 @@ export function MerchantCard({
   renewEnabled,
   localMarkets,
   hiddenOrders,
+  assignedSales,
 }: MerchantCardProps) {
   const [imageError, setImageError] = useState(false);
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
@@ -334,7 +340,7 @@ export function MerchantCard({
                 />
               </div>
 
-              {/* Category and Website - Compact Row */}
+              {/* Category, Assigned Sales, and Website - Compact Row */}
               <div className="flex flex-wrap items-center justify-between mt-3 pt-3 border-t border-gray-200 gap-2">
                 <div className="flex items-center space-x-2">
                   {category && (
@@ -343,6 +349,26 @@ export function MerchantCard({
                       <span className="text-xs font-medium text-gray-700">{category.name}</span>
                     </div>
                   )}
+                  
+                  {/* Assigned Sales Tag */}
+                  <div className={`flex items-center space-x-1.5 px-2 py-1 rounded-md border shadow-sm ${
+                    assignedSales 
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                      : 'bg-gray-50 border-gray-200 text-gray-600'
+                  }`}>
+                    {assignedSales && assignedSales.avatar ? (
+                      <img 
+                        src={assignedSales.avatar} 
+                        alt={assignedSales.name}
+                        className="w-3 h-3 rounded-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-3 h-3" />
+                    )}
+                    <span className="text-xs font-medium">
+                      {assignedSales ? assignedSales.name : 'Not Assigned'}
+                    </span>
+                  </div>
                 </div>
                 
                 <a 

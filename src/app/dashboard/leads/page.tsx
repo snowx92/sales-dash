@@ -1,14 +1,15 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Plus, Upload } from "lucide-react";
+import { Plus, Upload, Download } from "lucide-react";
 import { 
   Lead, 
   UpcomingLead, 
   AddLeadModal,
   EditLeadModal,
   LeadsTabs,
-  BulkUploadModal
+  BulkUploadModal,
+  LeadExportModal
 } from "@/components/leads";
 import { SimpleFeedbackModal } from "@/components/leads/SimpleFeedbackModal";
 import { leadsService } from "@/lib/api/leads/leadsService";
@@ -35,6 +36,7 @@ export default function LeadsPage() {
   const [feedbackLeadId, setFeedbackLeadId] = useState<number | null>(null);
   const [feedbackLeadName, setFeedbackLeadName] = useState<string>('');
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const loadLeads = useCallback(async () => {
     try {
@@ -378,6 +380,15 @@ export default function LeadsPage() {
           
           <div className="flex gap-3">
             <button
+              onClick={() => setIsExportModalOpen(true)}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="h-4 w-4" />
+              Export{statusFilter ? ` (${statusFilter})` : ''}
+            </button>
+            
+            <button
               onClick={() => setIsBulkUploadModalOpen(true)}
               disabled={loading}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -476,6 +487,12 @@ export default function LeadsPage() {
           isOpen={isBulkUploadModalOpen}
           onClose={() => setIsBulkUploadModalOpen(false)}
           onSuccess={handleBulkUploadSuccess}
+        />
+
+        <LeadExportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          currentStatusFilter={statusFilter}
         />
       </div>
     </div>

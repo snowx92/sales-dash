@@ -25,6 +25,7 @@ export interface EndedSubscriptionItem {
   merchantId: string;
   storeId?: string;             // Keep for backward compatibility if needed
   email: string;
+  phone: string;                // Phone number from API (required)
   logo?: string;                // Store logo URL
   impact: number;
   attemps: number;

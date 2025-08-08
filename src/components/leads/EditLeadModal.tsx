@@ -180,6 +180,20 @@ export const EditLeadModal: React.FC<EditLeadModalProps> = ({ isOpen, onClose, l
               </div>
             </div>
 
+            {/* Feedback */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Feedback
+              </label>
+              <textarea
+                value={formData.feedback}
+                onChange={(e) => setFormData((prev: Lead) => ({ ...prev, feedback: e.target.value }))}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
+                placeholder="Add feedback about this lead..."
+              />
+            </div>
+
             {/* Submit Buttons */}
             <div className="flex gap-3 pt-4 border-t border-gray-200">
               <button

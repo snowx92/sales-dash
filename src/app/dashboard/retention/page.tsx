@@ -23,7 +23,8 @@ import {
   XCircle,
   Search,
   Filter,
-  RefreshCw
+  RefreshCw,
+  MessageCircle
 } from "lucide-react";
 
 // TypeScript interfaces for the edit modal
@@ -527,6 +528,7 @@ export default function RetentionPage() {
                             <div>
                               <div className="text-sm font-medium text-gray-900">{merchant.name}</div>
                               <div className="text-sm text-gray-500">{merchant.email}</div>
+                              <div className="text-sm text-gray-500">{merchant.phone}</div>
                             </div>
                           </td>
 
@@ -570,12 +572,22 @@ export default function RetentionPage() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  window.open(`tel:${merchant.email}`, '_self');
+                                  window.open(`tel:${merchant.phone}`, '_self');
                                 }}
                                 className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                                 title="Call"
                               >
                                 <Phone className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(`https://wa.me/${merchant.phone.replace(/[^0-9]/g, '')}`, '_blank');
+                                }}
+                                className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                title="WhatsApp"
+                              >
+                                <MessageCircle className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={(e) => {

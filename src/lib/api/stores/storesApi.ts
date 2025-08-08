@@ -1,5 +1,5 @@
 import { ApiService } from "../services/ApiService";
-import { GetStoresParams, StoresResponse } from "./types";
+import { GetStoresParams, StoresResponse, StoreCategory } from "./types";
 
 class StoresApi extends ApiService {
   private static instance: StoresApi;
@@ -31,6 +31,9 @@ class StoresApi extends ApiService {
       }
       if (params.planId) {
         queryParams.planId = params.planId;
+      }
+      if (params.storeCategoryNo !== undefined) {
+        queryParams.storeCategoryNo = params.storeCategoryNo.toString();
       }
       // Only add keyword if it's defined and not empty
       if (params.keyword && params.keyword.trim() !== '') {
@@ -76,6 +79,9 @@ class StoresApi extends ApiService {
       if (params.planId) {
         queryParams.planId = params.planId;
       }
+      if (params.storeCategoryNo !== undefined) {
+        queryParams.storeCategoryNo = params.storeCategoryNo.toString();
+      }
       // Only add keyword if it's defined and not empty
       if (params.keyword && params.keyword.trim() !== '') {
         queryParams.keyword = params.keyword.trim();
@@ -94,6 +100,29 @@ class StoresApi extends ApiService {
       }
     } catch (error) {
       console.error("🚨 StoresApi: Error fetching my stores:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Get all store categories
+   * @returns Promise<StoreCategory[] | null>
+   */
+  async getStoreCategories(): Promise<StoreCategory[] | null> {
+    try {
+      console.log("📋 StoresApi: Fetching store categories");
+
+      const response = await this.get<StoreCategory[]>('/stores/categories');
+      
+      if (response) {
+        console.log("✅ StoresApi: Store categories fetched successfully");
+        return response;
+      } else {
+        console.warn("⚠️ StoresApi: Invalid store categories response format:", response);
+        return null;
+      }
+    } catch (error) {
+      console.error("🚨 StoresApi: Error fetching store categories:", error);
       return null;
     }
   }
