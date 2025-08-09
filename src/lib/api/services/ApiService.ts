@@ -13,14 +13,15 @@ export class ApiService {
 
   constructor() {
     // Get base URL with smart fallback logic
-    let baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
-    
+    // Prefer explicit sales API URL if present
+    let baseURL = process.env.NEXT_PUBLIC_SALES_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+
     if (!baseURL) {
       // If no environment variable is set, use relative API routes
       baseURL = '/api/sales';
-      console.log('🔧 ApiService: No API_BASE_URL env var found, using relative path:', baseURL);
+      console.log('🔧 ApiService: No SALES/API_BASE_URL env var found, using relative path:', baseURL);
     } else {
-      console.log('🔧 ApiService: Using API_BASE_URL from environment:', baseURL);
+      console.log('🔧 ApiService: Using API base URL from environment:', baseURL);
     }
     
     this.baseURL = baseURL;
@@ -36,6 +37,10 @@ export class ApiService {
   ): Promise<T | null> {
     const query = new URLSearchParams(queryParams).toString();
     const fullUrl = query ? `${url}?${query}` : url;
+
+    if (printLogs) {
+      console.log('📨 ApiService.request:', { method, url: this.baseURL + fullUrl, hasBody: !!body });
+    }
 
     // Check if we should skip authentication
     const skipAuth = customHeaders["Skip-Auth"] === "true";
@@ -315,4 +320,4 @@ export class ApiService {
   ): Promise<T | null> {
     return this.request<T>(endpoint, "DELETE", body, {}, customHeaders);
   }
-} 
+}

@@ -28,7 +28,7 @@ export interface UpdateProfileRequest {
   phone: string;
   phoneCountryCode: string;
   refferCode?: string;
-  image?: string; // Data URL format: data:image/{type};base64,{data}
+  image?: string; // Base64 string only (no data URL prefix)
   [key: string]: unknown;
 }
 
@@ -127,12 +127,38 @@ export class ProfileService extends ApiService {
    */
   async updateProfile(profileData: UpdateProfileRequest): Promise<UpdateProfileResponse | null> {
     try {
+      console.log("🟣 ProfileService.updateProfile called with data:", {
+        ...profileData,
+        image: profileData.image ? `Image data length: ${profileData.image.length}` : 'No image'
+      });
+
+      // Ensure backend receives only the Base64 string for image
+      const normalizedData: UpdateProfileRequest = { ...profileData };
+      if (normalizedData.image && normalizedData.image.startsWith('data:image/') && normalizedData.image.includes('base64,')) {
+        const originalLength = normalizedData.image.length;
+        normalizedData.image = normalizedData.image.substring(normalizedData.image.indexOf('base64,') + 'base64,'.length);
+        console.log("📷 Image normalized from data URL to base64:", {
+          originalLength,
+          newLength: normalizedData.image.length
+        });
+      }
+
+      console.log("🚀 About to call PUT /auth/profile with:", {
+        ...normalizedData,
+        image: normalizedData.image ? `Base64 string (${normalizedData.image.length} chars)` : 'No image'
+      });
+
+      console.log("📤 Exact request body being sent:", JSON.stringify(normalizedData, null, 2));
+
       const response = await this.put<UpdateProfileResponse>(
         "/auth/profile",
-        profileData
+        normalizedData
       );
+      
+      console.log("✅ PUT /auth/profile response received:", response);
       return response;
     } catch (error) {
+      console.error("❌ ProfileService.updateProfile error:", error);
       throw error;
     }
   }

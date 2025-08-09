@@ -37,6 +37,27 @@ export default function LeadsPage() {
   const [feedbackLeadName, setFeedbackLeadName] = useState<string>('');
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [leadsOverview, setLeadsOverview] = useState<{
+    total: number;
+    totalSubscribedLeads: number;
+    totalInterestedLeads: number;
+    totalFollowUpLeads: number;
+    totalNotInterestedLeads: number;
+  } | null>(null);
+
+  const loadLeadsOverview = useCallback(async () => {
+    try {
+      console.log("📊 Loading leads overview...");
+      const overview = await leadsService.getLeadsOverview();
+      if (overview) {
+        setLeadsOverview(overview);
+        console.log("📊 Leads overview loaded:", overview);
+      }
+    } catch (err) {
+      console.error('Error loading leads overview:', err);
+      // Don't set error state for overview failure, it's not critical
+    }
+  }, []);
 
   const loadLeads = useCallback(async () => {
     try {
@@ -104,7 +125,8 @@ export default function LeadsPage() {
   // Load leads on component mount and when filters change
   useEffect(() => {
     loadLeads();
-  }, [loadLeads]);
+    loadLeadsOverview(); // Load overview data
+  }, [loadLeads, loadLeadsOverview]);
 
   // Reload when filters change
   useEffect(() => {
@@ -148,6 +170,7 @@ export default function LeadsPage() {
       
       await leadsService.createLead(createRequest);
       await loadLeads(); // Reload all leads after creating
+      await loadLeadsOverview(); // Reload overview after creating
       setIsAddModalOpen(false); // Close the modal on success
     } catch (err) {
       console.error('Error creating lead:', err);
@@ -214,6 +237,9 @@ export default function LeadsPage() {
       setIsEditModalOpen(false);
       setEditingLead(null);
       
+      // Reload overview after updating
+      await loadLeadsOverview();
+      
     } catch (err) {
       console.error('Error updating lead:', err);
       setError('Failed to update lead');
@@ -241,6 +267,9 @@ export default function LeadsPage() {
       
       // Update local state
       setLeads(prev => prev.filter(lead => lead.id !== id));
+      
+      // Reload overview after deleting
+      await loadLeadsOverview();
       
     } catch (err) {
       console.error('Error deleting lead:', err);
@@ -275,6 +304,9 @@ export default function LeadsPage() {
       // Update local state
       setUpcomingLeads(prev => prev.filter(lead => lead.id !== id));
       
+      // Reload overview after deleting
+      await loadLeadsOverview();
+      
     } catch (err) {
       console.error('Error deleting upcoming lead:', err);
       setError('Failed to delete upcoming lead');
@@ -298,6 +330,9 @@ export default function LeadsPage() {
       
       // Reload leads to get updated feedback
       await loadLeads();
+      
+      // Reload overview after adding feedback
+      await loadLeadsOverview();
       
     } catch (err) {
       console.error('Error adding feedback:', err);
@@ -323,6 +358,8 @@ export default function LeadsPage() {
   const handleBulkUploadSuccess = async () => {
     // Reload leads after successful bulk upload
     await loadLeads();
+    // Reload overview after bulk upload
+    await loadLeadsOverview();
   };
 
   const handleSubmitFeedback = async (feedback: string) => {
@@ -434,6 +471,7 @@ export default function LeadsPage() {
             onTabChange={setActiveTab}
             leads={leads}
             upcomingLeads={upcomingLeads}
+            overviewData={leadsOverview}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             statusFilter={statusFilter}

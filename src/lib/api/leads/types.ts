@@ -109,3 +109,15 @@ export interface AddFeedbackResponse {
   message: string;
   data: ApiLead;
 }
+
+export interface LeadsOverviewResponse {
+  status: number;
+  message: string;
+  data: {
+    total: number;
+    totalSubscribedLeads: number;
+    totalInterestedLeads: number;
+    totalFollowUpLeads: number;
+    totalNotInterestedLeads: number;
+  };
+}

@@ -11,6 +11,14 @@ import { UpcomingLeadsTable } from './UpcomingLeadsTable';
 import { EmptyState } from './EmptyState';
 import { Pagination } from "@/components/tables/Pagination";
 
+interface LeadsOverviewData {
+  total: number;
+  totalSubscribedLeads: number;
+  totalInterestedLeads: number;
+  totalFollowUpLeads: number;
+  totalNotInterestedLeads: number;
+}
+
 interface LeadsTabsProps {
   activeTab: string;
   onTabChange: (value: string) => void;
@@ -18,6 +26,7 @@ interface LeadsTabsProps {
   // Data
   leads: Lead[];
   upcomingLeads: UpcomingLead[];
+  overviewData?: LeadsOverviewData | null;
   
   // Filters
   searchTerm: string;
@@ -52,6 +61,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
   onTabChange,
   leads,
   upcomingLeads,
+  overviewData,
   searchTerm,
   onSearchChange,
   statusFilter,
@@ -188,7 +198,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
           showStatusFilter={true}
         />
 
-        <LeadStats leads={leads} />
+        <LeadStats leads={leads} overviewData={overviewData} />
 
         {filteredLeads.length > 0 ? (
           <>

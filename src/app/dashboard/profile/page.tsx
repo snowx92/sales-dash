@@ -231,7 +231,28 @@ export default function ProfilePage() {
 
   // Handle profile update
   const handleUpdateProfile = async () => {
-    if (!validateEditForm()) return;
+    console.log("🟣 handleUpdateProfile clicked", { editForm });
+    
+    // Force validation check with detailed logging
+    const validationResult = validateEditForm();
+    console.log("🔍 Validation result:", { 
+      isValid: validationResult, 
+      errors: editErrors,
+      formData: {
+        name: editForm.name,
+        phone: editForm.phone,
+        phoneCountryCode: editForm.phoneCountryCode,
+        refferCode: editForm.refferCode,
+        hasImage: !!editForm.image
+      }
+    });
+    
+    if (!validationResult) {
+      console.warn("⚠️ Profile validation failed, stopping here", { editErrors });
+      return;
+    }
+    
+    console.log("✅ Validation passed, proceeding with API call");
     
     setUpdateLoading(true);
     try {
@@ -251,26 +272,23 @@ export default function ProfilePage() {
       if (editForm.image && editForm.image.trim()) {
         const imageData = editForm.image.trim();
         
-        // Validate that it's a proper data URL format
+        // If full data URL is provided, extract only the Base64 part for API
         if (imageData.startsWith('data:image/') && imageData.includes('base64,')) {
+          const base64Only = imageData.substring(imageData.indexOf('base64,') + 'base64,'.length);
           console.log("📷 Image validation:", {
             hasDataPrefix: true,
             length: imageData.length,
+            base64Length: base64Only.length,
             mimeType: imageData.substring(5, imageData.indexOf(';')),
-            preview: imageData.substring(0, 50)
           });
-          
-          updateData.image = imageData;
-          console.log("✅ Image validation passed, including data URL in request");
+          updateData.image = base64Only; // backend expects pure base64 string
         } else {
-          console.warn("❌ Image validation failed - not a proper data URL format");
-          setEditErrors({...editErrors, image: "Invalid image format. Please try uploading a different image."});
-          setUpdateLoading(false);
-          return;
+          // Assume it's already base64 string
+          updateData.image = imageData;
         }
       }
       
-      console.log("🔄 Updating profile with data:", {
+      console.log("🔄 About to call profileService.updateProfile with data:", {
         ...updateData,
         image: updateData.image ? `Base64 image (${updateData.image.length} chars)` : 'No image field included'
       });
@@ -281,12 +299,20 @@ export default function ProfilePage() {
         fieldsIncluded: Object.keys(updateData)
       });
       
+      console.log("🚀 Calling profileService.updateProfile now...");
       const response = await profileService.updateProfile(updateData);
+      console.log("📩 Update profile response received:", response);
       
       if (response && response.status) {
+        console.log("✅ Response is successful, updating UI state");
+        console.log("🔄 Setting profile to:", response.data);
+        console.log("🔄 Previous profile was:", profile);
+        
         setProfile(response.data);
         setShowEditModal(false);
         setUpdateSuccess(true);
+        
+        console.log("✅ UI state updated - modal closed, success shown");
         
         // Clear success message after 3 seconds
         setTimeout(() => setUpdateSuccess(false), 3000);
@@ -297,13 +323,15 @@ export default function ProfilePage() {
           fileInputRef.current.value = "";
         }
       } else {
+        console.warn("❌ Response failed:", response);
         setEditErrors({general: response?.message || "Failed to update profile"});
       }
     } catch (err: unknown) {
       console.error("🚨 Profile update error:", err);
       let errorMessage = "Failed to update profile";
       
-      if (err && typeof err === 'object' && 'status' in err && err.status === 500) {
+      const e = err as { status?: number; message?: string };
+      if (typeof e === 'object' && e && typeof e.status === 'number' && e.status === 500) {
         errorMessage = "Server error occurred. Please try again or contact support.";
       } else if (err instanceof Error && err.message) {
         errorMessage = err.message;
@@ -664,10 +692,15 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                     {editForm.image ? (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={`data:image/jpeg;base64,${editForm.image}`} alt="Preview" className="w-full h-full object-cover" />
-                      </>
+                      (() => {
+                        const previewSrc = editForm.image.startsWith('data:')
+                          ? editForm.image
+                          : `data:image/jpeg;base64,${editForm.image}`;
+                        return (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={previewSrc} alt="Preview" className="w-full h-full object-cover" />
+                        );
+                      })()
                     ) : profile?.profilePic ? (
                       <Image 
                         src={profile.profilePic} 

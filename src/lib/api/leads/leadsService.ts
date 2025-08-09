@@ -9,7 +9,8 @@ import type {
   UpdateLeadResponse,
   GetSingleLeadResponse,
   DeleteLeadResponse,
-  AddFeedbackResponse
+  AddFeedbackResponse,
+  LeadsOverviewResponse
 } from "./types";
 
 export class LeadsService extends ApiService {
@@ -145,6 +146,26 @@ export class LeadsService extends ApiService {
       return response;
     } catch (error) {
       console.error("🚨 LeadsService: Error adding feedback:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get leads overview/statistics
+   */
+  async getLeadsOverview(): Promise<LeadsOverviewResponse["data"] | null> {
+    try {
+      console.log("📊 LeadsService: Fetching leads overview");
+
+      const response = await this.get<LeadsOverviewResponse["data"]>(
+        "/leads/overview"
+      );
+
+      console.log("📊 LeadsService: Overview response received:", response);
+
+      return response;
+    } catch (error) {
+      console.error("🚨 LeadsService: Error fetching leads overview:", error);
       throw error;
     }
   }
