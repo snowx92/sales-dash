@@ -3,7 +3,8 @@ import {
   EndedSubscriptionsData, 
   FeedbackRequest, 
   FeedbackResponse, 
-  RetentionQueryParams 
+  RetentionQueryParams,
+  RetentionOverviewData 
 } from './types';
 
 export class RetentionService extends ApiService {
@@ -124,6 +125,19 @@ export class RetentionService extends ApiService {
       limit: 1,
       pageNo: 1
     });
+  }
+
+  /**
+   * Get retention overview for stats section
+   */
+  async getOverview(): Promise<RetentionOverviewData | null> {
+    try {
+      const response = await this.get<RetentionOverviewData>("/retention/overview");
+      return response;
+    } catch (error) {
+      console.error("🚨 RetentionService: Error fetching retention overview:", error);
+      throw error;
+    }
   }
 }
 

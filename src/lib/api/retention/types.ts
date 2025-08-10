@@ -60,3 +60,10 @@ export interface RetentionQueryParams {
   priority?: Priority;
   search?: string;
 }
+
+// Retention overview data
+export interface RetentionOverviewData {
+  expiredCount: number;
+  highPriorityCount: number;
+  totalAttempts: number;
+}

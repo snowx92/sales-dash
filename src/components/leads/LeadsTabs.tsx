@@ -92,6 +92,10 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
     const matchesDate = !dateFilter || lead.createdAt === dateFilter;
     
     return matchesSearch && matchesStatus && matchesDate;
+  }).sort((a, b) => {
+    const aTime = a.lastUpdated ? new Date(a.lastUpdated).getTime() : new Date(a.lastContact).getTime();
+    const bTime = b.lastUpdated ? new Date(b.lastUpdated).getTime() : new Date(b.lastContact).getTime();
+    return bTime - aTime; // desc
   });
 
   // Filter upcoming leads

@@ -35,7 +35,7 @@ export interface CreateLeadRequest {
   socialMediaUrls?: string[];
   leadSource: LeadSource;
   priority: LeadPriority;
-  status: Exclude<LeadStatus, "NEW">; // Exclude NEW status from creation
+  status: LeadStatus; // allow NEW on creation
   feedback?: string;
   [key: string]: unknown; // Index signature for compatibility
 }

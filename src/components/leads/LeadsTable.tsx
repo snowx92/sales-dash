@@ -47,7 +47,7 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Priority</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Attempts</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Last Contact</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Last Updated</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -146,11 +146,11 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                       </span>
                     </td>
 
-                    {/* Last Contact */}
+                    {/* Last Updated */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3 text-gray-400" />
-                        {new Date(lead.lastContact).toLocaleDateString()}
+                        {new Date(lead.lastUpdated || lead.lastContact).toLocaleString()}
                       </div>
                     </td>
 

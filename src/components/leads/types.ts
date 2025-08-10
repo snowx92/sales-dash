@@ -24,6 +24,7 @@ export interface Lead {
   status: string;
   attempts: number;
   lastContact: string;
+  lastUpdated: string; // new: track last updated (from API updatedAt)
   feedback: string;
   createdAt: string;
   feedbackHistory: Array<{
@@ -78,6 +79,7 @@ export const priorities = [
 
 // Status options
 export const statuses = [
+  { id: 'new', name: 'New', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: User },
   { id: 'interested', name: 'Interested', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle },
   { id: 'subscribed', name: 'Subscribed', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: UserCheck },
   { id: 'not_interested', name: 'Not Interested', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle },

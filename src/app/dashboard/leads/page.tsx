@@ -140,7 +140,8 @@ export default function LeadsPage() {
       setLoading(true);
       
       // Map component status to API status
-      const statusMap: Record<string, Exclude<LeadStatus, "NEW">> = {
+      const statusMap: Record<string, Exclude<LeadStatus, "NEW"> | "NEW"> = {
+        'new': 'NEW',
         'interested': 'INTERSTED',
         'subscribed': 'SUBSCRIBED', 
         'not_interested': 'NOT_INTERSTED',
@@ -164,7 +165,7 @@ export default function LeadsPage() {
         socialMediaUrls: newLead.socialUrls ? newLead.socialUrls.split(',').map(url => url.trim()).filter(Boolean) : undefined,
         leadSource: newLead.leadSource.toUpperCase() as LeadSource,
         priority: (priorityMap[newLead.priority] || newLead.priority.toUpperCase()) as LeadPriority,
-        status: (statusMap[newLead.status] || 'FOLLOW_UP') as Exclude<LeadStatus, "NEW">,
+        status: (statusMap[newLead.status] || 'FOLLOW_UP') as LeadStatus,
         feedback: newLead.feedback || undefined
       };
       
@@ -193,6 +194,7 @@ export default function LeadsPage() {
 
       // Convert component Lead format to API UpdateLeadRequest format
       const statusMap: Record<string, LeadStatus> = {
+        'new': 'NEW',
         'interested': 'INTERSTED',
         'subscribed': 'SUBSCRIBED', 
         'not_interested': 'NOT_INTERSTED',
@@ -376,7 +378,8 @@ export default function LeadsPage() {
       attempts: 0,
       lastContact: new Date().toISOString().split('T')[0],
       feedback: '',
-      feedbackHistory: []
+      feedbackHistory: [],
+      lastUpdated: new Date().toISOString().split('T')[0] // Add lastUpdated property
     };
     
     // Set the converted lead for editing and open the modal

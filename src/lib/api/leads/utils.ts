@@ -66,6 +66,9 @@ export const mapApiLeadToLead = (apiLead: ApiLead): Lead => {
   const componentId = generateComponentId(apiLead.id);
   storeIdMapping(componentId, apiLead.id);
   
+  const updatedAtIso = new Date(apiLead.updatedAt._seconds * 1000).toISOString();
+  const updatedAtDate = updatedAtIso.split('T')[0];
+  
   return {
     id: componentId,
     name: apiLead.name,
@@ -77,12 +80,13 @@ export const mapApiLeadToLead = (apiLead: ApiLead): Lead => {
     status: mapApiStatusToComponent(apiLead.status),
     priority: mapApiPriorityToComponent(apiLead.priority),
     attempts: Number.isInteger(apiLead.attemps) ? apiLead.attemps : 0,
-    lastContact: new Date(apiLead.updatedAt._seconds * 1000).toISOString().split('T')[0],
+    lastContact: updatedAtDate, // keep old field for UI compatibility
+    lastUpdated: updatedAtIso, // new precise timestamp for sorting
     feedback: apiLead.feedback || '',
     feedbackHistory: (apiLead.feedbacks || []).map((feedback, index) => ({
       id: index + 1,
       message: feedback,
-      date: new Date(apiLead.updatedAt._seconds * 1000).toISOString().split('T')[0]
+      date: updatedAtDate
     })),
     createdAt: new Date(apiLead.createdAt._seconds * 1000).toISOString().split('T')[0]
   };

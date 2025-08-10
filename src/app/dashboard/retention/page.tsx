@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { ResponsiveWrapper } from "@/components/layout/ResponsiveWrapper";
 import { Pagination } from "@/components/tables/Pagination";
 import { useRetention } from "@/lib/hooks/useRetention";
-import { EndedSubscriptionItem, Priority } from "@/lib/api/retention/types";
+import { EndedSubscriptionItem, Priority, RetentionOverviewData } from "@/lib/api/retention/types";
 import { toast } from "sonner";
 import { 
   Phone, 
@@ -26,6 +26,7 @@ import {
   RefreshCw,
   MessageCircle
 } from "lucide-react";
+import { retentionService } from "@/lib/api/retention/retentionService";
 
 // TypeScript interfaces for the edit modal
 interface EditMerchantData {
@@ -201,6 +202,7 @@ export default function RetentionPage() {
   const [editingMerchant, setEditingMerchant] = useState<EndedSubscriptionItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<Priority | undefined>(undefined);
+  const [overview, setOverview] = useState<RetentionOverviewData | null>(null);
 
   // Use the retention hook for API integration
   const {
@@ -233,6 +235,20 @@ export default function RetentionPage() {
     initialLimit: 10,
     autoFetch: true
   });
+
+  useEffect(() => {
+    let mounted = true;
+    const loadOverview = async () => {
+      try {
+        const data = await retentionService.getOverview();
+        if (mounted) setOverview(data);
+      } catch (err) {
+        console.error('Error loading retention overview:', err);
+      }
+    };
+    loadOverview();
+    return () => { mounted = false; };
+  }, []);
 
   const handleEditMerchant = (merchant: EndedSubscriptionItem) => {
     console.log('Editing merchant:', merchant);
@@ -300,12 +316,12 @@ export default function RetentionPage() {
     filterByPriority(priority);
   };
 
-  // Calculate stats from API data
+  // Calculate stats (prefer API overview, fallback to local calculations)
   const stats = {
-    totalExpired: totalItems,
-    highPriority: merchants.filter(m => m.priority === 'HIGH').length,
+    totalExpired: overview?.expiredCount ?? totalItems,
+    highPriority: overview?.highPriorityCount ?? merchants.filter(m => m.priority === 'HIGH').length,
     revenueAtRisk: merchants.reduce((sum, m) => sum + m.impact, 0),
-    totalAttempts: merchants.reduce((sum, m) => sum + m.attemps, 0)
+    totalAttempts: overview?.totalAttempts ?? merchants.reduce((sum, m) => sum + m.attemps, 0)
   };
 
   if (error) {
@@ -677,4 +693,4 @@ export default function RetentionPage() {
       )}
     </ResponsiveWrapper>
   );
-} 
+}
