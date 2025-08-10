@@ -11,4 +11,4 @@ export { EmptyState } from './EmptyState';
 export { LeadsTabs } from './LeadsTabs';
 
 export * from './types';
-export * from './mockData';
+
