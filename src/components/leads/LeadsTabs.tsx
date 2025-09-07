@@ -22,36 +22,32 @@ interface LeadsOverviewData {
 interface LeadsTabsProps {
   activeTab: string;
   onTabChange: (value: string) => void;
-  
-  // Data
   leads: Lead[];
   upcomingLeads: UpcomingLead[];
   overviewData?: LeadsOverviewData | null;
-  
   // Filters
   searchTerm: string;
   onSearchChange: (value: string) => void;
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
-  dateFilter: string;
-  onDateFilterChange: (value: string) => void;
-  
+  fromDate: string;
+  toDate: string;
+  onFromDateChange: (value: string) => void;
+  onToDateChange: (value: string) => void;
   // Pagination
   currentPage: number;
   onPageChange: (page: number) => void;
   upcomingCurrentPage: number;
   onUpcomingPageChange: (page: number) => void;
   itemsPerPage: number;
-  
   // Table interactions
   expandedRows: Set<number>;
   onToggleRowExpansion: (leadId: number) => void;
-  
   // Actions
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (id: number) => void;
   onAddFeedback: (id: number, leadName: string) => void;
-  onConvertToLead: (lead: UpcomingLead) => void;
+  onConvertToLead: (lead: UpcomingLead) => void | Promise<void>;
   onDeleteUpcomingLead: (id: number) => void;
   onAddLead: () => void;
 }
@@ -66,8 +62,10 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
-  dateFilter,
-  onDateFilterChange,
+  fromDate,
+  toDate,
+  onFromDateChange,
+  onToDateChange,
   currentPage,
   onPageChange,
   upcomingCurrentPage,
@@ -82,46 +80,31 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
   onDeleteUpcomingLead,
   onAddLead
 }) => {
-  // Filter leads
-  const filteredLeads = leads.filter(lead => {
-    const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lead.phone.includes(searchTerm) ||
-                         lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = !statusFilter || lead.status === statusFilter;
-    const matchesDate = !dateFilter || lead.createdAt === dateFilter;
-    
-    return matchesSearch && matchesStatus && matchesDate;
-  }).sort((a, b) => {
-    const aTime = a.lastUpdated ? new Date(a.lastUpdated).getTime() : new Date(a.lastContact).getTime();
-    const bTime = b.lastUpdated ? new Date(b.lastUpdated).getTime() : new Date(b.lastContact).getTime();
-    return bTime - aTime; // desc
-  });
+  // Server already applied filters & pagination; just display lists
+    // Client-side filtering (server returned bulk set)
+    const filteredLeads = leads.filter(lead => {
+      const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) || lead.phone.includes(searchTerm) || lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = !statusFilter || lead.status === statusFilter;
+      const created = lead.createdAt;
+      const matchesFrom = !fromDate || created >= fromDate;
+      const matchesTo = !toDate || created <= toDate;
+      return matchesSearch && matchesStatus && matchesFrom && matchesTo;
+    });
+    const filteredUpcoming = upcomingLeads.filter(lead => {
+      const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) || lead.phone.includes(searchTerm) || lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      const created = lead.createdAt;
+      const matchesFrom = !fromDate || created >= fromDate;
+      const matchesTo = !toDate || created <= toDate;
+      return matchesSearch && matchesFrom && matchesTo;
+    });
 
-  // Filter upcoming leads
-  const filteredUpcomingLeads = upcomingLeads.filter(lead => {
-    const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lead.phone.includes(searchTerm) ||
-                         lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesDate = !dateFilter || lead.createdAt === dateFilter;
-    
-    return matchesSearch && matchesDate;
-  });
-
-  // Calculate pagination for leads
-  const totalItems = filteredLeads.length;
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
-
-  // Calculate pagination for upcoming leads
-  const totalUpcomingItems = filteredUpcomingLeads.length;
-  const upcomingStartIndex = (upcomingCurrentPage - 1) * itemsPerPage;
-  const upcomingEndIndex = upcomingStartIndex + itemsPerPage;
-  const paginatedUpcomingLeads = filteredUpcomingLeads.slice(upcomingStartIndex, upcomingEndIndex);
-
-  const hasFilters = !!(searchTerm || statusFilter || dateFilter);
+    const totalItems = filteredLeads.length;
+    const totalUpcomingItems = filteredUpcoming.length;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const upcomingStartIndex = (upcomingCurrentPage - 1) * itemsPerPage;
+    const paginatedLeads = filteredLeads.slice(startIndex, startIndex + itemsPerPage);
+    const paginatedUpcomingLeads = filteredUpcoming.slice(upcomingStartIndex, upcomingStartIndex + itemsPerPage);
+    const hasFilters = !!(searchTerm || statusFilter || fromDate || toDate);
 
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
@@ -135,7 +118,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
           <Target className="h-4 w-4" />
           Upcoming Leads
           <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-            {upcomingLeads.length}
+            {totalUpcomingItems}
           </span>
         </TabsTrigger>
         <TabsTrigger 
@@ -147,7 +130,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
           <Users className="h-4 w-4" />
           Leads
           <span className="ml-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-            {leads.length}
+            {totalItems}
           </span>
         </TabsTrigger>
       </TabsList>
@@ -159,13 +142,15 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
           onSearchChange={onSearchChange}
           statusFilter=""
           onStatusFilterChange={() => {}}
-          dateFilter={dateFilter}
-          onDateFilterChange={onDateFilterChange}
+          fromDate={fromDate}
+          toDate={toDate}
+          onFromDateChange={onFromDateChange}
+          onToDateChange={onToDateChange}
           showStatusFilter={false}
           placeholder="Search upcoming leads by name, phone, or email..."
         />
 
-        {filteredUpcomingLeads.length > 0 ? (
+        {paginatedUpcomingLeads.length > 0 ? (
           <>
             <UpcomingLeadsTable
               leads={paginatedUpcomingLeads}
@@ -173,7 +158,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
               onDeleteLead={onDeleteUpcomingLead}
             />
             
-            {totalUpcomingItems > 0 && (
+            {totalUpcomingItems > itemsPerPage && (
               <Pagination
                 totalItems={totalUpcomingItems}
                 itemsPerPage={itemsPerPage}
@@ -197,14 +182,16 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
           onSearchChange={onSearchChange}
           statusFilter={statusFilter}
           onStatusFilterChange={onStatusFilterChange}
-          dateFilter={dateFilter}
-          onDateFilterChange={onDateFilterChange}
+          fromDate={fromDate}
+          toDate={toDate}
+          onFromDateChange={onFromDateChange}
+          onToDateChange={onToDateChange}
           showStatusFilter={true}
         />
 
         <LeadStats leads={leads} overviewData={overviewData} />
 
-        {filteredLeads.length > 0 ? (
+    {paginatedLeads.length > 0 ? (
           <>
             <LeadsTable
               leads={paginatedLeads}
@@ -215,7 +202,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
               onAddFeedback={onAddFeedback}
             />
             
-            {totalItems > 0 && (
+            {totalItems > itemsPerPage && (
               <Pagination
                 totalItems={totalItems}
                 itemsPerPage={itemsPerPage}

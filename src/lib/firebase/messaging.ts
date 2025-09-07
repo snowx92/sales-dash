@@ -5,6 +5,8 @@ import { notificationService } from "../api/notifications";
 class FirebaseMessagingService {
   private messaging: Messaging | null = null;
   private vapidKey: string | undefined;
+  private attempted = false;
+  private permanentlyFailed = false;
 
   constructor() {
     this.vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
@@ -45,9 +47,36 @@ class FirebaseMessagingService {
    */
   async requestPermissionAndGetToken(): Promise<string | null> {
     try {
+      if (this.permanentlyFailed) {
+        console.warn('🚫 Firebase Messaging: Skipping token fetch after previous fatal failure.');
+        return null;
+      }
+      if (this.attempted) {
+        // Prevent spamming getToken when Navbar re-renders
+        console.log('ℹ️ Firebase Messaging: Token request already attempted in this session.');
+      }
+      this.attempted = true;
       if (typeof window === 'undefined') {
         console.warn("🚫 Firebase Messaging: Cannot request permission on server side");
         return null;
+      }
+
+      // Ensure service worker exists and is registered before calling getToken
+      // Firebase default scope expectation: '/firebase-cloud-messaging-push-scope'
+      // We'll register custom sw at '/firebase-messaging-sw.js'
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          const alreadyRegistered = registrations.some(r => r.active?.scriptURL.endsWith('/firebase-messaging-sw.js'));
+          if (!alreadyRegistered) {
+            console.log('🛠️ Firebase Messaging: Registering service worker /firebase-messaging-sw.js');
+            await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          }
+        } else {
+          console.warn('🚫 Firebase Messaging: Service workers not supported in this browser');
+        }
+      } catch (swErr) {
+        console.warn('⚠️ Firebase Messaging: Failed to register service worker (will still attempt token):', swErr);
       }
 
       // Check if notifications are supported
@@ -75,9 +104,18 @@ class FirebaseMessagingService {
         return null;
       }
 
+      // Ensure we use the same registered SW for token retrieval
+      let swReg: ServiceWorkerRegistration | undefined;
+      try {
+        if ('serviceWorker' in navigator) {
+          swReg = await navigator.serviceWorker.ready;
+        }
+      } catch {/* ignore */}
+
       // Get FCM token
       const token = await getToken(messaging, {
-        vapidKey: this.vapidKey
+        vapidKey: this.vapidKey,
+        serviceWorkerRegistration: swReg
       });
 
       if (token) {
@@ -92,9 +130,28 @@ class FirebaseMessagingService {
         return null;
       }
     } catch (error) {
-      console.error("🚨 Firebase Messaging: Error getting token:", error);
+      const message = (error as Error).message || '';
+      if (message.includes('Missing App configuration value')) {
+        console.error('🚨 Firebase Messaging: Firebase config missing required fields (check .env + firebase initialization).');
+      }
+      if (message.includes('Registration failed - push service error')) {
+        const first = !this.permanentlyFailed;
+        this.permanentlyFailed = true;
+        if (first) {
+          console.warn('⚠️ Firebase Messaging: Push service error. Disabling further attempts this session.');
+        } else {
+          console.info('ℹ️ Firebase Messaging: Push service error already handled; ignoring.');
+        }
+      }
+      if (!message.includes('Registration failed - push service error')) {
+        console.error("🚨 Firebase Messaging: Error getting token:", error);
+      }
       return null;
     }
+  }
+
+  isDisabled(): boolean {
+    return this.permanentlyFailed;
   }
 
   /**

@@ -33,7 +33,6 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onA
       ...formData,
       attempts: 0,
       lastContact: new Date().toISOString().split('T')[0],
-      lastUpdated: new Date().toISOString(), // set lastUpdated to now
       createdAt: new Date().toISOString().split('T')[0],
       feedbackHistory: []
     };

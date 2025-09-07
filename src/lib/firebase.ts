@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -42,7 +42,10 @@ export function getFirebaseAuth() {
   if (!app) {
     throw new Error('Firebase app not initialized');
   }
-  return getAuth(app);
+  const authInstance = getAuth(app);
+  // Ensure persistence is set (idempotent after first time)
+  setPersistence(authInstance, browserLocalPersistence).catch(() => {/* ignore */});
+  return authInstance;
 }
 
 // For backward compatibility - only initialize on client side

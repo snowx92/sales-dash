@@ -22,6 +22,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!isMounted) return;
     
     let unsubscribe: (() => void) | undefined;
+  let refreshInterval: number | undefined;
     
     // Check if we have a valid API token
     const checkApiToken = async () => {
@@ -97,6 +98,40 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       }
     };
 
+    // Proactively refresh token periodically
+    const startRefreshLoop = () => {
+      // 14 minute interval (Firebase tokens ~1hr; keep backend session fresh). Adjust if needed.
+      const INTERVAL_MS = 14 * 60 * 1000;
+      if (refreshInterval) window.clearInterval(refreshInterval);
+      refreshInterval = window.setInterval(async () => {
+        try {
+          const auth = getFirebaseAuth();
+          const user = auth.currentUser;
+          if (!user) return;
+          // Force refresh Firebase ID token
+            const freshFirebaseToken = await user.getIdToken(true);
+            // Try backend refresh first (if endpoint exists)
+            try {
+              const refreshed = await authService.refreshToken(freshFirebaseToken);
+              if (refreshed?.status && refreshed.data?.token) {
+                sessionManager.setToken(refreshed.data.token);
+              } else {
+                sessionManager.setToken(freshFirebaseToken);
+              }
+            } catch {
+              // Fallback: store fresh Firebase token directly
+              sessionManager.setToken(freshFirebaseToken);
+            }
+            // Update stored Firebase refresh token if available
+            if (user.refreshToken) {
+              sessionManager.setFirebaseRefreshToken(user.refreshToken);
+            }
+        } catch {
+          // Silent – next cycle will try again
+        }
+      }, INTERVAL_MS);
+    };
+
     // Main initialization flow
     const initialize = async () => {
       // First check if we have a valid API token
@@ -105,9 +140,11 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       if (hasApiToken) {
         // We have an API token, but still set up Firebase listener for token refresh
         setupAuthListener();
+        startRefreshLoop();
       } else {
         // No API token, set up Firebase listener to handle authentication
         setupAuthListener();
+        startRefreshLoop();
       }
     };
 
@@ -117,6 +154,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     return () => {
       if (unsubscribe) {
         unsubscribe();
+      }
+      if (refreshInterval) {
+        window.clearInterval(refreshInterval);
       }
     };
   }, [router, sessionManager, isMounted]);

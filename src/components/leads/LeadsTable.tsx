@@ -16,6 +16,7 @@ import {
   MessageSquare,
   MessageCircle
 } from "lucide-react";
+import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
 import { Lead, leadSources, priorities, statuses } from './types';
 
 interface LeadsTableProps {
@@ -170,7 +171,8 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.open(`https://wa.me/${lead.phone.replace(/[^0-9]/g, '')}`, '_blank');
+                            const url = buildWhatsAppUrl(lead.phone, 'Hello');
+                            window.open(url, '_blank');
                           }}
                           className="text-green-600 hover:text-green-900 transition-colors"
                           title="WhatsApp"

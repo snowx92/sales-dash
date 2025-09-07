@@ -109,13 +109,19 @@ export default function Navbar({
 
         // Initialize FCM token (optional - only in production/when needed)
         try {
-          if (process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_FCM === 'true') {
-            console.log("📱 Navbar: Initializing FCM token...");
-            await firebaseMessaging.requestPermissionAndGetToken();
+          const enableFcm = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_FCM === 'true';
+          if (enableFcm) {
+            if (firebaseMessaging.isDisabled()) {
+              console.log('🔕 Navbar: FCM disabled after previous failure. Skipping.');
+            } else if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+              console.log('🔕 Navbar: Browser lacks Push/ServiceWorker support. Skipping FCM.');
+            } else {
+              console.log("📱 Navbar: Initializing FCM token...");
+              await firebaseMessaging.requestPermissionAndGetToken();
+            }
           }
         } catch (fcmError) {
           console.log("⚠️ Navbar: Could not initialize FCM:", fcmError);
-          // Not critical, so we don't show error to user
         }
       } catch (error) {
         console.error("🚨 Navbar: Profile fetch error:", error);

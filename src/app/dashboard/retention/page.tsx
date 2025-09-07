@@ -24,11 +24,196 @@ import {
   Search,
   Filter,
   RefreshCw,
-  MessageCircle
+  MessageCircle,
+  Download
 } from "lucide-react";
 import { retentionService } from "@/lib/api/retention/retentionService";
+// Export modal with date range & page selection
+const RetentionExportModal = ({
+  open,
+  onClose,
+  currentItems,
+  totalPages,
+  pageLimit,
+  currentPriority,
+  currentSearch
+}: {
+  open: boolean;
+  onClose: () => void;
+  currentItems: EndedSubscriptionItem[];
+  totalPages: number;
+  pageLimit: number;
+  currentPriority?: Priority;
+  currentSearch?: string;
+}) => {
+  const [exporting, setExporting] = useState(false);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [pageMode, setPageMode] = useState<'current' | 'firstN' | 'all'>('current');
+  const [firstN, setFirstN] = useState(3);
+  const [overridePriority, setOverridePriority] = useState<Priority | 'ALL'>(currentPriority || 'ALL');
+  const [progress, setProgress] = useState<{page:number; pages:number; rows:number}>({page:0,pages:0,rows:0});
+
+  const withinRange = (expiredAt: EndedSubscriptionItem['expiredAt']) => {
+    if (!fromDate && !toDate) return true;
+    let iso = '';
+    if (typeof expiredAt === 'string') iso = expiredAt.split('T')[0];
+    else if (expiredAt && typeof expiredAt === 'object' && '_seconds' in expiredAt) {
+      iso = new Date(expiredAt._seconds * 1000).toISOString().split('T')[0];
+    }
+    if (!iso) return false;
+    if (fromDate && iso < fromDate) return false;
+    if (toDate && iso > toDate) return false;
+    return true;
+  };
+
+  const collectPages = async (): Promise<EndedSubscriptionItem[]> => {
+    if (pageMode === 'current') return currentItems;
+    const pagesToGet = pageMode === 'all' ? totalPages : Math.min(firstN, totalPages);
+    const acc: EndedSubscriptionItem[] = [];
+    for (let p = 1; p <= pagesToGet; p++) {
+      try {
+        const data = await retentionService.getEndedSubscriptions({
+          pageNo: p,
+          limit: pageLimit,
+          ...((overridePriority !== 'ALL' ? overridePriority : currentPriority) && { priority: (overridePriority !== 'ALL' ? overridePriority : currentPriority)! }),
+          ...(currentSearch && { search: currentSearch })
+        });
+        if (data?.items) acc.push(...data.items);
+        setProgress({page:p,pages:pagesToGet,rows:acc.length});
+      } catch (e) {
+        console.error('Export fetch page failed', p, e);
+        break;
+      }
+    }
+    return acc;
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      let dataset = await collectPages();
+      if (!dataset.length) {
+        toast.error('No data to export');
+        return;
+      }
+      dataset = dataset.filter(m => withinRange(m.expiredAt));
+      if (!dataset.length) {
+        toast.error('No rows match filters');
+        return;
+      }
+      const rows = dataset.map(m => ({
+        Store: m.storeName,
+        Name: m.name,
+        Email: m.email,
+        Phone: m.phone,
+        ImpactEGP: m.impact,
+        Attempts: m.attemps,
+        Priority: m.priority,
+        ExpiredAt: formatExpiredDate(m.expiredAt),
+        RenewCounts: m.renewCounts,
+        MerchantId: m.merchantId,
+        ID: m.id
+      }));
+      const xlsx = await import('xlsx');
+      const ws = xlsx.utils.json_to_sheet(rows);
+      const wb = xlsx.utils.book_new();
+      xlsx.utils.book_append_sheet(wb, ws, 'Retention');
+      const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+      xlsx.writeFile(wb, `retention_export_${stamp}.xlsx`);
+      toast.success(`Exported ${rows.length} rows`);
+      onClose();
+    } catch (e) {
+      console.error('Retention export failed', e);
+      toast.error('Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl w-full max-w-lg shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="p-5 border-b flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Export Retention</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
+        </div>
+        <div className="p-5 space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Expired From</label>
+              <input type="date" value={fromDate} onChange={e=>setFromDate(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Expired To</label>
+              <input type="date" value={toDate} onChange={e=>setToDate(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" />
+            </div>
+          </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">Priority</label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={()=>setOverridePriority('ALL')}
+                  className={`px-3 py-1 rounded-lg border text-xs font-medium transition-colors ${overridePriority==='ALL' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-800 hover:bg-purple-50 border-gray-300'}`}
+                >All</button>
+                {priorities.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={()=>setOverridePriority(p.id)}
+                    className={`px-3 py-1 rounded-lg border text-xs font-medium transition-colors ${overridePriority===p.id ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-800 hover:bg-purple-50 border-gray-300'}`}
+                  >{p.name}</button>
+                ))}
+              </div>
+            </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-2">Pages</label>
+            <div className="flex flex-col gap-2">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input type="radio" name="pageMode" value="current" checked={pageMode==='current'} onChange={()=>setPageMode('current')} className="accent-purple-600" />
+                <span className={pageMode==='current' ? 'text-purple-700 font-medium' : 'text-purple-600'}>Current Page</span>
+              </label>
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input type="radio" name="pageMode" value="firstN" checked={pageMode==='firstN'} onChange={()=>setPageMode('firstN')} className="accent-purple-600" />
+                <span className={pageMode==='firstN' ? 'text-purple-700 font-medium' : 'text-purple-600'}>First N Pages</span>
+                {pageMode==='firstN' && (
+                  <input type="number" min={1} max={totalPages} value={firstN} onChange={e=>setFirstN(Number(e.target.value))} className="w-20 px-2 py-1 border rounded" />
+                )}
+              </label>
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input type="radio" name="pageMode" value="all" checked={pageMode==='all'} onChange={()=>setPageMode('all')} className="accent-purple-600" />
+                <span className={pageMode==='all' ? 'text-purple-700 font-medium' : 'text-purple-600'}>All Pages ({totalPages})</span>
+              </label>
+            </div>
+          </div>
+          <div className="text-xs text-gray-500">Filters applied: priority/search from current view plus optional expiration date and page scope.</div>
+          {exporting && (
+            <div className="w-full bg-gray-100 rounded h-2 overflow-hidden">
+              <div
+                className="bg-green-500 h-full transition-all"
+                style={{width: progress.pages ? `${(progress.page/ progress.pages)*100}%` : '0%'}}
+              />
+              <div className="mt-2 text-[10px] text-gray-500 flex justify-between">
+                <span>Page {progress.page} / {progress.pages}</span>
+                <span>{progress.rows} rows</span>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="p-5 border-t flex gap-3">
+          <button onClick={onClose} disabled={exporting} className="flex-1 px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
+          <button onClick={handleExport} disabled={exporting} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2">
+            <Download className={`h-4 w-4 ${exporting ? 'animate-pulse' : ''}`} />
+            {exporting ? 'Exporting...' : 'Export Excel'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // TypeScript interfaces for the edit modal
+import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
 interface EditMerchantData {
   priority: Priority;
   feedback: string;
@@ -113,15 +298,30 @@ const EditMerchantModal = ({ isOpen, onClose, merchant, onUpdate }: {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900">Edit Merchant</h2>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <XCircle className="h-6 w-6" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const url = buildWhatsAppUrl(merchant.phone, 'Hello');
+                    window.open(url, '_blank');
+                  }}
+                  type="button"
+                  className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                  title="WhatsApp"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={onClose}
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Close"
+                >
+                  <XCircle className="h-6 w-6" />
+                </button>
+              </div>
             </div>
           </div>
-
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             <div>
               <h3 className="font-medium text-gray-900 mb-2">{merchant.storeName}</h3>
@@ -200,6 +400,7 @@ export default function RetentionPage() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMerchant, setEditingMerchant] = useState<EndedSubscriptionItem | null>(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<Priority | undefined>(undefined);
   const [overview, setOverview] = useState<RetentionOverviewData | null>(null);
@@ -348,7 +549,7 @@ export default function RetentionPage() {
       <div className="space-y-6 pb-8">
 
 
-        {/* Filters */}
+        {/* Filters + Export */}
         <div className="bg-white p-4 rounded-xl shadow-sm">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
@@ -363,7 +564,7 @@ export default function RetentionPage() {
                 />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-start">
               <select
                 value={selectedPriority || ''}
                 onChange={(e) => handlePriorityFilter(e.target.value as Priority || undefined)}
@@ -380,6 +581,12 @@ export default function RetentionPage() {
               >
                 <Filter className="h-4 w-4" />
                 Clear
+              </button>
+              <button
+                onClick={() => setExportModalOpen(true)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" /> Export
               </button>
             </div>
           </div>
@@ -598,7 +805,8 @@ export default function RetentionPage() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  window.open(`https://wa.me/${merchant.phone.replace(/[^0-9]/g, '')}`, '_blank');
+                                  const url = buildWhatsAppUrl(merchant.phone, 'Hello');
+                                  window.open(url, '_blank');
                                 }}
                                 className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                                 title="WhatsApp"
@@ -691,6 +899,15 @@ export default function RetentionPage() {
           onUpdate={handleUpdateMerchant}
         />
       )}
+      <RetentionExportModal
+        open={exportModalOpen}
+        onClose={()=>setExportModalOpen(false)}
+        currentItems={merchants}
+        totalPages={totalPages}
+        pageLimit={10}
+        currentPriority={selectedPriority}
+        currentSearch={searchTerm}
+      />
     </ResponsiveWrapper>
   );
 }

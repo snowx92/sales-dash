@@ -24,9 +24,11 @@ export default function LeadsPage() {
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [upcomingCurrentPage, setUpcomingCurrentPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1); // regular leads page
+  const [upcomingCurrentPage, setUpcomingCurrentPage] = useState(1); // upcoming leads page
   const itemsPerPage = 10;
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [activeTab, setActiveTab] = useState('upcoming');
@@ -59,6 +61,8 @@ export default function LeadsPage() {
     }
   }, []);
 
+  // Client-side pagination counts derived in component; keep placeholders for future server usage if needed
+
   const loadLeads = useCallback(async () => {
     try {
       setLoading(true);
@@ -73,12 +77,12 @@ export default function LeadsPage() {
         from?: string;
         to?: string;
       } = {
-        page: 1,
-        limit: 100 // Get more items to handle local pagination
+        page: 1, // fetch first page only
+        limit: 500 // large batch for client-side pagination
       };
 
-      if (searchTerm) {
-        params.searchQuery = searchTerm;
+      if (debouncedSearch) {
+        params.searchQuery = debouncedSearch;
       }
 
       if (statusFilter) {
@@ -94,15 +98,12 @@ export default function LeadsPage() {
         params.status = statusApiMap[statusFilter] || 'NEW';
       }
 
-      if (dateFilter) {
-        // Assuming dateFilter is in format 'YYYY-MM-DD'
-        params.from = dateFilter;
-        params.to = dateFilter;
-      }
+      if (fromDate) params.from = fromDate;
+      if (toDate) params.to = toDate;
       
-      const response = await leadsService.getLeads(params);
+  const response = await leadsService.getLeads(params);
       
-      if (response?.items) {
+  if (response?.items) {
         // Separate leads by status - NEW status goes to upcoming, others to leads
         const upcomingApiLeads = response.items.filter((lead: ApiLead) => lead.status === 'NEW');
         const regularApiLeads = response.items.filter((lead: ApiLead) => lead.status !== 'NEW');
@@ -113,6 +114,8 @@ export default function LeadsPage() {
         
         setLeads(convertedLeads);
         setUpcomingLeads(convertedUpcomingLeads);
+    // Set counts based on fetched arrays
+  // counts handled client-side in tabs
       }
     } catch (err) {
       console.error('Error loading leads:', err);
@@ -120,7 +123,7 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, statusFilter, dateFilter]);
+  }, [debouncedSearch, statusFilter, fromDate, toDate]);
 
   // Load leads on component mount and when filters change
   useEffect(() => {
@@ -130,10 +133,13 @@ export default function LeadsPage() {
 
   // Reload when filters change
   useEffect(() => {
-    if (searchTerm || statusFilter || dateFilter) {
-      loadLeads();
-    }
-  }, [searchTerm, statusFilter, dateFilter, loadLeads]);
+    const handler = setTimeout(() => setDebouncedSearch(searchTerm), 400);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    loadLeads();
+  }, [debouncedSearch, statusFilter, fromDate, toDate, loadLeads]);
 
   const handleAddLead = async (newLead: Lead) => {
     try {
@@ -192,6 +198,12 @@ export default function LeadsPage() {
         throw new Error('API ID not found for this lead');
       }
 
+      // Determine if the feedback entered should be treated as a new feedback entry
+      // We treat any non-empty feedback text that differs from the currently stored feedback
+      // as an appended feedback item (so it shows in feedbackHistory) instead of overwriting.
+      const existingLead = leads.find(lead => lead.id === id);
+      const hasNewFeedback = !!(updates.feedback && updates.feedback.trim() && updates.feedback !== existingLead?.feedback);
+
       // Convert component Lead format to API UpdateLeadRequest format
       const statusMap: Record<string, LeadStatus> = {
         'new': 'NEW',
@@ -208,6 +220,7 @@ export default function LeadsPage() {
         'low': 'LOW'
       };
 
+      // If we're going to add feedback separately, omit it from the update request
       const updateRequest = {
         name: updates.name,
         email: updates.email,
@@ -217,23 +230,24 @@ export default function LeadsPage() {
         leadSource: updates.leadSource.toUpperCase() as LeadSource,
         priority: (priorityMap[updates.priority] || updates.priority.toUpperCase()) as LeadPriority,
         status: (statusMap[updates.status] || updates.status.toUpperCase()) as LeadStatus,
-        feedback: updates.feedback || undefined
+        // Only include feedback if it's NOT a new feedback we want appended
+        ...(hasNewFeedback ? {} : { feedback: updates.feedback || undefined })
       };
 
       await leadsService.updateLead(apiId, updateRequest);
-      
-      // Update local state
-      const existingLead = leads.find(lead => lead.id === id);
-      
-      if (existingLead) {
-        // Update existing lead
-        setLeads(prev => prev.map(lead => lead.id === id ? { ...lead, ...updates } : lead));
-      } else {
-        // Add as new lead (conversion from upcoming lead)
-        setLeads(prev => [{ ...updates, id }, ...prev]);
-        // Remove from upcoming leads if it was there
-        setUpcomingLeads(prev => prev.filter(lead => lead.id !== id));
+
+      // If there is new feedback to append, call addFeedback endpoint so it becomes part of history
+      if (hasNewFeedback) {
+        try {
+          await leadsService.addFeedback(apiId, updates.feedback.trim());
+        } catch (fbErr) {
+          console.error('Error appending feedback after update:', fbErr);
+          // Non-fatal; continue
+        }
       }
+      
+      // After update + possible feedback append, reload leads to refresh feedbackHistory & status
+      await loadLeads();
 
       // Close modal
       setIsEditModalOpen(false);
@@ -370,24 +384,45 @@ export default function LeadsPage() {
     }
   };
 
-  const handleConvertToLead = (upcomingLead: UpcomingLead) => {
-    // Convert upcoming lead to regular lead format for editing
-    const convertedLead: Lead = {
-      ...upcomingLead,
-      status: 'follow_up',
-      attempts: 0,
-      lastContact: new Date().toISOString().split('T')[0],
-      feedback: '',
-      feedbackHistory: [],
-      lastUpdated: new Date().toISOString().split('T')[0] // Add lastUpdated property
-    };
-    
-    // Set the converted lead for editing and open the modal
-    setEditingLead(convertedLead);
-    setIsEditModalOpen(true);
-    
-    // Remove from upcoming leads since we're converting it
-    setUpcomingLeads(prev => prev.filter(lead => lead.id !== upcomingLead.id));
+  const handleConvertToLead = async (upcomingLead: UpcomingLead) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get API ID for the upcoming lead
+      const apiId = getApiId(upcomingLead.id);
+      if (!apiId) {
+        throw new Error('API ID not found for this upcoming lead');
+      }
+
+      // Update status immediately to FOLLOW_UP so it moves to regular leads list
+      await leadsService.updateLead(apiId, { status: 'FOLLOW_UP' });
+
+      // Reload leads so we get the full mapped lead (with timestamps & history)
+      await loadLeads();
+      await loadLeadsOverview();
+
+      // Find the freshly loaded lead in the leads array (after reload)
+      // Slight delay may be needed if state not yet updated; use functional set after next tick
+      setTimeout(() => {
+        setLeads(current => {
+          const leadMatch = current.find(l => l.id === upcomingLead.id);
+          if (leadMatch) {
+            setEditingLead(leadMatch);
+            setIsEditModalOpen(true);
+          }
+          return current;
+        });
+      }, 0);
+
+      // Remove from upcoming leads locally (will already be excluded on next render after reload)
+      setUpcomingLeads(prev => prev.filter(l => l.id !== upcomingLead.id));
+    } catch (err) {
+      console.error('Error converting upcoming lead:', err);
+      setError('Failed to convert lead');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleRowExpansion = (leadId: number) => {
@@ -406,7 +441,7 @@ export default function LeadsPage() {
   useEffect(() => {
     setCurrentPage(1);
     setUpcomingCurrentPage(1);
-  }, [searchTerm, statusFilter, dateFilter]);
+  }, [searchTerm, statusFilter, fromDate, toDate]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -471,7 +506,7 @@ export default function LeadsPage() {
           /* Tabs */
           <LeadsTabs
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={(tab) => { setActiveTab(tab); /* reset pages on tab change */ if(tab==='leads'){setCurrentPage(1);} else {setUpcomingCurrentPage(1);} }}
             leads={leads}
             upcomingLeads={upcomingLeads}
             overviewData={leadsOverview}
@@ -479,12 +514,14 @@ export default function LeadsPage() {
             onSearchChange={setSearchTerm}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
-            dateFilter={dateFilter}
-            onDateFilterChange={setDateFilter}
+            fromDate={fromDate}
+            toDate={toDate}
+            onFromDateChange={(v) => { setFromDate(v); setCurrentPage(1); setUpcomingCurrentPage(1); }}
+            onToDateChange={(v) => { setToDate(v); setCurrentPage(1); setUpcomingCurrentPage(1); }}
             currentPage={currentPage}
-            onPageChange={setCurrentPage}
+            onPageChange={(p) => { setCurrentPage(p); loadLeads(); }}
             upcomingCurrentPage={upcomingCurrentPage}
-            onUpcomingPageChange={setUpcomingCurrentPage}
+            onUpcomingPageChange={(p) => { setUpcomingCurrentPage(p); loadLeads(); }}
             itemsPerPage={itemsPerPage}
             expandedRows={expandedRows}
             onToggleRowExpansion={toggleRowExpansion}
@@ -534,6 +571,31 @@ export default function LeadsPage() {
           isOpen={isExportModalOpen}
           onClose={() => setIsExportModalOpen(false)}
           currentStatusFilter={statusFilter}
+          leads={leads.map(l => ({
+            name: l.name,
+            email: l.email,
+            phone: l.phone,
+            website: l.website,
+            status: l.status,
+            priority: l.priority,
+            leadSource: l.leadSource,
+            attempts: l.attempts,
+            createdAt: l.createdAt,
+            lastUpdated: l.lastUpdated,
+            lastContact: l.lastContact,
+            feedback: l.feedback
+          }))}
+          upcomingLeads={upcomingLeads.map(u => ({
+            name: u.name,
+            email: u.email,
+            phone: u.phone,
+            website: u.website,
+            status: 'new',
+            priority: u.priority,
+            leadSource: u.leadSource,
+            attempts: 0,
+            createdAt: u.createdAt
+          }))}
         />
       </div>
     </div>

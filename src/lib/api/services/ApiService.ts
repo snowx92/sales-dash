@@ -132,93 +132,54 @@ export class ApiService {
       console.log("🌐 ApiService: Making request to:", `${this.baseURL}${fullUrl}`);
 
       if (response.status === 401) {
-        // Try to refresh token before giving up
         try {
-          const firebaseRefreshToken = this.sessionManager.getFirebaseRefreshToken();
-          if (firebaseRefreshToken) {
-            // Import authService dynamically to avoid circular dependency
-            const { authService } = await import("@/lib/api/auth/authService");
-            const refreshResponse = await authService.refreshToken(firebaseRefreshToken);
-            
-            if (refreshResponse && refreshResponse.status && refreshResponse.data.token) {
-              // Update token and retry the request
-              this.sessionManager.setToken(refreshResponse.data.token);
-              
-              // Update the authorization header and retry
-              const newHeaders = {
-                ...staticHeaders,
-                Authorization: `Bearer ${refreshResponse.data.token}`
-              };
-              
-              // Retry the request with new token
-              const retryOptions: RequestInit = {
-                ...options,
-                headers: {
-                  ...options.headers,
-                  ...newHeaders
-                }
-              };
-              
-              const retryResponse = await fetch(`${this.baseURL}${fullUrl}`, retryOptions);
-              
-              if (retryResponse.status < 200 || retryResponse.status >= 300) {
-                throw new Error(`HTTP ${retryResponse.status}: ${retryResponse.statusText}`);
-              }
-              
-              const jsonResponse = await retryResponse.json() as ApiResponse<T>;
-              return jsonResponse.data;
-            }
-          }
-        } catch {
-          // Token refresh failed, try fresh Firebase token approach
-          try {
-            // Check if we have Firebase auth
+            // Always attempt to use current Firebase user for a fresh ID token
             const { getFirebaseAuth } = await import("@/lib/firebase");
             const auth = getFirebaseAuth();
             const currentUser = auth.currentUser;
-            
             if (currentUser) {
-              // Force refresh Firebase ID token to get a completely fresh one
-              const freshFirebaseIdToken = await currentUser.getIdToken(true);
-              
-              // Update our stored token
-              this.sessionManager.setToken(freshFirebaseIdToken);
-              
-              // Retry request with fresh Firebase token
-              const firebaseHeaders = {
-                ...staticHeaders,
-                Authorization: `Bearer ${freshFirebaseIdToken}`
-              };
-              
-              const firebaseRetryOptions: RequestInit = {
-                ...options,
-                headers: {
-                  ...options.headers,
-                  ...firebaseHeaders
+              const freshIdToken = await currentUser.getIdToken(true); // force refresh
+              // Call backend refresh endpoint with ID token (not the raw refresh token)
+              try {
+                const { authService } = await import("@/lib/api/auth/authService");
+                const refreshResponse = await authService.refreshToken(freshIdToken);
+                if (refreshResponse?.status && refreshResponse.data?.token) {
+                  this.sessionManager.setToken(refreshResponse.data.token);
+                  const retryOptions: RequestInit = {
+                    ...options,
+                    headers: {
+                      ...options.headers,
+                      Authorization: `Bearer ${refreshResponse.data.token}`
+                    }
+                  };
+                  const retryResponse = await fetch(`${this.baseURL}${fullUrl}`, retryOptions);
+                  if (retryResponse.ok) {
+                    const jsonResponse = await retryResponse.json() as ApiResponse<T>;
+                    return jsonResponse.data;
+                  }
                 }
-              };
-              
-              const firebaseRetryResponse = await fetch(`${this.baseURL}${fullUrl}`, firebaseRetryOptions);
-              
-              if (firebaseRetryResponse.ok) {
-                const jsonResponse = await firebaseRetryResponse.json() as ApiResponse<T>;
-                return jsonResponse.data;
-              } else {
-                // If still failing, the user might need to re-authenticate
-                throw new Error(`Authentication failed after token refresh: ${firebaseRetryResponse.status}`);
+              } catch {
+                // Backend refresh failed: fallback to using the fresh Firebase ID token directly
+                this.sessionManager.setToken(freshIdToken);
+                const fallbackOptions: RequestInit = {
+                  ...options,
+                  headers: {
+                    ...options.headers,
+                    Authorization: `Bearer ${freshIdToken}`
+                  }
+                };
+                const fbRetryResponse = await fetch(`${this.baseURL}${fullUrl}`, fallbackOptions);
+                if (fbRetryResponse.ok) {
+                  const jsonResponse = await fbRetryResponse.json() as ApiResponse<T>;
+                  return jsonResponse.data;
+                }
               }
             }
-          } catch {
-            // Both refresh attempts failed
-            throw new Error("Session expired. Please login again.");
-          }
-        }
-        
-        // All authentication attempts failed
-        // Create error with status code for better error handling
-        const error = new Error("Authentication failed - session expired. Please login again.") as Error & { status?: number };
-        error.status = 401;
-        throw error;
+        } catch {/* swallow to proceed to final error */}
+
+        const authError = new Error("Authentication failed - session expired. Please login again.") as Error & { status?: number };
+        authError.status = 401;
+        throw authError;
       }
 
       // Handle 403 Forbidden errors with more detailed information

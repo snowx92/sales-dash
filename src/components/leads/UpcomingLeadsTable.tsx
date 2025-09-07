@@ -9,11 +9,12 @@ import {
   Trash2,
   MessageCircle
 } from "lucide-react";
+import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
 import { UpcomingLead, leadSources, priorities } from './types';
 
 interface UpcomingLeadsTableProps {
   leads: UpcomingLead[];
-  onConvertToLead: (lead: UpcomingLead) => void;
+  onConvertToLead: (lead: UpcomingLead) => void | Promise<void>;
   onDeleteLead: (id: number) => void;
 }
 
@@ -102,7 +103,10 @@ export const UpcomingLeadsTable: React.FC<UpcomingLeadsTableProps> = ({
                     <Phone className="h-3 w-3" />
                   </button>
                   <button
-                    onClick={() => window.open(`https://wa.me/${lead.phone.replace(/[^0-9]/g, '')}`, '_blank')}
+                    onClick={() => {
+                      const url = buildWhatsAppUrl(lead.phone, 'Hello');
+                      window.open(url, '_blank');
+                    }}
                     className="inline-flex items-center gap-1 px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                     title="WhatsApp"
                   >
