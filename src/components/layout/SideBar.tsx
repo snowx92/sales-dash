@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { 
+import {
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
@@ -12,7 +12,8 @@ import {
   UserPlus,
   RefreshCw,
   Banknote,
-  User
+  User,
+  Bell,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSidebarCounters } from "@/lib/hooks/useSidebarCounters";
@@ -39,8 +40,10 @@ interface SidebarCounters {
 const navigationItems: NavigationItem[] = [
   { href: "/dashboard/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/merchants/list", label: "Merchants", icon: ShoppingBag, countKey: "stores" },
+
   { href: "/dashboard/leads", label: "Leads", icon: UserPlus, countKey: "pendingLeads" },
   { href: "/dashboard/retention", label: "Retention", icon: RefreshCw, countKey: "retention" },
+  { href: "/dashboard/reminders", label: "Reminders", icon: Bell },
   { href: "/dashboard/transactions", label: "Transactions", icon: Banknote, countKey: "allTransactions" },
   { href: "/dashboard/profile", label: "Profile", icon: User },
 ];

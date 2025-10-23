@@ -16,6 +16,9 @@ import { leadsService } from "@/lib/api/leads/leadsService";
 import { mapApiLeadToLead, mapApiLeadToUpcomingLead, getApiId } from "@/lib/api/leads/utils";
 import type { LeadStatus, LeadSource, LeadPriority, ApiLead } from "@/lib/api/leads/types";
 import FloatingSalesTips from "@/components/dashboard/FloatingSalesTips";
+import SmartReminders from "@/components/dashboard/SmartReminders";
+import ActivityTracker from "@/components/dashboard/ActivityTracker";
+import WhatsAppTemplates from "@/components/dashboard/WhatsAppTemplates";
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -448,6 +451,15 @@ export default function LeadsPage() {
     <>
       {/* Floating Sales Tips */}
       <FloatingSalesTips />
+
+      {/* Smart Reminders */}
+      <SmartReminders leads={leads} />
+
+      {/* Activity Tracker */}
+      <ActivityTracker />
+
+      {/* WhatsApp Templates */}
+      <WhatsAppTemplates />
 
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto space-y-6">

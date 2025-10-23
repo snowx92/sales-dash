@@ -21,6 +21,7 @@ import { overviewService } from "@/lib/api/overview/overviewService";
 import { notificationService, type NotificationItem } from "@/lib/api/notifications";
 import { firebaseMessaging } from "@/lib/firebase/messaging";
 import { SessionManager } from "@/lib/utils/session";
+import QuickActionBar from "@/components/dashboard/QuickActionBar";
 
 // Add this mapping object for prettier labels
 const routeLabels: { [key: string]: string } = {
@@ -457,8 +458,11 @@ export default function Navbar({
             ))}
           </div>
 
-          {/* Right section with affiliate link, notifications and profile */}
+          {/* Right section with search, affiliate link, notifications and profile */}
           <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* Quick Action Search */}
+            <QuickActionBar />
+
             {/* Affiliate Actions - Enhanced Design */}
             {navbarAffiliateLink && (
               <div className="flex items-center gap-2">

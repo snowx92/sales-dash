@@ -29,7 +29,11 @@ import {
 } from "lucide-react";
 import { retentionService } from "@/lib/api/retention/retentionService";
 import FloatingSalesTips from "@/components/dashboard/FloatingSalesTips";
+import SmartReminders from "@/components/dashboard/SmartReminders";
+import ActivityTracker from "@/components/dashboard/ActivityTracker";
+import WhatsAppTemplates from "@/components/dashboard/WhatsAppTemplates";
 import { formatPhoneForDisplay } from "@/lib/utils/phone";
+import { Lead } from "@/components/leads/types";
 // Export modal with date range & page selection
 const RetentionExportModal = ({
   open,
@@ -548,7 +552,59 @@ export default function RetentionPage() {
 
   return (
     <>
+      {/* Floating Sales Tips */}
       <FloatingSalesTips />
+
+      {/* Smart Reminders - Convert retention items to Lead format for compatibility */}
+      <SmartReminders
+        leads={merchants.map((item: EndedSubscriptionItem) => {
+          // Convert expiredAt to ISO string
+          let expiredDate = new Date().toISOString();
+          if (item.expiredAt) {
+            if (typeof item.expiredAt === 'string') {
+              expiredDate = item.expiredAt;
+            } else if (typeof item.expiredAt === 'object' && '_seconds' in item.expiredAt) {
+              expiredDate = new Date(item.expiredAt._seconds * 1000).toISOString();
+            }
+          }
+
+          // Convert priority format (HIGH/MEDIUM/LOW to high/mid/low)
+          const priorityMap: { [key: string]: 'high' | 'mid' | 'low' } = {
+            'HIGH': 'high',
+            'MEDIUM': 'mid',
+            'LOW': 'low'
+          };
+
+          return {
+            id: parseInt(item.id) || 0,
+            name: item.name,
+            phone: item.phone,
+            email: item.email,
+            website: item.storeName || '',
+            socialUrls: '',
+            leadSource: 'retention',
+            priority: priorityMap[item.priority] || 'mid',
+            status: 'follow_up',
+            attempts: item.attemps || 0,
+            lastContact: expiredDate,
+            lastUpdated: expiredDate,
+            feedback: item.feedbacks?.[0] || '',
+            createdAt: expiredDate,
+            feedbackHistory: item.feedbacks?.map((fb, idx) => ({
+              id: idx,
+              message: fb,
+              date: expiredDate
+            })) || []
+          } as Lead;
+        })}
+      />
+
+      {/* Activity Tracker */}
+      <ActivityTracker />
+
+      {/* WhatsApp Templates */}
+      <WhatsAppTemplates />
+
       <ResponsiveWrapper padding="sm">
         <div className="space-y-6 pb-8">
           {/* Filters + Export */}
@@ -650,16 +706,17 @@ export default function RetentionPage() {
           {/* Expired Merchants Table */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            {/* Use table-fixed and smaller paddings so table fits screens; add truncation for long content */}
+            <table className="w-full table-fixed">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impact Score</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expired Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attempts</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Store</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Customer</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Impact</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Expired</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Attempts</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Priority</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -700,7 +757,7 @@ export default function RetentionPage() {
                           onClick={() => toggleRowExpansion(merchant.id)}
                         >
                           {/* Store Name & Link */}
-                          <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-3 py-2 whitespace-nowrap max-w-[220px]">
                             <div className="flex items-center">
                               {merchant.logo ? (
                                 <Image 
@@ -720,15 +777,15 @@ export default function RetentionPage() {
                               <div className={`w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm ${merchant.logo ? 'hidden' : ''}`}>
                                 {merchant.storeName.charAt(0).toUpperCase()}
                               </div>
-                              <div className="ml-3">
-                                <div className="text-sm font-medium text-gray-900">{merchant.storeName}</div>
-                                <div className="text-sm text-gray-500">
+                              <div className="ml-3 overflow-hidden">
+                                <div className="text-sm font-medium text-gray-900 truncate">{merchant.storeName}</div>
+                                <div className="text-sm text-gray-500 truncate">
                                   {merchant.link ? (
                                     <a 
                                       href={merchant.link} 
                                       target="_blank" 
                                       rel="noopener noreferrer" 
-                                      className="text-blue-600 hover:underline flex items-center gap-1"
+                                      className="text-blue-600 hover:underline inline-flex items-center gap-1"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       View Store
@@ -749,16 +806,16 @@ export default function RetentionPage() {
                           </td>
 
                           {/* Customer Info */}
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-2 whitespace-nowrap max-w-[200px]">
                             <div>
                               <div className="text-sm font-medium text-gray-900">{merchant.name}</div>
-                              <div className="text-sm text-gray-500">{merchant.email}</div>
+                              <div className="text-sm text-gray-500 truncate">{merchant.email}</div>
                               <div className="text-sm font-medium text-green-600">{formatPhoneForDisplay(merchant.phone)}</div>
                             </div>
                           </td>
 
                           {/* Impact Score */}
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
                             <div className="flex items-center gap-1">
                               <span className="text-sm font-medium text-gray-900">
                                 {merchant.impact.toLocaleString()} EGP
@@ -767,7 +824,7 @@ export default function RetentionPage() {
                           </td>
 
                           {/* Expired Date */}
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-2 whitespace-nowrap text-sm">
                             <div className="flex items-center gap-1">
                               <Calendar className="h-3 w-3 text-red-400" />
                               <span className="text-sm text-gray-900">
@@ -777,7 +834,7 @@ export default function RetentionPage() {
                           </td>
 
                           {/* Attempts */}
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-2 whitespace-nowrap text-sm">
                             <div className="flex items-center gap-1">
                               <Target className="h-3 w-3 text-gray-400" />
                               <span className="text-sm text-gray-900">{merchant.attemps}</span>
@@ -785,21 +842,21 @@ export default function RetentionPage() {
                           </td>
 
                           {/* Priority */}
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-2 whitespace-nowrap text-sm">
                             <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${priority?.color}`}>
                               {priority?.name}
                             </span>
                           </td>
 
                           {/* Actions */}
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex items-center gap-2">
+                          <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center gap-1">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   window.open(`tel:${merchant.phone}`, '_self');
                                 }}
-                                className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                className="p-1 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                                 title="Call"
                               >
                                 <Phone className="h-4 w-4" />
@@ -810,7 +867,7 @@ export default function RetentionPage() {
                                   const url = buildWhatsAppUrl(merchant.phone, 'Hello');
                                   window.open(url, '_blank');
                                 }}
-                                className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                className="p-1 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                                 title="WhatsApp"
                               >
                                 <MessageCircle className="h-4 w-4" />
@@ -820,7 +877,7 @@ export default function RetentionPage() {
                                   e.stopPropagation();
                                   window.open(`mailto:${merchant.email}`, '_self');
                                 }}
-                                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                className="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                 title="Email"
                               >
                                 <Mail className="h-4 w-4" />
@@ -830,7 +887,7 @@ export default function RetentionPage() {
                                   e.stopPropagation();
                                   handleEditMerchant(merchant);
                                 }}
-                                className="p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                className="p-1 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                                 title="Edit"
                               >
                                 <Edit className="h-4 w-4" />

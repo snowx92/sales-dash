@@ -53,7 +53,8 @@ export default function FloatingSalesTips() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={handleButtonClick}
-            className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-br from-purple-600 to-purple-800 text-white rounded-full shadow-lg hover:shadow-xl transition-shadow duration-300 flex items-center justify-center group"
+            // Small button stacked at bottom-right (stacked with other floating buttons)
+            className="fixed bottom-6 right-6 z-50 w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-800 text-white rounded-full shadow-lg hover:shadow-xl transition-shadow duration-300 flex items-center justify-center group"
             aria-label="Show sales tip"
           >
             <motion.div
@@ -84,7 +85,8 @@ export default function FloatingSalesTips() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.8 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className="fixed bottom-6 right-6 z-50 w-80 sm:w-96"
+            // Keep the tip card anchored near the bottom-right but use a slightly smaller width
+            className="fixed bottom-6 right-20 z-50 w-72 sm:w-80"
           >
             <div className="relative overflow-hidden rounded-2xl border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-purple-100 shadow-2xl">
               {/* Decorative Background */}
