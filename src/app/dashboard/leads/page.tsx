@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Upload, Download } from "lucide-react";
-import { 
-  Lead, 
-  UpcomingLead, 
+import {
+  Lead,
+  UpcomingLead,
   AddLeadModal,
   EditLeadModal,
   LeadsTabs,
@@ -15,6 +15,7 @@ import { SimpleFeedbackModal } from "@/components/leads/SimpleFeedbackModal";
 import { leadsService } from "@/lib/api/leads/leadsService";
 import { mapApiLeadToLead, mapApiLeadToUpcomingLead, getApiId } from "@/lib/api/leads/utils";
 import type { LeadStatus, LeadSource, LeadPriority, ApiLead } from "@/lib/api/leads/types";
+import FloatingSalesTips from "@/components/dashboard/FloatingSalesTips";
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -444,8 +445,12 @@ export default function LeadsPage() {
   }, [searchTerm, statusFilter, fromDate, toDate]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <>
+      {/* Floating Sales Tips */}
+      <FloatingSalesTips />
+
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -519,9 +524,9 @@ export default function LeadsPage() {
             onFromDateChange={(v) => { setFromDate(v); setCurrentPage(1); setUpcomingCurrentPage(1); }}
             onToDateChange={(v) => { setToDate(v); setCurrentPage(1); setUpcomingCurrentPage(1); }}
             currentPage={currentPage}
-            onPageChange={(p) => { setCurrentPage(p); loadLeads(); }}
+            onPageChange={setCurrentPage}
             upcomingCurrentPage={upcomingCurrentPage}
-            onUpcomingPageChange={(p) => { setUpcomingCurrentPage(p); loadLeads(); }}
+            onUpcomingPageChange={setUpcomingCurrentPage}
             itemsPerPage={itemsPerPage}
             expandedRows={expandedRows}
             onToggleRowExpansion={toggleRowExpansion}
@@ -598,6 +603,7 @@ export default function LeadsPage() {
           }))}
         />
       </div>
-    </div>
+      </div>
+    </>
   );
 }

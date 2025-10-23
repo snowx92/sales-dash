@@ -17,6 +17,7 @@ import {
   MessageCircle
 } from "lucide-react";
 import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
+import { formatPhoneForDisplay } from '@/lib/utils/phone';
 import { Lead, leadSources, priorities, statuses } from './types';
 
 interface LeadsTableProps {
@@ -106,7 +107,7 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                       <div className="text-sm text-gray-900">
                         <div className="flex items-center gap-1 mb-1">
                           <Phone className="h-3 w-3 text-gray-400" />
-                          <span>{lead.phone}</span>
+                          <span className="font-medium text-green-600">{formatPhoneForDisplay(lead.phone)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Mail className="h-3 w-3 text-gray-400" />

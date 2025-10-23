@@ -20,113 +20,126 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isMounted) return;
-    
+
     let unsubscribe: (() => void) | undefined;
-  let refreshInterval: number | undefined;
-    
-    // Check if we have a valid API token
-    const checkApiToken = async () => {
-      try {
-        const token = sessionManager.getToken();
-        if (token) {
-          // We have a token, assume it's valid for now
-          // TODO: You might want to add token validation here
-          setIsLoading(false);
-          return true;
-        }
-        return false;
-      } catch {
-        return false;
-      }
-    };
+    let refreshInterval: number | undefined;
 
     // Handle Firebase auth state changes
     const handleAuthStateChange = async (user: User | null) => {
+      console.log("🔐 AuthGuard: Auth state changed, user:", user ? user.email : "null");
+
       if (!user) {
-        // No Firebase user, clear session and redirect
+        // No Firebase user - check if we have stored tokens to restore session
+        const storedToken = sessionManager.getToken();
+        const storedEmail = sessionManager.getEmail();
+
+        console.log("🔐 AuthGuard: No Firebase user. Stored token:", storedToken ? "EXISTS" : "NONE");
+
+        if (storedToken && storedEmail) {
+          // We have stored credentials but Firebase user is null
+          // This happens on page refresh - Firebase auth state hasn't restored yet
+          // Wait a bit for Firebase to restore the session
+          console.log("⏳ AuthGuard: Waiting for Firebase to restore session...");
+          setIsLoading(false);
+          return;
+        }
+
+        // No stored credentials either, redirect to login
+        console.log("❌ AuthGuard: No credentials found, redirecting to login");
         sessionManager.clearSession();
         router.push("/login");
         return;
       }
 
       try {
-        // Get Firebase ID token
+        console.log("✅ AuthGuard: Firebase user authenticated:", user.email);
+
+        // Get Firebase ID token (force refresh to ensure it's valid)
         const firebaseToken = await user.getIdToken(true);
-        
+
         // Store Firebase refresh token for future use
         if (user.refreshToken) {
           sessionManager.setFirebaseRefreshToken(user.refreshToken);
         }
 
+        // Store email
+        if (user.email) {
+          sessionManager.setEmail(user.email);
+        }
+
         // Check if we have an API token
-        const hasApiToken = await checkApiToken();
-        
-        if (!hasApiToken) {
+        const storedToken = sessionManager.getToken();
+
+        if (!storedToken) {
+          console.log("🔄 AuthGuard: No API token found, refreshing...");
           // Try to refresh API token using Firebase token
           try {
             const refreshResponse = await authService.refreshToken(firebaseToken);
             if (refreshResponse && refreshResponse.status && refreshResponse.data.token) {
               sessionManager.setToken(refreshResponse.data.token);
-              setIsLoading(false);
+              console.log("✅ AuthGuard: API token refreshed successfully");
             } else {
               // Refresh failed, but we can still use Firebase token directly
               sessionManager.setToken(firebaseToken);
-              setIsLoading(false);
+              console.log("✅ AuthGuard: Using Firebase token as fallback");
             }
-          } catch {
+          } catch (error) {
+            console.warn("⚠️ AuthGuard: Token refresh failed, using Firebase token:", error);
             // If refresh completely fails, use Firebase token as fallback
             sessionManager.setToken(firebaseToken);
-            setIsLoading(false);
           }
         } else {
-          setIsLoading(false);
+          console.log("✅ AuthGuard: API token exists, user is authenticated");
         }
-      } catch {
-        await logout();
-      }
-    };
 
-    // Set up auth state listener
-    const setupAuthListener = () => {
-      try {
-        const auth = getFirebaseAuth();
-        unsubscribe = onAuthStateChanged(auth, handleAuthStateChange);
-      } catch (error) {
-        console.warn('Firebase not available:', error);
-        // If Firebase is not available, skip auth state listening
         setIsLoading(false);
+      } catch (error) {
+        console.error("❌ AuthGuard: Error in auth state handler:", error);
+        await logout();
       }
     };
 
     // Proactively refresh token periodically
     const startRefreshLoop = () => {
-      // 14 minute interval (Firebase tokens ~1hr; keep backend session fresh). Adjust if needed.
+      // 14 minute interval (Firebase tokens ~1hr; keep backend session fresh)
       const INTERVAL_MS = 14 * 60 * 1000;
       if (refreshInterval) window.clearInterval(refreshInterval);
       refreshInterval = window.setInterval(async () => {
         try {
           const auth = getFirebaseAuth();
           const user = auth.currentUser;
-          if (!user) return;
+          if (!user) {
+            console.log("⏭️ AuthGuard: Skipping token refresh - no Firebase user");
+            return;
+          }
+
+          console.log("🔄 AuthGuard: Periodic token refresh starting...");
+
           // Force refresh Firebase ID token
-            const freshFirebaseToken = await user.getIdToken(true);
-            // Try backend refresh first (if endpoint exists)
-            try {
-              const refreshed = await authService.refreshToken(freshFirebaseToken);
-              if (refreshed?.status && refreshed.data?.token) {
-                sessionManager.setToken(refreshed.data.token);
-              } else {
-                sessionManager.setToken(freshFirebaseToken);
-              }
-            } catch {
-              // Fallback: store fresh Firebase token directly
+          const freshFirebaseToken = await user.getIdToken(true);
+
+          // Try backend refresh first (if endpoint exists)
+          try {
+            const refreshed = await authService.refreshToken(freshFirebaseToken);
+            if (refreshed?.status && refreshed.data?.token) {
+              sessionManager.setToken(refreshed.data.token);
+              console.log("✅ AuthGuard: Periodic token refresh successful");
+            } else {
               sessionManager.setToken(freshFirebaseToken);
+              console.log("✅ AuthGuard: Using fresh Firebase token");
             }
-            // Update stored Firebase refresh token if available
-            if (user.refreshToken) {
-              sessionManager.setFirebaseRefreshToken(user.refreshToken);
-            }
-        } catch {
+          } catch (error) {
+            console.warn("⚠️ AuthGuard: Backend refresh failed, using Firebase token:", error);
+            // Fallback: store fresh Firebase token directly
+            sessionManager.setToken(freshFirebaseToken);
+          }
+
+          // Update stored Firebase refresh token if available
+          if (user.refreshToken) {
+            sessionManager.setFirebaseRefreshToken(user.refreshToken);
+          }
+        } catch (error) {
+          console.warn("⚠️ AuthGuard: Token refresh error:", error);
           // Silent – next cycle will try again
         }
       }, INTERVAL_MS);
@@ -134,17 +147,51 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
     // Main initialization flow
     const initialize = async () => {
-      // First check if we have a valid API token
-      const hasApiToken = await checkApiToken();
-      
-      if (hasApiToken) {
-        // We have an API token, but still set up Firebase listener for token refresh
-        setupAuthListener();
+      try {
+        console.log("🚀 AuthGuard: Initializing...");
+
+        const auth = getFirebaseAuth();
+
+        // Check current Firebase user immediately (handles page refresh)
+        const currentUser = auth.currentUser;
+        console.log("🔐 AuthGuard: Current Firebase user:", currentUser ? currentUser.email : "null");
+
+        if (currentUser) {
+          // User is already signed in (session restored from persistence)
+          await handleAuthStateChange(currentUser);
+        } else {
+          // Check if we have stored credentials
+          const storedToken = sessionManager.getToken();
+          const storedEmail = sessionManager.getEmail();
+
+          if (storedToken && storedEmail) {
+            // We have stored credentials, wait for Firebase to restore session
+            console.log("⏳ AuthGuard: Waiting for Firebase to restore session...");
+            // Set a timeout to prevent infinite loading
+            setTimeout(() => {
+              if (auth.currentUser) {
+                console.log("✅ AuthGuard: Firebase session restored");
+              } else {
+                console.log("⚠️ AuthGuard: Firebase session not restored, but we have tokens");
+                setIsLoading(false);
+              }
+            }, 2000);
+          } else {
+            // No stored credentials
+            console.log("❌ AuthGuard: No stored credentials, will wait for auth state");
+            setIsLoading(false);
+          }
+        }
+
+        // Set up auth state listener for future changes
+        unsubscribe = onAuthStateChanged(auth, handleAuthStateChange);
+
+        // Start periodic token refresh
         startRefreshLoop();
-      } else {
-        // No API token, set up Firebase listener to handle authentication
-        setupAuthListener();
-        startRefreshLoop();
+
+      } catch (error) {
+        console.error("❌ AuthGuard: Initialization error:", error);
+        setIsLoading(false);
       }
     };
 

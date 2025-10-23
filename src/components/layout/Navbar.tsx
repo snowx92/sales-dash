@@ -57,6 +57,8 @@ export default function Navbar({
 
   // Fetch user profile and affiliate link data
   useEffect(() => {
+    const mountedRef = { current: true };
+
     const fetchUserData = async () => {
       try {
         // Add a small delay to ensure token is available after login
@@ -107,7 +109,7 @@ export default function Navbar({
           // Not critical, so we don't show error to user
         }
 
-        // Initialize FCM token (optional - only in production/when needed)
+        // Initialize FCM token and set up foreground message listener
         try {
           const enableFcm = process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_ENABLE_FCM === 'true';
           if (enableFcm) {
@@ -117,7 +119,36 @@ export default function Navbar({
               console.log('🔕 Navbar: Browser lacks Push/ServiceWorker support. Skipping FCM.');
             } else {
               console.log("📱 Navbar: Initializing FCM token...");
-              await firebaseMessaging.requestPermissionAndGetToken();
+              const fcmToken = await firebaseMessaging.requestPermissionAndGetToken();
+
+              if (fcmToken) {
+                console.log("✅ Navbar: FCM token obtained and registered");
+
+                // Set up foreground message listener
+                firebaseMessaging.setupForegroundMessageListener((payload) => {
+                  console.log("📬 Navbar: Foreground message received:", payload);
+
+                  // Show browser notification
+                  if (Notification.permission === 'granted' && payload.notification) {
+                    new Notification(payload.notification.title || 'New Notification', {
+                      body: payload.notification.body,
+                      icon: payload.notification.icon || '/favicon.png',
+                      badge: '/favicon.png'
+                    });
+                  }
+
+                  // Refresh unread count
+                  if (mountedRef.current) {
+                    notificationService.getUnreadCount().then(count => {
+                      if (mountedRef.current) {
+                        setUnreadNotifications(count);
+                      }
+                    }).catch(err => {
+                      console.warn("⚠️ Could not refresh notification count:", err);
+                    });
+                  }
+                });
+              }
             }
           }
         } catch (fcmError) {
@@ -130,6 +161,10 @@ export default function Navbar({
     };
 
     fetchUserData();
+
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   // Handle logout

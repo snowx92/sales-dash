@@ -12,13 +12,14 @@ import { Star } from "lucide-react";
 
 // Import our new components
 import { SectionDivider } from "@/components/ui/SectionDivider";
-import { 
+import {
   MobileStatsCollapse,
   MobileLeaderboardAndBonus,
   TargetProgressCard,
   DateRangeHeader,
   DesktopLeaderboard
 } from "@/components/analytics";
+import FloatingSalesTips from "@/components/dashboard/FloatingSalesTips";
 
 // Current user defaults
 const defaultCurrentUser = {
@@ -375,12 +376,15 @@ export default function ReportsPage() {
   return (
     <ResponsiveWrapper padding="sm">
       <div className="space-y-4 sm:space-y-6 pb-8 sm:pb-12">
+        {/* Floating Sales Tips Button */}
+        <FloatingSalesTips />
+
         {/* Top Section - Target Progress & Leaderboard */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Target Progress - Takes 2 columns */}
           <div className="lg:col-span-2">
-            <TargetProgressCard 
-              currentUserData={currentUserData} 
+            <TargetProgressCard
+              currentUserData={currentUserData}
               overviewData={overviewData ? {
                 totalTarget: overviewData.totalTarget,
                 newSubscriptionTarget: overviewData.newSubscriptionTarget,
@@ -388,10 +392,10 @@ export default function ReportsPage() {
               } : null}
             />
           </div>
-          
+
           {/* Desktop Leaderboard - Takes 1 column, hidden on mobile */}
           <div className="hidden lg:block lg:col-span-1">
-            <DesktopLeaderboard 
+            <DesktopLeaderboard
               leaderboardDisplayData={leaderboardDisplayData}
               currentUserName={currentUserData.name}
             />

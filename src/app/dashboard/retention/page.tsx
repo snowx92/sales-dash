@@ -8,12 +8,12 @@ import { Pagination } from "@/components/tables/Pagination";
 import { useRetention } from "@/lib/hooks/useRetention";
 import { EndedSubscriptionItem, Priority, RetentionOverviewData } from "@/lib/api/retention/types";
 import { toast } from "sonner";
-import { 
-  Phone, 
-  Mail, 
-  Edit, 
-  ExternalLink, 
-  ChevronDown, 
+import {
+  Phone,
+  Mail,
+  Edit,
+  ExternalLink,
+  ChevronDown,
   ChevronUp,
   Calendar,
   Target,
@@ -28,6 +28,8 @@ import {
   Download
 } from "lucide-react";
 import { retentionService } from "@/lib/api/retention/retentionService";
+import FloatingSalesTips from "@/components/dashboard/FloatingSalesTips";
+import { formatPhoneForDisplay } from "@/lib/utils/phone";
 // Export modal with date range & page selection
 const RetentionExportModal = ({
   open,
@@ -106,7 +108,7 @@ const RetentionExportModal = ({
         Store: m.storeName,
         Name: m.name,
         Email: m.email,
-        Phone: m.phone,
+        Phone: formatPhoneForDisplay(m.phone),
         ImpactEGP: m.impact,
         Attempts: m.attemps,
         Priority: m.priority,
@@ -545,12 +547,12 @@ export default function RetentionPage() {
   }
 
   return (
-    <ResponsiveWrapper padding="sm">
-      <div className="space-y-6 pb-8">
-
-
-        {/* Filters + Export */}
-        <div className="bg-white p-4 rounded-xl shadow-sm">
+    <>
+      <FloatingSalesTips />
+      <ResponsiveWrapper padding="sm">
+        <div className="space-y-6 pb-8">
+          {/* Filters + Export */}
+          <div className="bg-white p-4 rounded-xl shadow-sm">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -590,10 +592,10 @@ export default function RetentionPage() {
               </button>
             </div>
           </div>
-        </div>
+          </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
@@ -643,10 +645,10 @@ export default function RetentionPage() {
               </div>
             </div>
           </div>
-        </div>
+          </div>
 
-        {/* Expired Merchants Table */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {/* Expired Merchants Table */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -751,7 +753,7 @@ export default function RetentionPage() {
                             <div>
                               <div className="text-sm font-medium text-gray-900">{merchant.name}</div>
                               <div className="text-sm text-gray-500">{merchant.email}</div>
-                              <div className="text-sm text-gray-500">{merchant.phone}</div>
+                              <div className="text-sm font-medium text-green-600">{formatPhoneForDisplay(merchant.phone)}</div>
                             </div>
                           </td>
 
@@ -874,20 +876,20 @@ export default function RetentionPage() {
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
 
-        {/* Pagination */}
-        {totalItems > 0 && totalPages > 1 && (
+          {/* Pagination */}
+          {totalItems > 0 && totalPages > 1 && (
           <Pagination
             totalItems={totalItems}
             itemsPerPage={10} // Using the hook's default limit
             currentPage={currentPage}
             onPageChange={goToPage}
           />
-        )}
-      </div>
+          )}
+        </div>
 
-      {/* Edit Modal */}
+        {/* Edit Modal */}
       {editingMerchant && (
         <EditMerchantModal
           isOpen={isEditModalOpen}
@@ -898,16 +900,17 @@ export default function RetentionPage() {
           merchant={editingMerchant}
           onUpdate={handleUpdateMerchant}
         />
-      )}
-      <RetentionExportModal
-        open={exportModalOpen}
-        onClose={()=>setExportModalOpen(false)}
-        currentItems={merchants}
-        totalPages={totalPages}
-        pageLimit={10}
-        currentPriority={selectedPriority}
-        currentSearch={searchTerm}
-      />
-    </ResponsiveWrapper>
+        )}
+        <RetentionExportModal
+          open={exportModalOpen}
+          onClose={()=>setExportModalOpen(false)}
+          currentItems={merchants}
+          totalPages={totalPages}
+          pageLimit={10}
+          currentPriority={selectedPriority}
+          currentSearch={searchTerm}
+        />
+      </ResponsiveWrapper>
+    </>
   );
 }
