@@ -17,7 +17,7 @@ export interface LeadScore {
  * Score range: 0-100
  */
 export function calculateLeadScore(lead: Lead): LeadScore {
-  const scores = {
+  const breakdown = {
     recency: calculateRecencyScore(lead),
     source: calculateSourceScore(lead),
     engagement: calculateEngagementScore(lead),
@@ -25,17 +25,17 @@ export function calculateLeadScore(lead: Lead): LeadScore {
   };
 
   const total = Math.round(
-    scores.recency * 0.3 +
-    scores.source * 0.2 +
-    scores.engagement * 0.3 +
-    scores.priority * 0.2
+    breakdown.recency * 0.3 +
+    breakdown.source * 0.2 +
+    breakdown.engagement * 0.3 +
+    breakdown.priority * 0.2
   );
 
   return {
     total,
-    breakdown: scores,
+    breakdown,
     rating: getRating(total),
-    recommendations: getRecommendations(lead, total, scores),
+    recommendations: getRecommendations(lead, total),
   };
 }
 
@@ -135,7 +135,7 @@ function getRating(score: number): 'hot' | 'warm' | 'cold' {
 /**
  * Get actionable recommendations based on score
  */
-function getRecommendations(lead: Lead, total: number, scores: LeadScore['breakdown']): string[] {
+function getRecommendations(lead: Lead, total: number): string[] {
   const recommendations: string[] = [];
 
   // Recency recommendations

@@ -272,7 +272,7 @@ export default function QuickActionBar({ onAddLead, onSearch }: QuickActionBarPr
                     </div>
                   ) : (
                     <div className="py-12 text-center text-gray-500">
-                      No actions found for "{searchQuery}"
+                      No actions found for &quot;{searchQuery}&quot;
                     </div>
                   )}
                 </div>
