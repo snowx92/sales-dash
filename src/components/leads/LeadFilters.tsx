@@ -15,6 +15,8 @@ interface LeadFiltersProps {
   onToDateChange: (value: string) => void;
   showStatusFilter?: boolean;
   placeholder?: string;
+  hideCompletedLeads?: boolean;
+  onHideCompletedLeadsChange?: (value: boolean) => void;
 }
 
 export const LeadFilters: React.FC<LeadFiltersProps> = ({
@@ -27,7 +29,9 @@ export const LeadFilters: React.FC<LeadFiltersProps> = ({
   onFromDateChange,
   onToDateChange,
   showStatusFilter = true,
-  placeholder = "Search leads by name, phone, or email..."
+  placeholder = "Search leads by name, phone, or email...",
+  hideCompletedLeads,
+  onHideCompletedLeadsChange
 }) => {
   const gridCols = showStatusFilter ? "lg:grid-cols-6" : "lg:grid-cols-5";
   const searchCols = showStatusFilter ? "lg:col-span-2" : "lg:col-span-2";
@@ -119,6 +123,22 @@ export const LeadFilters: React.FC<LeadFiltersProps> = ({
           )}
         </div>
       </div>
+
+      {/* Toggle to hide subscribed/not interested leads */}
+      {showStatusFilter && onHideCompletedLeadsChange && (
+        <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-200">
+          <input
+            type="checkbox"
+            id="hideCompletedLeads"
+            checked={hideCompletedLeads || false}
+            onChange={(e) => onHideCompletedLeadsChange(e.target.checked)}
+            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+          />
+          <label htmlFor="hideCompletedLeads" className="text-sm text-gray-700 cursor-pointer">
+            Hide subscribed and not interested leads
+          </label>
+        </div>
+      )}
     </div>
   );
 };

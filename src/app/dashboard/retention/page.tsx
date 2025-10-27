@@ -25,7 +25,8 @@ import {
   Filter,
   RefreshCw,
   MessageCircle,
-  Download
+  Download,
+  Bell
 } from "lucide-react";
 import { retentionService } from "@/lib/api/retention/retentionService";
 import FloatingSalesTips from "@/components/dashboard/FloatingSalesTips";
@@ -34,6 +35,9 @@ import ActivityTracker from "@/components/dashboard/ActivityTracker";
 import WhatsAppTemplates from "@/components/dashboard/WhatsAppTemplates";
 import { formatPhoneForDisplay } from "@/lib/utils/phone";
 import { Lead } from "@/components/leads/types";
+import AddReminderModal from "@/components/modals/AddReminderModal";
+import { reminderStorage } from "@/lib/utils/reminderStorage";
+import type { MyReminderFormData } from "@/lib/types/reminder";
 // Export modal with date range & page selection
 const RetentionExportModal = ({
   open,
@@ -411,6 +415,13 @@ export default function RetentionPage() {
   const [selectedPriority, setSelectedPriority] = useState<Priority | undefined>(undefined);
   const [overview, setOverview] = useState<RetentionOverviewData | null>(null);
 
+  // Reminder states
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [reminderMerchantId, setReminderMerchantId] = useState<string | null>(null);
+  const [reminderMerchantName, setReminderMerchantName] = useState<string>('');
+  const [reminderMerchantEmail, setReminderMerchantEmail] = useState<string>('');
+  const [reminderMerchantPhone, setReminderMerchantPhone] = useState<string>('');
+
   // Use the retention hook for API integration
   const {
     items: merchants,
@@ -521,6 +532,39 @@ export default function RetentionPage() {
   const handlePriorityFilter = (priority: Priority | undefined) => {
     setSelectedPriority(priority);
     filterByPriority(priority);
+  };
+
+  const handleOpenReminderModal = (id: string, name: string, email: string, phone: string) => {
+    setReminderMerchantId(id);
+    setReminderMerchantName(name);
+    setReminderMerchantEmail(email);
+    setReminderMerchantPhone(phone);
+    setIsReminderModalOpen(true);
+  };
+
+  const handleCloseReminderModal = () => {
+    setIsReminderModalOpen(false);
+    setReminderMerchantId(null);
+    setReminderMerchantName('');
+    setReminderMerchantEmail('');
+    setReminderMerchantPhone('');
+  };
+
+  const handleSaveReminder = (data: MyReminderFormData) => {
+    if (reminderMerchantId) {
+      reminderStorage.add({
+        type: 'retention',
+        entityId: reminderMerchantId,
+        entityName: reminderMerchantName,
+        entityEmail: reminderMerchantEmail,
+        entityPhone: reminderMerchantPhone,
+        date: data.date,
+        note: data.note,
+        completed: false,
+      });
+      console.log('Reminder added for merchant:', reminderMerchantName);
+      toast.success('Reminder added successfully');
+    }
   };
 
   // Calculate stats (prefer API overview, fallback to local calculations)
@@ -885,6 +929,16 @@ export default function RetentionPage() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  handleOpenReminderModal(merchant.id, merchant.merchantName, merchant.email, merchant.phone);
+                                }}
+                                className="p-1 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                title="Add Reminder"
+                              >
+                                <Bell className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   handleEditMerchant(merchant);
                                 }}
                                 className="p-1 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
@@ -966,6 +1020,14 @@ export default function RetentionPage() {
           pageLimit={10}
           currentPriority={selectedPriority}
           currentSearch={searchTerm}
+        />
+
+        {/* Reminder Modal */}
+        <AddReminderModal
+          isOpen={isReminderModalOpen}
+          onClose={handleCloseReminderModal}
+          onSave={handleSaveReminder}
+          entityName={reminderMerchantName}
         />
       </ResponsiveWrapper>
     </>

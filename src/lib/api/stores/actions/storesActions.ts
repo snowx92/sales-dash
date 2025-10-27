@@ -22,6 +22,37 @@ export interface ForcePasswordResetResponse {
   data?: Record<string, unknown>;
 }
 
+export type PlanId = 'pro' | 'starter' | 'plus';
+export type DurationId = 'month' | 'quarter' | 'half' | 'year';
+
+export interface SubscriptionRequest {
+  planId: PlanId;
+  durationId: DurationId;
+  paidAmount: number;
+}
+
+export interface PaymentLinkRequest {
+  planId: PlanId;
+  durationId: DurationId;
+  paidAmount: number;
+}
+
+export interface SubscriptionResponse {
+  status: number;
+  message: string;
+  data?: Record<string, unknown>;
+}
+
+export interface PaymentLinkResponse {
+  status: number;
+  message: string;
+  data: {
+    success: boolean;
+    trxId: string | null;
+    paymentLink: string;
+  };
+}
+
 class StoresActionsApi extends ApiService {
   /**
    * Get store login credentials for a specific store
@@ -80,6 +111,80 @@ class StoresActionsApi extends ApiService {
       }
     } catch (error) {
       console.error("🚨 StoresActions: Error resetting store password:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Subscribe a merchant to a plan (direct subscription by sales)
+   * Sales person can directly subscribe merchant to a plan
+   * @param storeId - The ID of the store to subscribe
+   * @param subscriptionData - Subscription details (planId, durationId, paidAmount)
+   * @returns Promise<SubscriptionResponse | null>
+   */
+  async subscribeStore(storeId: string, subscriptionData: SubscriptionRequest): Promise<SubscriptionResponse | null> {
+    try {
+      if (!subscriptionData.planId || !subscriptionData.durationId || !subscriptionData.paidAmount) {
+        console.warn("⚠️ StoresActions: Invalid subscription data provided");
+        return null;
+      }
+
+      console.log(`📦 StoresActions: Subscribing store ${storeId} to ${subscriptionData.planId} plan...`);
+
+      const requestBody = {
+        planId: subscriptionData.planId,
+        durationId: subscriptionData.durationId,
+        paidAmount: subscriptionData.paidAmount
+      };
+
+      const response = await this.post<SubscriptionResponse>(`/stores/single/${storeId}/subscribe`, requestBody);
+
+      if (response && (response.status === 200 || response.status === 201)) {
+        console.log("✅ StoresActions: Store subscribed successfully");
+        return response;
+      } else {
+        console.warn("⚠️ StoresActions: Invalid subscription response format:", response);
+        return null;
+      }
+    } catch (error) {
+      console.error("🚨 StoresActions: Error subscribing store:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Generate a payment link for a merchant subscription
+   * Sales person can generate payment link and send to merchant
+   * @param storeId - The ID of the store to generate payment link for
+   * @param paymentData - Payment link details (planId, durationId, paidAmount)
+   * @returns Promise<PaymentLinkResponse | null>
+   */
+  async generatePaymentLink(storeId: string, paymentData: PaymentLinkRequest): Promise<PaymentLinkResponse | null> {
+    try {
+      if (!paymentData.planId || !paymentData.durationId || !paymentData.paidAmount) {
+        console.warn("⚠️ StoresActions: Invalid payment link data provided");
+        return null;
+      }
+
+      console.log(`🔗 StoresActions: Generating payment link for store ${storeId}...`);
+
+      const requestBody = {
+        planId: paymentData.planId,
+        durationId: paymentData.durationId,
+        paidAmount: paymentData.paidAmount
+      };
+
+      const response = await this.post<PaymentLinkResponse>(`/stores/single/${storeId}/subscribe/link`, requestBody);
+
+      if (response && response.data?.paymentLink) {
+        console.log("✅ StoresActions: Payment link generated successfully");
+        return response;
+      } else {
+        console.warn("⚠️ StoresActions: Invalid payment link response format:", response);
+        return null;
+      }
+    } catch (error) {
+      console.error("🚨 StoresActions: Error generating payment link:", error);
       return null;
     }
   }

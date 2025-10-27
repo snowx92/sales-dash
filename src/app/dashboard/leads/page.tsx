@@ -19,6 +19,9 @@ import FloatingSalesTips from "@/components/dashboard/FloatingSalesTips";
 import SmartReminders from "@/components/dashboard/SmartReminders";
 import ActivityTracker from "@/components/dashboard/ActivityTracker";
 import WhatsAppTemplates from "@/components/dashboard/WhatsAppTemplates";
+import AddReminderModal from "@/components/modals/AddReminderModal";
+import { reminderStorage } from "@/lib/utils/reminderStorage";
+import type { MyReminderFormData } from "@/lib/types/reminder";
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -50,6 +53,16 @@ export default function LeadsPage() {
     totalFollowUpLeads: number;
     totalNotInterestedLeads: number;
   } | null>(null);
+
+  // Reminder states
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [reminderLeadId, setReminderLeadId] = useState<number | null>(null);
+  const [reminderLeadName, setReminderLeadName] = useState<string>('');
+  const [reminderLeadEmail, setReminderLeadEmail] = useState<string>('');
+  const [reminderLeadPhone, setReminderLeadPhone] = useState<string>('');
+
+  // Filter state to hide subscribed/not interested leads
+  const [hideCompletedLeads, setHideCompletedLeads] = useState(false);
 
   const loadLeadsOverview = useCallback(async () => {
     try {
@@ -375,6 +388,38 @@ export default function LeadsPage() {
     setFeedbackLeadName('');
   };
 
+  const handleOpenReminderModal = (id: number, name: string, email: string, phone: string) => {
+    setReminderLeadId(id);
+    setReminderLeadName(name);
+    setReminderLeadEmail(email);
+    setReminderLeadPhone(phone);
+    setIsReminderModalOpen(true);
+  };
+
+  const handleCloseReminderModal = () => {
+    setIsReminderModalOpen(false);
+    setReminderLeadId(null);
+    setReminderLeadName('');
+    setReminderLeadEmail('');
+    setReminderLeadPhone('');
+  };
+
+  const handleSaveReminder = (data: MyReminderFormData) => {
+    if (reminderLeadId) {
+      reminderStorage.add({
+        type: 'lead',
+        entityId: reminderLeadId,
+        entityName: reminderLeadName,
+        entityEmail: reminderLeadEmail,
+        entityPhone: reminderLeadPhone,
+        date: data.date,
+        note: data.note,
+        completed: false,
+      });
+      console.log('Reminder added for lead:', reminderLeadName);
+    }
+  };
+
   const handleBulkUploadSuccess = async () => {
     // Reload leads after successful bulk upload
     await loadLeads();
@@ -535,6 +580,8 @@ export default function LeadsPage() {
             toDate={toDate}
             onFromDateChange={(v) => { setFromDate(v); setCurrentPage(1); setUpcomingCurrentPage(1); }}
             onToDateChange={(v) => { setToDate(v); setCurrentPage(1); setUpcomingCurrentPage(1); }}
+            hideCompletedLeads={hideCompletedLeads}
+            onHideCompletedLeadsChange={setHideCompletedLeads}
             currentPage={currentPage}
             onPageChange={setCurrentPage}
             upcomingCurrentPage={upcomingCurrentPage}
@@ -545,6 +592,7 @@ export default function LeadsPage() {
             onEditLead={handleEditLead}
             onDeleteLead={handleDeleteLead}
             onAddFeedback={handleOpenFeedbackModal}
+            onAddReminder={handleOpenReminderModal}
             onConvertToLead={handleConvertToLead}
             onDeleteUpcomingLead={handleDeleteUpcomingLead}
             onAddLead={() => setIsAddModalOpen(true)}
@@ -613,6 +661,13 @@ export default function LeadsPage() {
             attempts: 0,
             createdAt: u.createdAt
           }))}
+        />
+
+        <AddReminderModal
+          isOpen={isReminderModalOpen}
+          onClose={handleCloseReminderModal}
+          onSave={handleSaveReminder}
+          entityName={reminderLeadName}
         />
       </div>
       </div>

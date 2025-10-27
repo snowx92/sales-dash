@@ -12,6 +12,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
@@ -59,21 +60,26 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Fixed Sidebar */}
-      <Sidebar 
+      <Sidebar
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
+        onCollapsedChange={setIsSidebarCollapsed}
       />
-      
-      {/* Main Content Area - with left margin for sidebar */}
-      <div className="lg:ml-80 flex flex-col min-h-screen">
+
+      {/* Main Content Area - with left margin that matches sidebar width */}
+      <div
+        className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out ${
+          isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-[280px]'
+        }`}
+      >
         {/* Navbar */}
-        <DynamicNavbar 
+        <DynamicNavbar
           isMobileMenuOpen={isMobileMenuOpen}
           setIsMobileMenuOpen={setIsMobileMenuOpen}
         />
-        
+
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-x-hidden">
           {children}
         </main>
       </div>

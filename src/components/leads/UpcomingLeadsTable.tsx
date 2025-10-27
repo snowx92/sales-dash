@@ -1,13 +1,14 @@
 "use client";
 
 import React from "react";
-import { 
+import {
   User,
-  Phone, 
-  Mail, 
-  ArrowRight, 
+  Phone,
+  Mail,
+  ArrowRight,
   Trash2,
-  MessageCircle
+  MessageCircle,
+  Bell
 } from "lucide-react";
 import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
 import { formatPhoneForDisplay } from '@/lib/utils/phone';
@@ -17,12 +18,14 @@ interface UpcomingLeadsTableProps {
   leads: UpcomingLead[];
   onConvertToLead: (lead: UpcomingLead) => void | Promise<void>;
   onDeleteLead: (id: number) => void;
+  onAddReminder: (id: number, name: string, email: string, phone: string) => void;
 }
 
 export const UpcomingLeadsTable: React.FC<UpcomingLeadsTableProps> = ({
   leads,
   onConvertToLead,
-  onDeleteLead
+  onDeleteLead,
+  onAddReminder
 }) => {
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -112,6 +115,13 @@ export const UpcomingLeadsTable: React.FC<UpcomingLeadsTableProps> = ({
                     title="WhatsApp"
                   >
                     <MessageCircle className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => onAddReminder(lead.id, lead.name, lead.email, lead.phone)}
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+                    title="Add Reminder"
+                  >
+                    <Bell className="h-3 w-3" />
                   </button>
                   <button
                     onClick={() => onConvertToLead(lead)}

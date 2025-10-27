@@ -51,12 +51,20 @@ const navigationItems: NavigationItem[] = [
 interface SidebarProps {
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
-export default function Sidebar({ isMobileMenuOpen, setIsMobileMenuOpen }: SidebarProps) {
+export default function Sidebar({ isMobileMenuOpen, setIsMobileMenuOpen, onCollapsedChange }: SidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { counters, isLoading } = useSidebarCounters();
+
+  // Notify parent when collapse state changes
+  useEffect(() => {
+    if (onCollapsedChange) {
+      onCollapsedChange(isCollapsed);
+    }
+  }, [isCollapsed, onCollapsedChange]);
 
   // Close mobile menu when route changes
   useEffect(() => {

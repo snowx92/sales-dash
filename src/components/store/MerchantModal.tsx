@@ -6,7 +6,9 @@ import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { SubscriptionService } from '@/lib/api/stores/subscriptions/SubscriptionService'
+import { storesActionsApi } from '@/lib/api/stores/actions/storesActions'
 import { toast } from 'sonner';
+import { Link, Copy } from 'lucide-react';
 
 const subscriptionService = new SubscriptionService();
 
@@ -35,12 +37,14 @@ const PLAN_PRICES = {
 const DURATION_MULTIPLIERS = {
   month: 1,
   quartar: 3,
+  half: 6,
   year: 12
 };
 
 const DURATION_LABELS = {
   month: 'month',
   quartar: 'quartar',
+  half: '6 months',
   year: 'year'
 };
 
@@ -58,7 +62,9 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
   const [duration, setDuration] = useState("")
   const [amount, setAmount] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false)
   const [error, setError] = useState("")
+  const [paymentLink, setPaymentLink] = useState<string | null>(null)
   // Using sonner toast directly
 
   useEffect(() => {
@@ -130,6 +136,70 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
       toast.error(`Failed to create subscription: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGeneratePaymentLink = async () => {
+    console.log("[Payment Link] Starting payment link generation...");
+
+    // Validate inputs
+    if (!planType || !duration || !amount) {
+      toast.error('Validation Error: Please fill in all fields');
+      return;
+    }
+
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      toast.error('Invalid Amount: Please enter a valid amount');
+      return;
+    }
+
+    console.log("[Payment Link] Validation passed:", { planType, duration, numericAmount });
+
+    setIsGeneratingLink(true);
+    setError("");
+    setPaymentLink(null);
+
+    try {
+      // Create payment link request
+      const paymentData = {
+        planId: planType as 'pro' | 'starter' | 'plus',
+        durationId: duration as 'month' | 'quarter' | 'half' | 'year',
+        paidAmount: numericAmount
+      };
+
+      console.log("[Payment Link] Generating link:", paymentData);
+
+      // Call the payment link API
+      const response = await storesActionsApi.generatePaymentLink(storeData.id, paymentData);
+
+      if (response && response.data?.paymentLink) {
+        // Check if the API returned success: false
+        if (response.data.success === false) {
+          throw new Error('Payment link generation failed on payment gateway');
+        }
+
+        setPaymentLink(response.data.paymentLink);
+        toast.success('Payment link generated successfully!');
+        console.log("[Payment Link] Link:", response.data.paymentLink);
+        console.log("[Payment Link] Transaction ID:", response.data.trxId);
+      } else {
+        throw new Error('Failed to generate payment link');
+      }
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(errorMessage);
+      toast.error(`Failed to generate payment link: ${errorMessage}`);
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
+
+  const handleCopyPaymentLink = () => {
+    if (paymentLink) {
+      navigator.clipboard.writeText(paymentLink);
+      toast.success('Payment link copied to clipboard!');
     }
   };
 
@@ -211,8 +281,9 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
               </SelectTrigger>
               <SelectContent className="bg-white">
                 <SelectItem value="month" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Monthly</SelectItem>
-                <SelectItem value="quartar" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Quarterly</SelectItem>
-                <SelectItem value="year" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Yearly</SelectItem>
+                <SelectItem value="quartar" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Quarterly (3 months)</SelectItem>
+                <SelectItem value="half" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Half Year (6 months)</SelectItem>
+                <SelectItem value="year" className="text-gray-900 hover:bg-purple-100 hover:text-purple-900 cursor-pointer transition-colors duration-150">Yearly (12 months)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -238,13 +309,44 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
           </div>
         )}
 
-        <Button 
-          onClick={handleAddSubscription}
-          className="w-full mt-8 bg-gradient-to-r from-purple-600 to-purple-900 hover:from-purple-700 hover:to-purple-800 text-white py-6 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isSubmitting || !planType || !duration || !amount}
-        >
-          {isSubmitting ? 'Processing...' : 'Subscribe Now'}
-        </Button>
+        {/* Payment Link Display */}
+        {paymentLink && (
+          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-green-800">Payment Link Generated</span>
+              <button
+                onClick={handleCopyPaymentLink}
+                className="flex items-center gap-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+              >
+                <Copy className="h-3 w-3" />
+                Copy
+              </button>
+            </div>
+            <div className="text-xs text-green-700 break-all bg-white p-2 rounded border border-green-200">
+              {paymentLink}
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 mt-8">
+          <Button
+            onClick={handleAddSubscription}
+            className="flex-1 bg-gradient-to-r from-purple-600 to-purple-900 hover:from-purple-700 hover:to-purple-800 text-white py-6 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSubmitting || isGeneratingLink || !planType || !duration || !amount}
+          >
+            {isSubmitting ? 'Processing...' : 'Subscribe Now'}
+          </Button>
+
+          <Button
+            onClick={handleGeneratePaymentLink}
+            className="flex-1 bg-gradient-to-r from-blue-600 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white py-6 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            disabled={isSubmitting || isGeneratingLink || !planType || !duration || !amount}
+          >
+            <Link className="h-4 w-4" />
+            {isGeneratingLink ? 'Generating...' : 'Generate Link'}
+          </Button>
+        </div>
       </div>
     </div>
   )

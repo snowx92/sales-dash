@@ -34,6 +34,8 @@ interface LeadsTabsProps {
   toDate: string;
   onFromDateChange: (value: string) => void;
   onToDateChange: (value: string) => void;
+  hideCompletedLeads: boolean;
+  onHideCompletedLeadsChange: (value: boolean) => void;
   // Pagination
   currentPage: number;
   onPageChange: (page: number) => void;
@@ -47,6 +49,7 @@ interface LeadsTabsProps {
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (id: number) => void;
   onAddFeedback: (id: number, leadName: string) => void;
+  onAddReminder: (id: number, name: string, email: string, phone: string) => void;
   onConvertToLead: (lead: UpcomingLead) => void | Promise<void>;
   onDeleteUpcomingLead: (id: number) => void;
   onAddLead: () => void;
@@ -76,13 +79,21 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
   onEditLead,
   onDeleteLead,
   onAddFeedback,
+  onAddReminder,
   onConvertToLead,
   onDeleteUpcomingLead,
-  onAddLead
+  onAddLead,
+  hideCompletedLeads,
+  onHideCompletedLeadsChange
 }) => {
   // Server already applied filters & pagination; just display lists
     // Client-side filtering (server returned bulk set)
     const filteredLeads = leads.filter(lead => {
+      // Hide subscribed and not interested if toggle is enabled
+      if (hideCompletedLeads && (lead.status === 'subscribed' || lead.status === 'not_interested')) {
+        return false;
+      }
+
       const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) || lead.phone.includes(searchTerm) || lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = !statusFilter || lead.status === statusFilter;
       const created = lead.createdAt;
@@ -156,6 +167,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
               leads={paginatedUpcomingLeads}
               onConvertToLead={onConvertToLead}
               onDeleteLead={onDeleteUpcomingLead}
+              onAddReminder={onAddReminder}
             />
             
             {totalUpcomingItems > itemsPerPage && (
@@ -187,6 +199,8 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
           onFromDateChange={onFromDateChange}
           onToDateChange={onToDateChange}
           showStatusFilter={true}
+          hideCompletedLeads={hideCompletedLeads}
+          onHideCompletedLeadsChange={onHideCompletedLeadsChange}
         />
 
         <LeadStats leads={leads} overviewData={overviewData} />
@@ -200,6 +214,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
               onEditLead={onEditLead}
               onDeleteLead={onDeleteLead}
               onAddFeedback={onAddFeedback}
+              onAddReminder={onAddReminder}
             />
             
             {totalItems > itemsPerPage && (
