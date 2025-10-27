@@ -177,9 +177,17 @@ export default function RemindersPage() {
             return;
           }
 
-          const expiredDate = merchant.endedAt?._seconds
-            ? new Date(merchant.endedAt._seconds * 1000)
-            : new Date(merchant.endedAt);
+          // Handle expiredAt which can be string, null, or Firestore timestamp
+          let expiredDate: Date;
+          if (!merchant.expiredAt) {
+            return; // Skip if no expiration date
+          }
+
+          if (typeof merchant.expiredAt === 'object' && '_seconds' in merchant.expiredAt) {
+            expiredDate = new Date(merchant.expiredAt._seconds * 1000);
+          } else {
+            expiredDate = new Date(merchant.expiredAt);
+          }
 
           const daysSince = Math.floor((now.getTime() - expiredDate.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -202,10 +210,10 @@ export default function RemindersPage() {
           newReminders.push({
             id: merchantId,
             type: 'retention',
-            name: merchant.merchantName,
+            name: merchant.storeName || merchant.name,
             phone: merchant.phone,
             email: merchant.email,
-            website: merchant.websiteUrl || '',
+            website: merchant.link || '',
             priority: merchant.priority === 'HIGH' ? 'high' : merchant.priority === 'MEDIUM' ? 'mid' : 'low',
             daysSinceContact: daysSince,
             urgency,
