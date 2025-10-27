@@ -929,7 +929,12 @@ export default function RetentionPage() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleOpenReminderModal(merchant.id, merchant.merchantName, merchant.email, merchant.phone);
+                                  handleOpenReminderModal(
+                                    merchant.id,
+                                    (merchant.storeName || merchant.name),
+                                    merchant.email,
+                                    merchant.phone
+                                  );
                                 }}
                                 className="p-1 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
                                 title="Add Reminder"
