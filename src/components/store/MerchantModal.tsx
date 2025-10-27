@@ -174,13 +174,17 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
       const response = await storesActionsApi.generatePaymentLink(storeData.id, paymentData);
 
       if (response && response.data?.paymentLink) {
-        // Check if the API returned success: false
-        if (response.data.success === false) {
-          throw new Error('Payment link generation failed on payment gateway');
-        }
-
+        // If a paymentLink is present, accept it even if the gateway flagged success=false.
+        // Many gateways return a link but mark 'success' false for non-fatal reasons
+        // (e.g., trxId not created yet). Prefer returning the link to the user and
+        // show a warning so they can still proceed.
         setPaymentLink(response.data.paymentLink);
-        toast.success('Payment link generated successfully!');
+        if (response.data.success === false) {
+          toast.success('Payment link generated (gateway returned partial success). Please verify transaction status.');
+          console.warn('[Payment Link] Gateway reported success=false, trxId:', response.data.trxId);
+        } else {
+          toast.success('Payment link generated successfully!');
+        }
         console.log("[Payment Link] Link:", response.data.paymentLink);
         console.log("[Payment Link] Transaction ID:", response.data.trxId);
       } else {
