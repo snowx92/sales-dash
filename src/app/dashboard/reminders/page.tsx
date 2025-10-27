@@ -168,7 +168,7 @@ export default function RemindersPage() {
 
       // Load retention merchants (wrapped in try-catch to handle errors gracefully)
       try {
-        const retentionResponse = await retentionService.getEndedSubscriptions({ page: 1, limit: 500 });
+        const retentionResponse = await retentionService.getEndedSubscriptions({ pageNo: 1, limit: 500 });
         if (retentionResponse?.items) {
         retentionResponse.items.forEach((merchant: EndedSubscriptionItem) => {
           const merchantId = `retention_${merchant.id}`;
