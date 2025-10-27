@@ -590,7 +590,7 @@ export default function RemindersPage() {
                     <div className="flex gap-2">
                       {reminder.entityPhone && (
                         <button
-                          onClick={() => window.open(buildWhatsAppUrl(reminder.entityPhone, ''), '_blank')}
+                          onClick={() => window.open(buildWhatsAppUrl(reminder.entityPhone!, ''), '_blank')}
                           className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                           title="WhatsApp"
                         >
