@@ -224,6 +224,8 @@ const RetentionExportModal = ({
 
 // TypeScript interfaces for the edit modal
 import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 interface EditMerchantData {
   priority: Priority;
   feedback: string;
@@ -414,6 +416,7 @@ export default function RetentionPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<Priority | undefined>(undefined);
   const [overview, setOverview] = useState<RetentionOverviewData | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | Priority>('all');
 
   // Reminder states
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
@@ -532,6 +535,33 @@ export default function RetentionPage() {
   const handlePriorityFilter = (priority: Priority | undefined) => {
     setSelectedPriority(priority);
     filterByPriority(priority);
+  };
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as 'all' | Priority);
+    if (value === 'all') {
+      handlePriorityFilter(undefined);
+    } else {
+      handlePriorityFilter(value as Priority);
+    }
+  };
+
+  // Filter merchants by active tab
+  const getFilteredMerchants = () => {
+    if (activeTab === 'all') {
+      return merchants;
+    }
+    return merchants.filter(m => m.priority === activeTab);
+  };
+
+  const filteredMerchants = getFilteredMerchants();
+
+  // Calculate counts for each priority tab
+  const priorityCounts = {
+    all: merchants.length,
+    HIGH: merchants.filter(m => m.priority === 'HIGH').length,
+    MEDIUM: merchants.filter(m => m.priority === 'MEDIUM').length,
+    LOW: merchants.filter(m => m.priority === 'LOW').length,
   };
 
   const handleOpenReminderModal = (id: string, name: string, email: string, phone: string) => {
@@ -747,48 +777,110 @@ export default function RetentionPage() {
           </div>
           </div>
 
-          {/* Expired Merchants Table */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            {/* Use table-fixed and smaller paddings so table fits screens; add truncation for long content */}
-            <table className="w-full table-fixed">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Store</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Customer</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Impact</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Expired</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Attempts</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Priority</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {isLoading ? (
-                  // Loading skeleton
-                  [...Array(5)].map((_, index) => (
-                    <tr key={index}>
-                      <td colSpan={7} className="px-6 py-4">
-                        <div className="animate-pulse flex space-x-4">
-                          <div className="rounded-full bg-gray-200 h-8 w-8"></div>
-                          <div className="flex-1 space-y-2 py-1">
-                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : merchants.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
-                      <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No expired plans</h3>
-                      <p className="text-gray-600">Great! All merchants have active subscriptions.</p>
-                    </td>
-                  </tr>
-                ) : (
-                  merchants.map((merchant) => {
+          {/* Priority Tabs */}
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <div className="overflow-x-auto">
+              <TabsList className="inline-flex w-auto min-w-full bg-gray-100 p-1 rounded-xl border border-gray-200">
+                <TabsTrigger
+                  value="all"
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-all whitespace-nowrap
+                    data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+                    data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+                >
+                  <Target className="h-4 w-4" />
+                  All Priorities
+                  <span className="ml-1 px-2 py-0.5 bg-gray-200 text-gray-800 rounded-full text-xs font-medium">
+                    {priorityCounts.all}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="HIGH"
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-all whitespace-nowrap
+                    data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+                    data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  High Priority
+                  <span className="ml-1 px-2 py-0.5 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                    {priorityCounts.HIGH}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="MEDIUM"
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-all whitespace-nowrap
+                    data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+                    data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+                >
+                  <Target className="h-4 w-4" />
+                  Medium Priority
+                  <span className="ml-1 px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                    {priorityCounts.MEDIUM}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="LOW"
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-all whitespace-nowrap
+                    data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+                    data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+                >
+                  <Target className="h-4 w-4" />
+                  Low Priority
+                  <span className="ml-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                    {priorityCounts.LOW}
+                  </span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* Tab Content - All tabs show the same table structure */}
+            {['all', 'HIGH', 'MEDIUM', 'LOW'].map((tabValue) => (
+              <TabsContent key={tabValue} value={tabValue} className="mt-6">
+                {/* Expired Merchants Table */}
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    {/* Use table-fixed and smaller paddings so table fits screens; add truncation for long content */}
+                    <table className="w-full table-fixed">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Store</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Customer</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Impact</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Expired</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Attempts</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Priority</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {isLoading ? (
+                          // Loading skeleton
+                          [...Array(5)].map((_, index) => (
+                            <tr key={index}>
+                              <td colSpan={7} className="px-6 py-4">
+                                <div className="animate-pulse flex space-x-4">
+                                  <div className="rounded-full bg-gray-200 h-8 w-8"></div>
+                                  <div className="flex-1 space-y-2 py-1">
+                                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        ) : filteredMerchants.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="px-6 py-12 text-center">
+                              <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                              <h3 className="text-lg font-medium text-gray-900 mb-2">No expired plans</h3>
+                              <p className="text-gray-600">
+                                {tabValue === 'all'
+                                  ? 'Great! All merchants have active subscriptions.'
+                                  : `No ${tabValue.toLowerCase()} priority merchants found.`}
+                              </p>
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredMerchants.map((merchant) => {
                     const priority = priorities.find(p => p.id === merchant.priority);
                     const isExpanded = expandedRows.has(merchant.id);
                     
@@ -989,24 +1081,29 @@ export default function RetentionPage() {
                     );
                   })
                 )}
-              </tbody>
-            </table>
-          </div>
-          </div>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-          {/* Pagination */}
-          {totalItems > 0 && totalPages > 1 && (
-          <Pagination
-            totalItems={totalItems}
-            itemsPerPage={10} // Using the hook's default limit
-            currentPage={currentPage}
-            onPageChange={goToPage}
-          />
-          )}
+                {/* Pagination */}
+                {totalItems > 0 && totalPages > 1 && (
+                  <div className="mt-6">
+                    <Pagination
+                      totalItems={totalItems}
+                      itemsPerPage={10} // Using the hook's default limit
+                      currentPage={currentPage}
+                      onPageChange={goToPage}
+                    />
+                  </div>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
         </div>
 
         {/* Edit Modal */}
-      {editingMerchant && (
+        {editingMerchant && (
         <EditMerchantModal
           isOpen={isEditModalOpen}
           onClose={() => {

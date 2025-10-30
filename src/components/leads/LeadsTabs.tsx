@@ -117,34 +117,118 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
     const paginatedUpcomingLeads = filteredUpcoming.slice(upcomingStartIndex, upcomingStartIndex + itemsPerPage);
     const hasFilters = !!(searchTerm || statusFilter || fromDate || toDate);
 
+  // Calculate counts for each status tab
+  const statusCounts = {
+    upcoming: filteredUpcoming.length,
+    interested: filteredLeads.filter(l => l.status === 'interested').length,
+    follow_up: filteredLeads.filter(l => l.status === 'follow_up').length,
+    no_answer: filteredLeads.filter(l => l.status === 'no_answer').length,
+    subscribed: filteredLeads.filter(l => l.status === 'subscribed').length,
+    not_interested: filteredLeads.filter(l => l.status === 'not_interested').length,
+  };
+
+  // Filter leads by active tab
+  const getLeadsByTab = () => {
+    switch(activeTab) {
+      case 'upcoming':
+        return [];
+      case 'interested':
+        return filteredLeads.filter(l => l.status === 'interested');
+      case 'follow_up':
+        return filteredLeads.filter(l => l.status === 'follow_up');
+      case 'no_answer':
+        return filteredLeads.filter(l => l.status === 'no_answer');
+      case 'subscribed':
+        return filteredLeads.filter(l => l.status === 'subscribed');
+      case 'not_interested':
+        return filteredLeads.filter(l => l.status === 'not_interested');
+      default:
+        return filteredLeads;
+    }
+  };
+
+  const tabLeads = getLeadsByTab();
+  const tabStartIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedTabLeads = tabLeads.slice(tabStartIndex, tabStartIndex + itemsPerPage);
+
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-      <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-xl border border-gray-200">
-        <TabsTrigger 
-          value="upcoming" 
-          className="flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-all
-            data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
-            data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
-        >
-          <Target className="h-4 w-4" />
-          Upcoming Leads
-          <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-            {totalUpcomingItems}
-          </span>
-        </TabsTrigger>
-        <TabsTrigger 
-          value="leads" 
-          className="flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-all
-            data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
-            data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
-        >
-          <Users className="h-4 w-4" />
-          Leads
-          <span className="ml-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-            {totalItems}
-          </span>
-        </TabsTrigger>
-      </TabsList>
+      <div className="overflow-x-auto">
+        <TabsList className="inline-flex w-auto min-w-full bg-gray-100 p-1 rounded-xl border border-gray-200">
+          <TabsTrigger
+            value="upcoming"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-all whitespace-nowrap
+              data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+              data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+          >
+            <Target className="h-4 w-4" />
+            New
+            <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+              {statusCounts.upcoming}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="interested"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-all whitespace-nowrap
+              data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+              data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+          >
+            <Users className="h-4 w-4" />
+            Interested
+            <span className="ml-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+              {statusCounts.interested}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="follow_up"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-all whitespace-nowrap
+              data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+              data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+          >
+            <Target className="h-4 w-4" />
+            Follow Up
+            <span className="ml-1 px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+              {statusCounts.follow_up}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="no_answer"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-all whitespace-nowrap
+              data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+              data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+          >
+            <Users className="h-4 w-4" />
+            No Answer
+            <span className="ml-1 px-2 py-0.5 bg-orange-100 text-orange-800 rounded-full text-xs font-medium">
+              {statusCounts.no_answer}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="subscribed"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-all whitespace-nowrap
+              data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+              data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+          >
+            <Users className="h-4 w-4" />
+            Subscribed
+            <span className="ml-1 px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+              {statusCounts.subscribed}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="not_interested"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-all whitespace-nowrap
+              data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+              data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+          >
+            <Users className="h-4 w-4" />
+            Not Interested
+            <span className="ml-1 px-2 py-0.5 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+              {statusCounts.not_interested}
+            </span>
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
       {/* Upcoming Leads Tab */}
       <TabsContent value="upcoming" className="space-y-6">
@@ -187,53 +271,54 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
         )}
       </TabsContent>
 
-      {/* Regular Leads Tab */}
-      <TabsContent value="leads" className="space-y-6">
-        <LeadFilters
-          searchTerm={searchTerm}
-          onSearchChange={onSearchChange}
-          statusFilter={statusFilter}
-          onStatusFilterChange={onStatusFilterChange}
-          fromDate={fromDate}
-          toDate={toDate}
-          onFromDateChange={onFromDateChange}
-          onToDateChange={onToDateChange}
-          showStatusFilter={true}
-          hideCompletedLeads={hideCompletedLeads}
-          onHideCompletedLeadsChange={onHideCompletedLeadsChange}
-        />
-
-        <LeadStats leads={leads} overviewData={overviewData} />
-
-    {paginatedLeads.length > 0 ? (
-          <>
-            <LeadsTable
-              leads={paginatedLeads}
-              expandedRows={expandedRows}
-              onToggleRowExpansion={onToggleRowExpansion}
-              onEditLead={onEditLead}
-              onDeleteLead={onDeleteLead}
-              onAddFeedback={onAddFeedback}
-              onAddReminder={onAddReminder}
-            />
-            
-            {totalItems > itemsPerPage && (
-              <Pagination
-                totalItems={totalItems}
-                itemsPerPage={itemsPerPage}
-                currentPage={currentPage}
-                onPageChange={onPageChange}
-              />
-            )}
-          </>
-        ) : (
-          <EmptyState
-            type="leads"
-            hasFilters={hasFilters}
-            onAddLead={onAddLead}
+      {/* Status Tabs Content - Reusable for all status tabs */}
+      {['interested', 'follow_up', 'no_answer', 'subscribed', 'not_interested'].map((status) => (
+        <TabsContent key={status} value={status} className="space-y-6">
+          <LeadFilters
+            searchTerm={searchTerm}
+            onSearchChange={onSearchChange}
+            statusFilter=""
+            onStatusFilterChange={() => {}}
+            fromDate={fromDate}
+            toDate={toDate}
+            onFromDateChange={onFromDateChange}
+            onToDateChange={onToDateChange}
+            showStatusFilter={false}
+            placeholder={`Search ${status.replace('_', ' ')} leads by name, phone, or email...`}
           />
-        )}
-      </TabsContent>
+
+          <LeadStats leads={leads} overviewData={overviewData} />
+
+          {paginatedTabLeads.length > 0 ? (
+            <>
+              <LeadsTable
+                leads={paginatedTabLeads}
+                expandedRows={expandedRows}
+                onToggleRowExpansion={onToggleRowExpansion}
+                onEditLead={onEditLead}
+                onDeleteLead={onDeleteLead}
+                onAddFeedback={onAddFeedback}
+                onAddReminder={onAddReminder}
+              />
+
+              {tabLeads.length > itemsPerPage && (
+                <Pagination
+                  totalItems={tabLeads.length}
+                  itemsPerPage={itemsPerPage}
+                  currentPage={currentPage}
+                  onPageChange={onPageChange}
+                />
+              )}
+            </>
+          ) : (
+            <EmptyState
+              type="leads"
+              hasFilters={hasFilters}
+              onAddLead={onAddLead}
+            />
+          )}
+        </TabsContent>
+      ))}
     </Tabs>
   );
 };
