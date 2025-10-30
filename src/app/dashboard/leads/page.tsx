@@ -46,6 +46,8 @@ export default function LeadsPage() {
   const [feedbackLeadName, setFeedbackLeadName] = useState<string>('');
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [convertingLead, setConvertingLead] = useState<UpcomingLead | null>(null);
+  const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
   const [leadsOverview, setLeadsOverview] = useState<{
     total: number;
     totalSubscribedLeads: number;
@@ -431,18 +433,31 @@ export default function LeadsPage() {
   };
 
   const handleConvertToLead = async (upcomingLead: UpcomingLead) => {
+    // Open modal to get feedback for conversion
+    setConvertingLead(upcomingLead);
+    setIsConvertModalOpen(true);
+  };
+
+  const handleConvertWithFeedback = async (feedback: string) => {
+    if (!convertingLead) return;
+
     try {
       setLoading(true);
       setError(null);
 
       // Get API ID for the upcoming lead
-      const apiId = getApiId(upcomingLead.id);
+      const apiId = getApiId(convertingLead.id);
       if (!apiId) {
         throw new Error('API ID not found for this upcoming lead');
       }
 
-      // Update status immediately to FOLLOW_UP so it moves to regular leads list
+      // Update status to FOLLOW_UP
       await leadsService.updateLead(apiId, { status: 'FOLLOW_UP' });
+
+      // Add the initial feedback if provided
+      if (feedback.trim()) {
+        await leadsService.addFeedback(apiId, feedback);
+      }
 
       // Reload leads so we get the full mapped lead (with timestamps & history)
       await loadLeads();
@@ -452,7 +467,7 @@ export default function LeadsPage() {
       // Slight delay may be needed if state not yet updated; use functional set after next tick
       setTimeout(() => {
         setLeads(current => {
-          const leadMatch = current.find(l => l.id === upcomingLead.id);
+          const leadMatch = current.find(l => l.id === convertingLead.id);
           if (leadMatch) {
             setEditingLead(leadMatch);
             setIsEditModalOpen(true);
@@ -462,13 +477,22 @@ export default function LeadsPage() {
       }, 0);
 
       // Remove from upcoming leads locally (will already be excluded on next render after reload)
-      setUpcomingLeads(prev => prev.filter(l => l.id !== upcomingLead.id));
+      setUpcomingLeads(prev => prev.filter(l => l.id !== convertingLead.id));
+
+      // Clear converting state
+      setConvertingLead(null);
+      setIsConvertModalOpen(false);
     } catch (err) {
       console.error('Error converting upcoming lead:', err);
       setError('Failed to convert lead');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseConvertModal = () => {
+    setIsConvertModalOpen(false);
+    setConvertingLead(null);
   };
 
   const toggleRowExpansion = (leadId: number) => {
@@ -620,6 +644,14 @@ export default function LeadsPage() {
           onClose={handleCloseFeedbackModal}
           onAdd={handleSubmitFeedback}
           leadName={feedbackLeadName}
+          loading={loading}
+        />
+
+        <SimpleFeedbackModal
+          isOpen={isConvertModalOpen}
+          onClose={handleCloseConvertModal}
+          onAdd={handleConvertWithFeedback}
+          leadName={convertingLead ? `Convert: ${convertingLead.name}` : ''}
           loading={loading}
         />
 

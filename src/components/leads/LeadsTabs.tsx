@@ -94,7 +94,10 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
         return false;
       }
 
-      const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) || lead.phone.includes(searchTerm) || lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = lead.name.toLowerCase().includes(searchLower) ||
+                           String(lead.phone || '').includes(searchTerm) ||
+                           lead.email?.toLowerCase().includes(searchLower);
       const matchesStatus = !statusFilter || lead.status === statusFilter;
       const created = lead.createdAt;
       const matchesFrom = !fromDate || created >= fromDate;
@@ -102,7 +105,10 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
       return matchesSearch && matchesStatus && matchesFrom && matchesTo;
     });
     const filteredUpcoming = upcomingLeads.filter(lead => {
-      const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) || lead.phone.includes(searchTerm) || lead.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = lead.name.toLowerCase().includes(searchLower) ||
+                           String(lead.phone || '').includes(searchTerm) ||
+                           lead.email?.toLowerCase().includes(searchLower);
       const created = lead.createdAt;
       const matchesFrom = !fromDate || created >= fromDate;
       const matchesTo = !toDate || created <= toDate;
