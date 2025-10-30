@@ -23,6 +23,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
     let unsubscribe: (() => void) | undefined;
     let refreshInterval: number | undefined;
+    let activityTimeout: number | undefined;
+    let lastActivity = Date.now();
+
+    // Track user activity to prevent logout during active sessions
+    const updateActivity = () => {
+      lastActivity = Date.now();
+    };
 
     // Handle Firebase auth state changes
     const handleAuthStateChange = async (user: User | null) => {
@@ -99,10 +106,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Proactively refresh token periodically
+    // Proactively refresh token periodically based on user activity
     const startRefreshLoop = () => {
-      // 14 minute interval (Firebase tokens ~1hr; keep backend session fresh)
-      const INTERVAL_MS = 14 * 60 * 1000;
+      // Reduced to 10 minute interval for more frequent checks during active sessions
+      const INTERVAL_MS = 10 * 60 * 1000;
+      // Check if user has been inactive for 5 minutes before skipping refresh
+      const INACTIVE_THRESHOLD = 5 * 60 * 1000;
+
       if (refreshInterval) window.clearInterval(refreshInterval);
       refreshInterval = window.setInterval(async () => {
         try {
@@ -110,6 +120,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
           const user = auth.currentUser;
           if (!user) {
             console.log("⏭️ AuthGuard: Skipping token refresh - no Firebase user");
+            return;
+          }
+
+          // Check if user has been inactive
+          const inactiveTime = Date.now() - lastActivity;
+          if (inactiveTime > INACTIVE_THRESHOLD) {
+            console.log("⏭️ AuthGuard: User inactive, skipping token refresh");
             return;
           }
 
@@ -197,6 +214,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
     initialize();
 
+    // Add activity listeners to track user interaction
+    if (typeof window !== 'undefined') {
+      window.addEventListener('mousemove', updateActivity);
+      window.addEventListener('keydown', updateActivity);
+      window.addEventListener('click', updateActivity);
+      window.addEventListener('scroll', updateActivity);
+    }
+
     // Cleanup
     return () => {
       if (unsubscribe) {
@@ -204,6 +229,16 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       }
       if (refreshInterval) {
         window.clearInterval(refreshInterval);
+      }
+      if (activityTimeout) {
+        window.clearTimeout(activityTimeout);
+      }
+      // Remove activity listeners
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('mousemove', updateActivity);
+        window.removeEventListener('keydown', updateActivity);
+        window.removeEventListener('click', updateActivity);
+        window.removeEventListener('scroll', updateActivity);
       }
     };
   }, [router, sessionManager, isMounted]);

@@ -84,7 +84,7 @@ export default function LeadsPage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Prepare filter parameters
       const params: {
         page: number;
@@ -106,7 +106,7 @@ export default function LeadsPage() {
         // Map component status to API status
         const statusApiMap: Record<string, LeadStatus> = {
           'interested': 'INTERSTED',
-          'subscribed': 'SUBSCRIBED', 
+          'subscribed': 'SUBSCRIBED',
           'not_interested': 'NOT_INTERSTED',
           'no_answer': 'NO_ANSWER',
           'follow_up': 'FOLLOW_UP',
@@ -117,18 +117,18 @@ export default function LeadsPage() {
 
       if (fromDate) params.from = fromDate;
       if (toDate) params.to = toDate;
-      
+
   const response = await leadsService.getLeads(params);
-      
+
   if (response?.items) {
         // Separate leads by status - NEW status goes to upcoming, others to leads
         const upcomingApiLeads = response.items.filter((lead: ApiLead) => lead.status === 'NEW');
         const regularApiLeads = response.items.filter((lead: ApiLead) => lead.status !== 'NEW');
-        
+
         // Convert to component format
         const convertedLeads = regularApiLeads.map(mapApiLeadToLead);
         const convertedUpcomingLeads = upcomingApiLeads.map(mapApiLeadToUpcomingLead);
-        
+
         setLeads(convertedLeads);
         setUpcomingLeads(convertedUpcomingLeads);
     // Set counts based on fetched arrays
@@ -142,21 +142,18 @@ export default function LeadsPage() {
     }
   }, [debouncedSearch, statusFilter, fromDate, toDate]);
 
-  // Load leads on component mount and when filters change
-  useEffect(() => {
-    loadLeads();
-    loadLeadsOverview(); // Load overview data
-  }, [loadLeads, loadLeadsOverview]);
-
-  // Reload when filters change
+  // Debounce search term
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(searchTerm), 400);
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
+  // Load leads when filters change (only one effect needed)
   useEffect(() => {
     loadLeads();
-  }, [debouncedSearch, statusFilter, fromDate, toDate, loadLeads]);
+    loadLeadsOverview(); // Load overview data
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, statusFilter, fromDate, toDate]); // Only depend on filter values, not the functions
 
   const handleAddLead = async (newLead: Lead) => {
     try {
