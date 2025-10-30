@@ -64,7 +64,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
   searchTerm,
   onSearchChange,
   statusFilter,
-  onStatusFilterChange,
+
   fromDate,
   toDate,
   onFromDateChange,
@@ -84,7 +84,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
   onDeleteUpcomingLead,
   onAddLead,
   hideCompletedLeads,
-  onHideCompletedLeadsChange
+
 }) => {
   // Server already applied filters & pagination; just display lists
     // Client-side filtering (server returned bulk set)
@@ -109,11 +109,8 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
       return matchesSearch && matchesFrom && matchesTo;
     });
 
-    const totalItems = filteredLeads.length;
     const totalUpcomingItems = filteredUpcoming.length;
-    const startIndex = (currentPage - 1) * itemsPerPage;
     const upcomingStartIndex = (upcomingCurrentPage - 1) * itemsPerPage;
-    const paginatedLeads = filteredLeads.slice(startIndex, startIndex + itemsPerPage);
     const paginatedUpcomingLeads = filteredUpcoming.slice(upcomingStartIndex, upcomingStartIndex + itemsPerPage);
     const hasFilters = !!(searchTerm || statusFilter || fromDate || toDate);
 
