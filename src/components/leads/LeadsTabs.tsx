@@ -64,8 +64,6 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
   overviewData,
   searchTerm,
   onSearchChange,
-  statusFilter,
-
   fromDate,
   toDate,
   onFromDateChange,
@@ -86,7 +84,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
   onDeleteUpcomingLead,
   onAddLead,
   hideCompletedLeads,
-  onHideCompletedLeadsChange
+
 }) => {
   // Server already applied filters via API (searchQuery, status, from, to)
     // Only apply client-side filtering for hideCompletedLeads toggle
