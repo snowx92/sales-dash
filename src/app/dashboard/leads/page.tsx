@@ -22,6 +22,7 @@ import WhatsAppTemplates from "@/components/dashboard/WhatsAppTemplates";
 import AddReminderModal from "@/components/modals/AddReminderModal";
 import { reminderStorage } from "@/lib/utils/reminderStorage";
 import type { MyReminderFormData } from "@/lib/types/reminder";
+import { toast } from "sonner";
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -419,6 +420,39 @@ export default function LeadsPage() {
     }
   };
 
+  const handleAssignStore = async (id: number, leadName: string) => {
+    try {
+      setLoading(true);
+
+      // Get the original API ID
+      const apiId = getApiId(id);
+      if (!apiId) {
+        toast.error('API ID not found for this lead');
+        throw new Error('API ID not found for this lead');
+      }
+
+      console.log(`🏪 Assigning store for lead: ${leadName} (ID: ${apiId})`);
+      const response = await leadsService.assignStore(apiId);
+
+      if (response?.success) {
+        toast.success(response.message || `Store assigned successfully for ${leadName}`);
+        console.log('✅ Store assigned successfully');
+        // Reload leads to get updated data
+        await loadLeads();
+        await loadLeadsOverview();
+      } else {
+        toast.error(response?.message || 'Failed to assign store');
+        console.error('❌ Failed to assign store - No success response');
+      }
+    } catch (err) {
+      console.error('❌ Error assigning store:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to assign store';
+      toast.error(`Error: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBulkUploadSuccess = async () => {
     // Reload leads after successful bulk upload
     await loadLeads();
@@ -614,6 +648,7 @@ export default function LeadsPage() {
             onDeleteLead={handleDeleteLead}
             onAddFeedback={handleOpenFeedbackModal}
             onAddReminder={handleOpenReminderModal}
+            onAssignStore={handleAssignStore}
             onConvertToLead={handleConvertToLead}
             onDeleteUpcomingLead={handleDeleteUpcomingLead}
             onAddLead={() => setIsAddModalOpen(true)}

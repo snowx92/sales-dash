@@ -50,6 +50,7 @@ interface LeadsTabsProps {
   onDeleteLead: (id: number) => void;
   onAddFeedback: (id: number, leadName: string) => void;
   onAddReminder: (id: number, name: string, email: string, phone: string) => void;
+  onAssignStore?: (id: number, leadName: string) => void;
   onConvertToLead: (lead: UpcomingLead) => void | Promise<void>;
   onDeleteUpcomingLead: (id: number) => void;
   onAddLead: () => void;
@@ -80,45 +81,30 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
   onDeleteLead,
   onAddFeedback,
   onAddReminder,
+  onAssignStore,
   onConvertToLead,
   onDeleteUpcomingLead,
   onAddLead,
   hideCompletedLeads,
-
+  onHideCompletedLeadsChange
 }) => {
-  // Server already applied filters & pagination; just display lists
-    // Client-side filtering (server returned bulk set)
+  // Server already applied filters via API (searchQuery, status, from, to)
+    // Only apply client-side filtering for hideCompletedLeads toggle
     const filteredLeads = leads.filter(lead => {
       // Hide subscribed and not interested if toggle is enabled
       if (hideCompletedLeads && (lead.status === 'subscribed' || lead.status === 'not_interested')) {
         return false;
       }
+      return true;
+    });
 
-      const searchLower = searchTerm.toLowerCase();
-      const matchesSearch = lead.name.toLowerCase().includes(searchLower) ||
-                           String(lead.phone || '').includes(searchTerm) ||
-                           lead.email?.toLowerCase().includes(searchLower);
-      const matchesStatus = !statusFilter || lead.status === statusFilter;
-      const created = lead.createdAt;
-      const matchesFrom = !fromDate || created >= fromDate;
-      const matchesTo = !toDate || created <= toDate;
-      return matchesSearch && matchesStatus && matchesFrom && matchesTo;
-    });
-    const filteredUpcoming = upcomingLeads.filter(lead => {
-      const searchLower = searchTerm.toLowerCase();
-      const matchesSearch = lead.name.toLowerCase().includes(searchLower) ||
-                           String(lead.phone || '').includes(searchTerm) ||
-                           lead.email?.toLowerCase().includes(searchLower);
-      const created = lead.createdAt;
-      const matchesFrom = !fromDate || created >= fromDate;
-      const matchesTo = !toDate || created <= toDate;
-      return matchesSearch && matchesFrom && matchesTo;
-    });
+    // Upcoming leads - no client-side filtering needed, server handles searchQuery
+    const filteredUpcoming = upcomingLeads;
 
     const totalUpcomingItems = filteredUpcoming.length;
     const upcomingStartIndex = (upcomingCurrentPage - 1) * itemsPerPage;
     const paginatedUpcomingLeads = filteredUpcoming.slice(upcomingStartIndex, upcomingStartIndex + itemsPerPage);
-    const hasFilters = !!(searchTerm || statusFilter || fromDate || toDate);
+    const hasFilters = !!(searchTerm || fromDate || toDate); // statusFilter removed - now using tabs
 
   // Calculate counts for each status tab
   const statusCounts = {
@@ -255,6 +241,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
               onConvertToLead={onConvertToLead}
               onDeleteLead={onDeleteUpcomingLead}
               onAddReminder={onAddReminder}
+              onAssignStore={onAssignStore}
             />
             
             {totalUpcomingItems > itemsPerPage && (
@@ -302,6 +289,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
                 onDeleteLead={onDeleteLead}
                 onAddFeedback={onAddFeedback}
                 onAddReminder={onAddReminder}
+                onAssignStore={onAssignStore}
               />
 
               {tabLeads.length > itemsPerPage && (

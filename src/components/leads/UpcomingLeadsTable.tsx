@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
   Phone,
@@ -8,7 +9,9 @@ import {
   ArrowRight,
   Trash2,
   MessageCircle,
-  Bell
+  Bell,
+  Store,
+  MoreVertical
 } from "lucide-react";
 import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
 import { formatPhoneForDisplay } from '@/lib/utils/phone';
@@ -19,14 +22,26 @@ interface UpcomingLeadsTableProps {
   onConvertToLead: (lead: UpcomingLead) => void | Promise<void>;
   onDeleteLead: (id: number) => void;
   onAddReminder: (id: number, name: string, email: string, phone: string) => void;
+  onAssignStore?: (id: number, leadName: string) => void;
 }
 
 export const UpcomingLeadsTable: React.FC<UpcomingLeadsTableProps> = ({
   leads,
   onConvertToLead,
   onDeleteLead,
-  onAddReminder
+  onAddReminder,
+  onAssignStore
 }) => {
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+
+  const toggleMenu = (leadId: number) => {
+    setOpenMenuId(openMenuId === leadId ? null : leadId);
+  };
+
+  const closeMenu = () => {
+    setOpenMenuId(null);
+  };
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
@@ -98,44 +113,92 @@ export const UpcomingLeadsTable: React.FC<UpcomingLeadsTableProps> = ({
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                   {new Date(lead.createdAt).toLocaleDateString()}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium relative">
                   <button
-                    onClick={() => window.open(`tel:${lead.phone}`, '_self')}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                    title="Call"
+                    onClick={() => toggleMenu(lead.id)}
+                    className="text-gray-600 hover:text-gray-900 transition-colors p-2 hover:bg-gray-100 rounded-md"
+                    title="Actions"
                   >
-                    <Phone className="h-3 w-3" />
+                    <MoreVertical className="h-4 w-4" />
                   </button>
-                  <button
-                    onClick={() => {
-                      const url = buildWhatsAppUrl(lead.phone, 'Hello');
-                      window.open(url, '_blank');
-                    }}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                    title="WhatsApp"
-                  >
-                    <MessageCircle className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => onAddReminder(lead.id, lead.name, lead.email, lead.phone)}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
-                    title="Add Reminder"
-                  >
-                    <Bell className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => onConvertToLead(lead)}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  >
-                    <ArrowRight className="h-3 w-3" />
-                    Convert
-                  </button>
-                  <button
-                    onClick={() => onDeleteLead(lead.id)}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+
+                  {/* Dropdown Menu */}
+                  <AnimatePresence>
+                    {openMenuId === lead.id && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.1 }}
+                        className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50"
+                      >
+                        <button
+                          onClick={() => {
+                            window.open(`tel:${lead.phone}`, '_self');
+                            closeMenu();
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+                        >
+                          <Phone className="h-4 w-4 text-green-600" />
+                          Call
+                        </button>
+                        <button
+                          onClick={() => {
+                            const url = buildWhatsAppUrl(lead.phone, 'Hello');
+                            window.open(url, '_blank');
+                            closeMenu();
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+                        >
+                          <MessageCircle className="h-4 w-4 text-green-600" />
+                          WhatsApp
+                        </button>
+                        <button
+                          onClick={() => {
+                            onAddReminder(lead.id, lead.name, lead.email, lead.phone);
+                            closeMenu();
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+                        >
+                          <Bell className="h-4 w-4 text-orange-600" />
+                          Add Reminder
+                        </button>
+                        {onAssignStore && (
+                          <button
+                            onClick={() => {
+                              onAssignStore(lead.id, lead.name);
+                              closeMenu();
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+                          >
+                            <Store className="h-4 w-4 text-indigo-600" />
+                            Assign Store
+                          </button>
+                        )}
+                        <div className="border-t border-gray-200 my-1"></div>
+                        <button
+                          onClick={() => {
+                            onConvertToLead(lead);
+                            closeMenu();
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 flex items-center gap-3 text-blue-600"
+                        >
+                          <ArrowRight className="h-4 w-4" />
+                          Convert to Lead
+                        </button>
+                        <button
+                          onClick={() => {
+                            onDeleteLead(lead.id);
+                            closeMenu();
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-50 flex items-center gap-3 text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete Lead
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </td>
               </tr>
             ))}
