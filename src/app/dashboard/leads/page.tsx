@@ -29,15 +29,10 @@ export default function LeadsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
-  const [currentPage, setCurrentPage] = useState(1); // regular leads page
-  const [upcomingCurrentPage, setUpcomingCurrentPage] = useState(1); // upcoming leads page
+  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
-  const [activeTab, setActiveTab] = useState('upcoming');
+  const [activeTab, setActiveTab] = useState('new');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
@@ -45,13 +40,6 @@ export default function LeadsPage() {
   const [feedbackLeadName, setFeedbackLeadName] = useState<string>('');
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [leadsOverview, setLeadsOverview] = useState<{
-    total: number;
-    totalSubscribedLeads: number;
-    totalInterestedLeads: number;
-    totalFollowUpLeads: number;
-    totalNotInterestedLeads: number;
-  } | null>(null);
 
   // Reminder states
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
@@ -60,30 +48,11 @@ export default function LeadsPage() {
   const [reminderLeadEmail, setReminderLeadEmail] = useState<string>('');
   const [reminderLeadPhone, setReminderLeadPhone] = useState<string>('');
 
-  // Filter state to hide subscribed/not interested leads
-  const [hideCompletedLeads, setHideCompletedLeads] = useState(false);
-
-  const loadLeadsOverview = useCallback(async () => {
-    try {
-      console.log("📊 Loading leads overview...");
-      const overview = await leadsService.getLeadsOverview();
-      if (overview) {
-        setLeadsOverview(overview);
-        console.log("📊 Leads overview loaded:", overview);
-      }
-    } catch (err) {
-      console.error('Error loading leads overview:', err);
-      // Don't set error state for overview failure, it's not critical
-    }
-  }, []);
-
-  // Client-side pagination counts derived in component; keep placeholders for future server usage if needed
-
   const loadLeads = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Prepare filter parameters
       const params: {
         page: number;
@@ -93,28 +62,21 @@ export default function LeadsPage() {
         from?: string;
         to?: string;
       } = {
-        page: 1, // fetch first page only
-        limit: 500 // large batch for client-side pagination
+        page: 1,
+        limit: 500
       };
 
-      if (debouncedSearch) {
-        params.searchQuery = debouncedSearch;
-      }
+      const response = await leadsService.getLeads(params);
 
-      if (fromDate) params.from = fromDate;
-      if (toDate) params.to = toDate;
-      
-  const response = await leadsService.getLeads(params);
-      
   if (response?.items) {
         // Separate leads by status - NEW status goes to upcoming, others to leads
         const upcomingApiLeads = response.items.filter((lead: ApiLead) => lead.status === 'NEW');
         const regularApiLeads = response.items.filter((lead: ApiLead) => lead.status !== 'NEW');
-        
+
         // Convert to component format
         const convertedLeads = regularApiLeads.map(mapApiLeadToLead);
         const convertedUpcomingLeads = upcomingApiLeads.map(mapApiLeadToUpcomingLead);
-        
+
         setLeads(convertedLeads);
         setUpcomingLeads(convertedUpcomingLeads);
     // Set counts based on fetched arrays
@@ -126,23 +88,12 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, fromDate, toDate]);
+  }, []);
 
-  // Load leads on component mount and when filters change
+  // Load leads on mount
   useEffect(() => {
     loadLeads();
-    loadLeadsOverview(); // Load overview data
-  }, [loadLeads, loadLeadsOverview]);
-
-  // Reload when filters change
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedSearch(searchTerm), 400);
-    return () => clearTimeout(handler);
-  }, [searchTerm]);
-
-  useEffect(() => {
-    loadLeads();
-  }, [debouncedSearch, fromDate, toDate, loadLeads]);
+  }, [loadLeads]);
 
   const handleAddLead = async (newLead: Lead) => {
     try {
@@ -180,9 +131,8 @@ export default function LeadsPage() {
       };
       
       await leadsService.createLead(createRequest);
-      await loadLeads(); // Reload all leads after creating
-      await loadLeadsOverview(); // Reload overview after creating
-      setIsAddModalOpen(false); // Close the modal on success
+      await loadLeads();
+      setIsAddModalOpen(false);
     } catch (err) {
       console.error('Error creating lead:', err);
       setError('Failed to create lead');
@@ -258,9 +208,6 @@ export default function LeadsPage() {
       setIsEditModalOpen(false);
       setEditingLead(null);
       
-      // Reload overview after updating
-      await loadLeadsOverview();
-      
     } catch (err) {
       console.error('Error updating lead:', err);
       setError('Failed to update lead');
@@ -289,9 +236,6 @@ export default function LeadsPage() {
       // Update local state
       setLeads(prev => prev.filter(lead => lead.id !== id));
       
-      // Reload overview after deleting
-      await loadLeadsOverview();
-      
     } catch (err) {
       console.error('Error deleting lead:', err);
       setError('Failed to delete lead');
@@ -300,16 +244,7 @@ export default function LeadsPage() {
     }
   };
 
-  const handleEditLead = (lead: Lead) => {
-    setEditingLead(lead);
-    setIsEditModalOpen(true);
-  };
-
-  const handleDeleteUpcomingLead = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this upcoming lead?')) {
-      return;
-    }
-
+  const handleMarkAsJunk = async (id: number) => {
     try {
       setLoading(true);
       setError(null);
@@ -320,20 +255,22 @@ export default function LeadsPage() {
         throw new Error('API ID not found for this lead');
       }
       
-      await leadsService.deleteLead(apiId);
+      await leadsService.updateLead(apiId, { status: 'JUNK' });
       
-      // Update local state
-      setUpcomingLeads(prev => prev.filter(lead => lead.id !== id));
-      
-      // Reload overview after deleting
-      await loadLeadsOverview();
+      // Reload leads to get updated status
+      await loadLeads();
       
     } catch (err) {
-      console.error('Error deleting upcoming lead:', err);
-      setError('Failed to delete upcoming lead');
+      console.error('Error marking lead as junk:', err);
+      setError('Failed to mark lead as junk');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditLead = (lead: Lead) => {
+    setEditingLead(lead);
+    setIsEditModalOpen(true);
   };
 
   const handleAddFeedback = async (id: number, feedback: string) => {
@@ -351,9 +288,6 @@ export default function LeadsPage() {
       
       // Reload leads to get updated feedback
       await loadLeads();
-      
-      // Reload overview after adding feedback
-      await loadLeadsOverview();
       
     } catch (err) {
       console.error('Error adding feedback:', err);
@@ -408,83 +342,13 @@ export default function LeadsPage() {
     }
   };
 
-  const handleMarkAsJunk = async (id: number) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Get the original API ID
-      const apiId = getApiId(id);
-      if (!apiId) {
-        throw new Error('API ID not found for this lead');
-      }
-
-      // Update lead status to junk
-      await leadsService.updateLead(apiId, { status: 'JUNK' });
-
-      // Reload leads to get updated status
-      await loadLeads();
-      await loadLeadsOverview();
-
-    } catch (err) {
-      console.error('Error marking lead as junk:', err);
-      setError('Failed to mark lead as junk');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleBulkUploadSuccess = async () => {
-    // Reload leads after successful bulk upload
     await loadLeads();
-    // Reload overview after bulk upload
-    await loadLeadsOverview();
   };
 
   const handleSubmitFeedback = async (feedback: string) => {
     if (feedbackLeadId) {
       await handleAddFeedback(feedbackLeadId, feedback);
-    }
-  };
-
-  const handleConvertToLead = async (upcomingLead: UpcomingLead) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Get API ID for the upcoming lead
-      const apiId = getApiId(upcomingLead.id);
-      if (!apiId) {
-        throw new Error('API ID not found for this upcoming lead');
-      }
-
-      // Update status immediately to FOLLOW_UP so it moves to regular leads list
-      await leadsService.updateLead(apiId, { status: 'FOLLOW_UP' });
-
-      // Reload leads so we get the full mapped lead (with timestamps & history)
-      await loadLeads();
-      await loadLeadsOverview();
-
-      // Find the freshly loaded lead in the leads array (after reload)
-      // Slight delay may be needed if state not yet updated; use functional set after next tick
-      setTimeout(() => {
-        setLeads(current => {
-          const leadMatch = current.find(l => l.id === upcomingLead.id);
-          if (leadMatch) {
-            setEditingLead(leadMatch);
-            setIsEditModalOpen(true);
-          }
-          return current;
-        });
-      }, 0);
-
-      // Remove from upcoming leads locally (will already be excluded on next render after reload)
-      setUpcomingLeads(prev => prev.filter(l => l.id !== upcomingLead.id));
-    } catch (err) {
-      console.error('Error converting upcoming lead:', err);
-      setError('Failed to convert lead');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -499,12 +363,6 @@ export default function LeadsPage() {
       return newSet;
     });
   };
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-    setUpcomingCurrentPage(1);
-  }, [searchTerm, fromDate, toDate]);
 
   return (
     <>
@@ -582,22 +440,11 @@ export default function LeadsPage() {
           /* Tabs */
           <LeadsTabs
             activeTab={activeTab}
-            onTabChange={(tab) => { setActiveTab(tab); /* reset pages on tab change */ if(tab==='leads'){setCurrentPage(1);} else {setUpcomingCurrentPage(1);} }}
+            onTabChange={(tab) => { setActiveTab(tab); setCurrentPage(1); }}
             leads={leads}
             upcomingLeads={upcomingLeads}
-            overviewData={leadsOverview}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            fromDate={fromDate}
-            toDate={toDate}
-            onFromDateChange={(v) => { setFromDate(v); setCurrentPage(1); setUpcomingCurrentPage(1); }}
-            onToDateChange={(v) => { setToDate(v); setCurrentPage(1); setUpcomingCurrentPage(1); }}
-            hideCompletedLeads={hideCompletedLeads}
-            onHideCompletedLeadsChange={setHideCompletedLeads}
             currentPage={currentPage}
             onPageChange={setCurrentPage}
-            upcomingCurrentPage={upcomingCurrentPage}
-            onUpcomingPageChange={setUpcomingCurrentPage}
             itemsPerPage={itemsPerPage}
             expandedRows={expandedRows}
             onToggleRowExpansion={toggleRowExpansion}
@@ -606,8 +453,6 @@ export default function LeadsPage() {
             onAddFeedback={handleOpenFeedbackModal}
             onAddReminder={handleOpenReminderModal}
             onMarkAsJunk={handleMarkAsJunk}
-            onConvertToLead={handleConvertToLead}
-            onDeleteUpcomingLead={handleDeleteUpcomingLead}
             onAddLead={() => setIsAddModalOpen(true)}
           />
         )}

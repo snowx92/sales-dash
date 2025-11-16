@@ -73,10 +73,10 @@ export default function RemindersPage() {
     const reminders = reminderStorage.getAll();
     setMyReminders(reminders);
     setFilteredMyReminders(reminders);
-  }, []);
+  }, []); // No dependencies - stable function
 
   // Load Smart Reminders (existing logic)
-  const loadSmartReminders = useCallback(async () => {
+  const loadSmartReminders = useCallback(async (currentDismissedIds: Set<string>) => {
     setLoading(true);
     try {
       const now = new Date();
@@ -88,7 +88,7 @@ export default function RemindersPage() {
         leadsResponse.items.forEach((apiLead: ApiLead) => {
           const leadId = String(apiLead.id);
 
-          if (dismissedIds.has(leadId) || apiLead.status === 'NOT_INTERSTED' || apiLead.status === 'SUBSCRIBED') {
+          if (currentDismissedIds.has(leadId) || apiLead.status === 'NOT_INTERSTED' || apiLead.status === 'SUBSCRIBED') {
             return;
           }
 
@@ -173,7 +173,7 @@ export default function RemindersPage() {
         retentionResponse.items.forEach((merchant: EndedSubscriptionItem) => {
           const merchantId = `retention_${merchant.id}`;
 
-          if (dismissedIds.has(merchantId)) {
+          if (currentDismissedIds.has(merchantId)) {
             return;
           }
 
@@ -245,18 +245,19 @@ export default function RemindersPage() {
     } finally {
       setLoading(false);
     }
-  }, [dismissedIds]);
+  }, []); // No dependencies - pass dismissedIds as parameter
 
   useEffect(() => {
-    loadMyReminders();
-    loadSmartReminders();
-
-    // Load dismissed IDs from localStorage
+    // Load dismissed IDs from localStorage first
     const stored = localStorage.getItem('dismissedReminders');
-    if (stored) {
-      setDismissedIds(new Set(JSON.parse(stored)));
-    }
-  }, [loadMyReminders, loadSmartReminders]);
+    const initialDismissedIds = stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
+    setDismissedIds(initialDismissedIds);
+
+    // Load reminders once on mount
+    loadMyReminders();
+    loadSmartReminders(initialDismissedIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount - loadMyReminders and loadSmartReminders are stable
 
   // Filter My Reminders
   useEffect(() => {
@@ -322,6 +323,8 @@ export default function RemindersPage() {
     setDismissedIds(newDismissed);
     localStorage.setItem('dismissedReminders', JSON.stringify([...newDismissed]));
 
+    // Remove from both lists without triggering a full reload
+    setSmartReminders(prev => prev.filter(r => r.id !== id));
     setFilteredSmartReminders(prev => prev.filter(r => r.id !== id));
     toast.success('Reminder dismissed');
   };

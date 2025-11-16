@@ -151,6 +151,27 @@ export class LeadsService extends ApiService {
   }
 
   /**
+   * Assign a lead's store to a sales user
+   */
+  async assignStore(leadId: string): Promise<{ success: boolean; message: string } | null> {
+    try {
+      console.log("🏪 LeadsService: Assigning store for lead:", leadId);
+
+      const response = await this.post<{ success: boolean; message: string }>(
+        `/leads/single/${leadId}/assign-store/`,
+        {}
+      );
+
+      console.log("🏪 LeadsService: Assign store response:", response);
+
+      return response;
+    } catch (error) {
+      console.error("🚨 LeadsService: Error assigning store:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Get leads overview/statistics
    */
   async getLeadsOverview(): Promise<LeadsOverviewResponse["data"] | null> {

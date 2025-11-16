@@ -42,6 +42,7 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
   onAddReminder,
   onMarkAsJunk
 }) => {
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div>
@@ -246,7 +247,7 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                       <td colSpan={7} className="px-6 py-4 bg-gray-50">
                         <div className="space-y-3">
                           <h4 className="font-medium text-gray-900">Previous Feedback</h4>
-                          {lead.feedbackHistory.length > 0 ? (
+                          {lead.feedbackHistory && lead.feedbackHistory.length > 0 ? (
                             <div className="space-y-2">
                               {lead.feedbackHistory.map((feedback) => (
                                 <div key={feedback.id} className="bg-white p-3 rounded-lg border border-gray-200">

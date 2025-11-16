@@ -227,6 +227,7 @@ const RetentionExportModal = ({
 
 // TypeScript interfaces for the edit modal
 import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
+
 interface EditMerchantData {
   priority: Priority;
   feedback: string;
@@ -551,9 +552,6 @@ export default function RetentionPage() {
     }
   };
 
-  // Use merchants directly from API (server-side filtered)
-  const filteredMerchants = merchants;
-
   if (error) {
     return (
       <ResponsiveWrapper padding="sm">
@@ -775,20 +773,20 @@ export default function RetentionPage() {
                       </td>
                     </tr>
                   ))
-                ) : filteredMerchants.length === 0 ? (
+                ) : merchants.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center">
                       <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        {activeTab === 'all' ? 'No expired plans' : `No ${activeTab.toUpperCase()} priority merchants`}
+                        No expired plans
                       </h3>
                       <p className="text-gray-600">
-                        {activeTab === 'all' ? 'Great! All merchants have active subscriptions.' : 'No merchants found with this priority level.'}
+                        Great! All merchants have active subscriptions.
                       </p>
                     </td>
                   </tr>
                 ) : (
-                  filteredMerchants.map((merchant) => {
+                  merchants.map((merchant) => {
                     const priority = priorities.find(p => p.id === merchant.priority);
                     const isExpanded = expandedRows.has(merchant.id);
                     
@@ -989,10 +987,10 @@ export default function RetentionPage() {
                     );
                   })
                 )}
-              </tbody>
-            </table>
-          </div>
-          </div>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
           {/* Pagination */}
           {totalItems > 0 && totalPages > 1 && (
@@ -1025,7 +1023,7 @@ export default function RetentionPage() {
         </div>
 
         {/* Edit Modal */}
-      {editingMerchant && (
+        {editingMerchant && (
         <EditMerchantModal
           isOpen={isEditModalOpen}
           onClose={() => {

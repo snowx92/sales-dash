@@ -61,6 +61,22 @@ const mapApiPriorityToComponent = (apiPriority: string): string => {
 };
 
 /**
+ * Map API lead source to component lead source
+ */
+const mapApiLeadSourceToComponent = (apiLeadSource: string): string => {
+  const sourceMap: Record<string, string> = {
+    'FACEBOOK': 'facebook',
+    'INSTAGRAM': 'instagram',
+    'TIKTOK': 'tiktok',
+    'SCRAPING': 'web_scraping',
+    'PERSONAL': 'personal',
+    'SIGNUP': 'signup',
+    'OTHER': 'other'
+  };
+  return sourceMap[apiLeadSource] || apiLeadSource.toLowerCase();
+};
+
+/**
  * Convert API lead to component Lead format
  */
 export const mapApiLeadToLead = (apiLead: ApiLead): Lead => {
@@ -77,7 +93,7 @@ export const mapApiLeadToLead = (apiLead: ApiLead): Lead => {
     phone: apiLead.phone,
     website: apiLead.websiteUrl || '',
     socialUrls: (apiLead.socialMediaUrls || []).join(', '),
-    leadSource: apiLead.leadSource,
+    leadSource: mapApiLeadSourceToComponent(apiLead.leadSource),
     status: mapApiStatusToComponent(apiLead.status),
     priority: mapApiPriorityToComponent(apiLead.priority),
     attempts: Number.isInteger(apiLead.attemps) ? apiLead.attemps : 0,
@@ -107,7 +123,7 @@ export const mapApiLeadToUpcomingLead = (apiLead: ApiLead): UpcomingLead => {
     phone: apiLead.phone,
     website: apiLead.websiteUrl || '',
     socialUrls: (apiLead.socialMediaUrls || []).join(', '),
-    leadSource: apiLead.leadSource,
+    leadSource: mapApiLeadSourceToComponent(apiLead.leadSource),
     priority: mapApiPriorityToComponent(apiLead.priority),
     createdAt: new Date(apiLead.createdAt._seconds * 1000).toISOString().split('T')[0]
   };
