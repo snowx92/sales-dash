@@ -7,7 +7,7 @@ export interface LeadTimestamp {
 
 export type LeadSource = "FACEBOOK" | "INSTAGRAM" | "TIKTOK" | "SCRAPING" | "PERSONAL" | "SIGNUP" | "OTHER";
 export type LeadPriority = "HIGH" | "MEDIUM" | "LOW";
-export type LeadStatus = "NEW" | "INTERSTED" | "SUBSCRIBED" | "NOT_INTERSTED" | "NO_ANSWER" | "FOLLOW_UP";
+export type LeadStatus = "NEW" | "INTERSTED" | "SUBSCRIBED" | "NOT_INTERSTED" | "NO_ANSWER" | "FOLLOW_UP" | "JUNK";
 
 export interface ApiLead {
   id: string;

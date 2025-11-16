@@ -14,11 +14,11 @@ import {
   Mail,
   MessageSquare,
   MessageCircle,
-  Bell
+  Bell,
+  Ban
 } from "lucide-react";
 import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
 import { formatPhoneForDisplay } from '@/lib/utils/phone';
-import { calculateLeadScore, getScoreIcon, getScoreBadgeColor } from '@/lib/utils/leadScoring';
 import { Lead, leadSources, priorities, statuses } from './types';
 
 interface LeadsTableProps {
@@ -29,6 +29,7 @@ interface LeadsTableProps {
   onDeleteLead: (id: number) => void;
   onAddFeedback: (id: number, leadName: string) => void;
   onAddReminder: (id: number, name: string, email: string, phone: string) => void;
+  onMarkAsJunk: (id: number) => void;
 }
 
 export const LeadsTable: React.FC<LeadsTableProps> = ({
@@ -38,7 +39,8 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
   onEditLead,
   onDeleteLead,
   onAddFeedback,
-  onAddReminder
+  onAddReminder,
+  onMarkAsJunk
 }) => {
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -47,7 +49,6 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Lead</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Score</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Contact</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider hidden sm:table-cell">Source</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider hidden sm:table-cell">Status</th>
@@ -64,11 +65,6 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
               const SourceIcon = source?.icon || Globe;
               const StatusIcon = status?.icon || HelpCircle;
               const isExpanded = expandedRows.has(lead.id);
-
-              // Calculate lead score
-              const leadScore = calculateLeadScore(lead);
-              const scoreColors = getScoreBadgeColor(leadScore.total);
-              const scoreIcon = getScoreIcon(leadScore.rating);
 
               return (
                 <React.Fragment key={lead.id}>
@@ -108,24 +104,6 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                             <ChevronDown className="h-4 w-4 text-gray-400" />
                           }
                         </div>
-                      </div>
-                    </td>
-
-                    {/* Lead Score */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col gap-1">
-                        <div
-                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full border ${scoreColors.bg} ${scoreColors.text} ${scoreColors.border}`}
-                          title={`Recency: ${leadScore.breakdown.recency}/100 | Source: ${leadScore.breakdown.source}/100 | Engagement: ${leadScore.breakdown.engagement}/100 | Priority: ${leadScore.breakdown.priority}/100`}
-                        >
-                          <span className="text-base">{scoreIcon}</span>
-                          <span className="text-sm font-bold">{leadScore.total}</span>
-                        </div>
-                        {leadScore.recommendations.length > 0 && (
-                          <div className="text-xs text-gray-500 max-w-xs">
-                            {leadScore.recommendations[0]}
-                          </div>
-                        )}
                       </div>
                     </td>
 
@@ -237,6 +215,16 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            onMarkAsJunk(lead.id);
+                          }}
+                          className="text-orange-600 hover:text-orange-900 transition-colors p-1"
+                          title="Mark as Junk"
+                        >
+                          <Ban className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
                             onDeleteLead(lead.id);
                           }}
                           className="text-red-600 hover:text-red-900 transition-colors p-1"
@@ -255,7 +243,7 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                     >
-                      <td colSpan={8} className="px-6 py-4 bg-gray-50">
+                      <td colSpan={7} className="px-6 py-4 bg-gray-50">
                         <div className="space-y-3">
                           <h4 className="font-medium text-gray-900">Previous Feedback</h4>
                           {lead.feedbackHistory.length > 0 ? (

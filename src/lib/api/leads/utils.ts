@@ -42,7 +42,8 @@ const mapApiStatusToComponent = (apiStatus: string): string => {
     'SUBSCRIBED': 'subscribed',
     'NOT_INTERSTED': 'not_interested',
     'NO_ANSWER': 'no_answer',
-    'FOLLOW_UP': 'follow_up'
+    'FOLLOW_UP': 'follow_up',
+    'JUNK': 'junk'
   };
   return statusMap[apiStatus] || apiStatus.toLowerCase();
 };

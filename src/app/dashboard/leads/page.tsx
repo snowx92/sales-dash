@@ -30,7 +30,6 @@ export default function LeadsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -102,19 +101,6 @@ export default function LeadsPage() {
         params.searchQuery = debouncedSearch;
       }
 
-      if (statusFilter) {
-        // Map component status to API status
-        const statusApiMap: Record<string, LeadStatus> = {
-          'interested': 'INTERSTED',
-          'subscribed': 'SUBSCRIBED', 
-          'not_interested': 'NOT_INTERSTED',
-          'no_answer': 'NO_ANSWER',
-          'follow_up': 'FOLLOW_UP',
-          'new': 'NEW'
-        };
-        params.status = statusApiMap[statusFilter] || 'NEW';
-      }
-
       if (fromDate) params.from = fromDate;
       if (toDate) params.to = toDate;
       
@@ -140,7 +126,7 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, statusFilter, fromDate, toDate]);
+  }, [debouncedSearch, fromDate, toDate]);
 
   // Load leads on component mount and when filters change
   useEffect(() => {
@@ -156,7 +142,7 @@ export default function LeadsPage() {
 
   useEffect(() => {
     loadLeads();
-  }, [debouncedSearch, statusFilter, fromDate, toDate, loadLeads]);
+  }, [debouncedSearch, fromDate, toDate, loadLeads]);
 
   const handleAddLead = async (newLead: Lead) => {
     try {
@@ -169,7 +155,8 @@ export default function LeadsPage() {
         'subscribed': 'SUBSCRIBED', 
         'not_interested': 'NOT_INTERSTED',
         'no_answer': 'NO_ANSWER',
-        'follow_up': 'FOLLOW_UP'
+        'follow_up': 'FOLLOW_UP',
+        'junk': 'JUNK'
       };
       
       // Map component priority to API priority
@@ -228,7 +215,8 @@ export default function LeadsPage() {
         'subscribed': 'SUBSCRIBED', 
         'not_interested': 'NOT_INTERSTED',
         'no_answer': 'NO_ANSWER',
-        'follow_up': 'FOLLOW_UP'
+        'follow_up': 'FOLLOW_UP',
+        'junk': 'JUNK'
       };
       
       const priorityMap: Record<string, LeadPriority> = {
@@ -420,6 +408,32 @@ export default function LeadsPage() {
     }
   };
 
+  const handleMarkAsJunk = async (id: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get the original API ID
+      const apiId = getApiId(id);
+      if (!apiId) {
+        throw new Error('API ID not found for this lead');
+      }
+
+      // Update lead status to junk
+      await leadsService.updateLead(apiId, { status: 'JUNK' });
+
+      // Reload leads to get updated status
+      await loadLeads();
+      await loadLeadsOverview();
+
+    } catch (err) {
+      console.error('Error marking lead as junk:', err);
+      setError('Failed to mark lead as junk');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBulkUploadSuccess = async () => {
     // Reload leads after successful bulk upload
     await loadLeads();
@@ -490,7 +504,7 @@ export default function LeadsPage() {
   useEffect(() => {
     setCurrentPage(1);
     setUpcomingCurrentPage(1);
-  }, [searchTerm, statusFilter, fromDate, toDate]);
+  }, [searchTerm, fromDate, toDate]);
 
   return (
     <>
@@ -522,7 +536,7 @@ export default function LeadsPage() {
               className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="h-4 w-4" />
-              Export{statusFilter ? ` (${statusFilter})` : ''}
+              Export
             </button>
             
             <button
@@ -574,8 +588,6 @@ export default function LeadsPage() {
             overviewData={leadsOverview}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
             fromDate={fromDate}
             toDate={toDate}
             onFromDateChange={(v) => { setFromDate(v); setCurrentPage(1); setUpcomingCurrentPage(1); }}
@@ -593,6 +605,7 @@ export default function LeadsPage() {
             onDeleteLead={handleDeleteLead}
             onAddFeedback={handleOpenFeedbackModal}
             onAddReminder={handleOpenReminderModal}
+            onMarkAsJunk={handleMarkAsJunk}
             onConvertToLead={handleConvertToLead}
             onDeleteUpcomingLead={handleDeleteUpcomingLead}
             onAddLead={() => setIsAddModalOpen(true)}
@@ -635,7 +648,7 @@ export default function LeadsPage() {
         <LeadExportModal
           isOpen={isExportModalOpen}
           onClose={() => setIsExportModalOpen(false)}
-          currentStatusFilter={statusFilter}
+          currentStatusFilter=""
           leads={leads.map(l => ({
             name: l.name,
             email: l.email,

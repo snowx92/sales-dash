@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { ResponsiveWrapper } from "@/components/layout/ResponsiveWrapper";
 import { Pagination } from "@/components/tables/Pagination";
 import { useRetention } from "@/lib/hooks/useRetention";
-import { EndedSubscriptionItem, Priority, RetentionOverviewData } from "@/lib/api/retention/types";
+import { EndedSubscriptionItem, Priority } from "@/lib/api/retention/types";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Phone,
   Mail,
@@ -17,7 +18,6 @@ import {
   ChevronUp,
   Calendar,
   Target,
-  DollarSign,
   Building,
   AlertTriangle,
   XCircle,
@@ -26,7 +26,10 @@ import {
   RefreshCw,
   MessageCircle,
   Download,
-  Bell
+  Bell,
+  TrendingDown,
+  Users,
+  Ban
 } from "lucide-react";
 import { retentionService } from "@/lib/api/retention/retentionService";
 import FloatingSalesTips from "@/components/dashboard/FloatingSalesTips";
@@ -233,7 +236,8 @@ interface EditMerchantData {
 const priorities = [
   { id: 'HIGH' as Priority, name: 'High', color: 'bg-red-100 text-red-700 border-red-200' },
   { id: 'MEDIUM' as Priority, name: 'Medium', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  { id: 'LOW' as Priority, name: 'Low', color: 'bg-green-100 text-green-700 border-green-200' }
+  { id: 'LOW' as Priority, name: 'Low', color: 'bg-green-100 text-green-700 border-green-200' },
+  { id: 'JUNK' as Priority, name: 'Junk', color: 'bg-orange-100 text-orange-700 border-orange-200' }
 ];
 
 // Helper function to format expired date
@@ -412,8 +416,7 @@ export default function RetentionPage() {
   const [editingMerchant, setEditingMerchant] = useState<EndedSubscriptionItem | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPriority, setSelectedPriority] = useState<Priority | undefined>(undefined);
-  const [overview, setOverview] = useState<RetentionOverviewData | null>(null);
+  const [activeTab, setActiveTab] = useState('all');
 
   // Reminder states
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
@@ -453,20 +456,6 @@ export default function RetentionPage() {
     initialLimit: 10,
     autoFetch: true
   });
-
-  useEffect(() => {
-    let mounted = true;
-    const loadOverview = async () => {
-      try {
-        const data = await retentionService.getOverview();
-        if (mounted) setOverview(data);
-      } catch (err) {
-        console.error('Error loading retention overview:', err);
-      }
-    };
-    loadOverview();
-    return () => { mounted = false; };
-  }, []);
 
   const handleEditMerchant = (merchant: EndedSubscriptionItem) => {
     console.log('Editing merchant:', merchant);
@@ -529,11 +518,6 @@ export default function RetentionPage() {
     searchRetention(value);
   };
 
-  const handlePriorityFilter = (priority: Priority | undefined) => {
-    setSelectedPriority(priority);
-    filterByPriority(priority);
-  };
-
   const handleOpenReminderModal = (id: string, name: string, email: string, phone: string) => {
     setReminderMerchantId(id);
     setReminderMerchantName(name);
@@ -567,13 +551,8 @@ export default function RetentionPage() {
     }
   };
 
-  // Calculate stats (prefer API overview, fallback to local calculations)
-  const stats = {
-    totalExpired: overview?.expiredCount ?? totalItems,
-    highPriority: overview?.highPriorityCount ?? merchants.filter(m => m.priority === 'HIGH').length,
-    revenueAtRisk: merchants.reduce((sum, m) => sum + m.impact, 0),
-    totalAttempts: overview?.totalAttempts ?? merchants.reduce((sum, m) => sum + m.attemps, 0)
-  };
+  // Use merchants directly from API (server-side filtered)
+  const filteredMerchants = merchants;
 
   if (error) {
     return (
@@ -651,8 +630,86 @@ export default function RetentionPage() {
 
       <ResponsiveWrapper padding="sm">
         <div className="space-y-6 pb-8">
+          <Tabs value={activeTab} onValueChange={(value) => {
+            setActiveTab(value);
+            // Map tab values to API priority values
+            if (value === 'all') {
+              filterByPriority(undefined);
+            } else {
+              const priorityMap: { [key: string]: Priority } = {
+                'high': 'HIGH',
+                'medium': 'MEDIUM',
+                'low': 'LOW',
+                'junk': 'JUNK'
+              };
+              filterByPriority(priorityMap[value]);
+            }
+          }} className="w-full">
+            <TabsList className="grid w-full grid-cols-5 bg-gray-100 p-1 rounded-xl border border-gray-200 gap-1">
+              <TabsTrigger 
+                value="all" 
+                className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all
+                  data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+                  data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+              >
+                <Users className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">All</span>
+                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
+                  {merchants.length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="high" 
+                className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all
+                  data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+                  data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+              >
+                <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
+                <span className="hidden sm:inline">High</span>
+                <span className="px-1.5 py-0.5 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                  {merchants.filter(m => m.priority === 'HIGH').length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="medium" 
+                className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all
+                  data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+                  data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+              >
+                <Target className="h-3.5 w-3.5 text-yellow-600" />
+                <span className="hidden sm:inline">Medium</span>
+                <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                  {merchants.filter(m => m.priority === 'MEDIUM').length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="low" 
+                className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all
+                  data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+                  data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+              >
+                <TrendingDown className="h-3.5 w-3.5 text-green-600" />
+                <span className="hidden sm:inline">Low</span>
+                <span className="px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                  {merchants.filter(m => m.priority === 'LOW').length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="junk" 
+                className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all
+                  data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
+                  data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+              >
+                <Ban className="h-3.5 w-3.5 text-orange-600" />
+                <span className="hidden sm:inline">Junk</span>
+                <span className="px-1.5 py-0.5 bg-orange-100 text-orange-800 rounded-full text-xs font-medium">
+                  {merchants.filter(m => m.priority === 'JUNK').length}
+                </span>
+              </TabsTrigger>
+            </TabsList>
+
           {/* Filters + Export */}
-          <div className="bg-white p-4 rounded-xl shadow-sm">
+          <div className="bg-white p-4 rounded-xl shadow-sm mt-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -667,16 +724,6 @@ export default function RetentionPage() {
               </div>
             </div>
             <div className="flex gap-2 items-start">
-              <select
-                value={selectedPriority || ''}
-                onChange={(e) => handlePriorityFilter(e.target.value as Priority || undefined)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 bg-white"
-              >
-                <option value="" className="text-gray-900">All Priorities</option>
-                <option value="HIGH" className="text-gray-900">High Priority</option>
-                <option value="MEDIUM" className="text-gray-900">Medium Priority</option>
-                <option value="LOW" className="text-gray-900">Low Priority</option>
-              </select>
               <button
                 onClick={clearFilters}
                 className="px-3 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1"
@@ -694,59 +741,8 @@ export default function RetentionPage() {
           </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Expired Plans</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalExpired}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                <Target className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">High Priority</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.highPriority}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Revenue at Risk</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.revenueAtRisk.toLocaleString()} EGP
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Phone className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Attempts</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalAttempts}</p>
-              </div>
-            </div>
-          </div>
-          </div>
-
+          {/* All Tab */}
+          <TabsContent value="all" className="space-y-6">
           {/* Expired Merchants Table */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
@@ -779,16 +775,20 @@ export default function RetentionPage() {
                       </td>
                     </tr>
                   ))
-                ) : merchants.length === 0 ? (
+                ) : filteredMerchants.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center">
                       <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No expired plans</h3>
-                      <p className="text-gray-600">Great! All merchants have active subscriptions.</p>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        {activeTab === 'all' ? 'No expired plans' : `No ${activeTab.toUpperCase()} priority merchants`}
+                      </h3>
+                      <p className="text-gray-600">
+                        {activeTab === 'all' ? 'Great! All merchants have active subscriptions.' : 'No merchants found with this priority level.'}
+                      </p>
                     </td>
                   </tr>
                 ) : (
-                  merchants.map((merchant) => {
+                  filteredMerchants.map((merchant) => {
                     const priority = priorities.find(p => p.id === merchant.priority);
                     const isExpanded = expandedRows.has(merchant.id);
                     
@@ -1003,6 +1003,25 @@ export default function RetentionPage() {
             onPageChange={goToPage}
           />
           )}
+          </TabsContent>
+
+          {/* High Priority Tab */}
+          <TabsContent value="high" className="space-y-6">
+          </TabsContent>
+
+          {/* Medium Priority Tab */}
+          <TabsContent value="medium" className="space-y-6">
+          </TabsContent>
+
+          {/* Low Priority Tab */}
+          <TabsContent value="low" className="space-y-6">
+          </TabsContent>
+
+          {/* Junk Tab */}
+          <TabsContent value="junk" className="space-y-6">
+          </TabsContent>
+
+          </Tabs>
         </div>
 
         {/* Edit Modal */}
@@ -1023,7 +1042,6 @@ export default function RetentionPage() {
           currentItems={merchants}
           totalPages={totalPages}
           pageLimit={10}
-          currentPriority={selectedPriority}
           currentSearch={searchTerm}
         />
 

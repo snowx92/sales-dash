@@ -17,6 +17,9 @@ export interface EndedSubscriptionsData {
   docsReaded: number;
 }
 
+// Priority type for feedback
+export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'JUNK';
+
 // Each ended subscription item
 export interface EndedSubscriptionItem {
   id: string;                   // Store ID for API operations (returned by API)
@@ -30,14 +33,11 @@ export interface EndedSubscriptionItem {
   impact: number;
   attemps: number;
   expiredAt: string | null | { _seconds: number; _nanoseconds: number }; // Support both formats
-  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  priority: Priority;
   renewCounts: number;
   link: string;
   feedbacks: string[];
 }
-
-// Priority type for feedback
-export type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
 
 // Feedback request body
 export interface FeedbackRequest extends Record<string, unknown> {
