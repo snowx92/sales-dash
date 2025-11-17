@@ -442,7 +442,7 @@ export default function RetentionPage() {
           low: lowRes?.totalItems || 0,
           junk: junkRes?.totalItems || 0
         });
-      } catch (err) {
+      } catch {
         // fallback to current page counts if error
         setTabCounts({
           all: merchants.length,
