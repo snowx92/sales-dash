@@ -267,7 +267,7 @@ const EditMerchantModal = ({ isOpen, onClose, merchant, onUpdate }: {
   onUpdate: (id: string, updates: { priority: Priority; feedback: string }) => void;
 }) => {
   const [formData, setFormData] = useState<EditMerchantData>({
-    priority: merchant.priority,
+    priority: merchant.priority || 'MEDIUM',
     feedback: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -111,7 +111,7 @@ export const EditLeadModal: React.FC<EditLeadModalProps> = ({ isOpen, onClose, l
             </div>
 
             {/* Feedback History */}
-            {formData.feedbackHistory.length > 0 && (
+            {formData.feedbackHistory && formData.feedbackHistory.length > 0 && (
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h4 className="font-medium text-gray-900 mb-3">Previous Feedback</h4>
                 <div className="space-y-2 max-h-32 overflow-y-auto">

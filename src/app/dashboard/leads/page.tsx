@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Plus, Upload, Download } from "lucide-react";
+import { Plus, Upload, Download, Search } from "lucide-react";
 import {
   Lead,
   UpcomingLead,
@@ -29,6 +29,8 @@ export default function LeadsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
@@ -66,6 +68,10 @@ export default function LeadsPage() {
         limit: 500
       };
 
+      if (debouncedSearch) {
+        params.searchQuery = debouncedSearch;
+      }
+
       const response = await leadsService.getLeads(params);
 
   if (response?.items) {
@@ -88,9 +94,18 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [debouncedSearch]);
 
-  // Load leads on mount
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Load leads on mount and when search changes
   useEffect(() => {
     loadLeads();
   }, [loadLeads]);
@@ -437,8 +452,23 @@ export default function LeadsPage() {
             <div className="text-gray-500">Loading leads...</div>
           </div>
         ) : (
-          /* Tabs */
-          <LeadsTabs
+          <>
+            {/* Search Bar */}
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search by name, email, phone, or website..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <LeadsTabs
             activeTab={activeTab}
             onTabChange={(tab) => { setActiveTab(tab); setCurrentPage(1); }}
             leads={leads}
@@ -455,6 +485,7 @@ export default function LeadsPage() {
             onMarkAsJunk={handleMarkAsJunk}
             onAddLead={() => setIsAddModalOpen(true)}
           />
+          </>
         )}
 
         {/* Modals */}
