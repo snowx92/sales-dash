@@ -19,9 +19,7 @@ import FloatingSalesTips from "@/components/dashboard/FloatingSalesTips";
 import SmartReminders from "@/components/dashboard/SmartReminders";
 import ActivityTracker from "@/components/dashboard/ActivityTracker";
 import WhatsAppTemplates from "@/components/dashboard/WhatsAppTemplates";
-import AddReminderModal from "@/components/modals/AddReminderModal";
-import { reminderStorage } from "@/lib/utils/reminderStorage";
-import type { MyReminderFormData } from "@/lib/types/reminder";
+import { toast } from "sonner";
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -43,12 +41,6 @@ export default function LeadsPage() {
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  // Reminder states
-  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
-  const [reminderLeadId, setReminderLeadId] = useState<number | null>(null);
-  const [reminderLeadName, setReminderLeadName] = useState<string>('');
-  const [reminderLeadEmail, setReminderLeadEmail] = useState<string>('');
-  const [reminderLeadPhone, setReminderLeadPhone] = useState<string>('');
 
   const loadLeads = useCallback(async () => {
     try {
@@ -325,35 +317,37 @@ export default function LeadsPage() {
     setFeedbackLeadName('');
   };
 
-  const handleOpenReminderModal = (id: number, name: string, email: string, phone: string) => {
-    setReminderLeadId(id);
-    setReminderLeadName(name);
-    setReminderLeadEmail(email);
-    setReminderLeadPhone(phone);
-    setIsReminderModalOpen(true);
-  };
+  const handleAssignStore = async (id: number, leadName: string) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const handleCloseReminderModal = () => {
-    setIsReminderModalOpen(false);
-    setReminderLeadId(null);
-    setReminderLeadName('');
-    setReminderLeadEmail('');
-    setReminderLeadPhone('');
-  };
+      // Get the original API ID
+      const apiId = getApiId(id);
+      if (!apiId) {
+        throw new Error('API ID not found for this lead');
+      }
 
-  const handleSaveReminder = (data: MyReminderFormData) => {
-    if (reminderLeadId) {
-      reminderStorage.add({
-        type: 'lead',
-        entityId: reminderLeadId,
-        entityName: reminderLeadName,
-        entityEmail: reminderLeadEmail,
-        entityPhone: reminderLeadPhone,
-        date: data.date,
-        note: data.note,
-        completed: false,
-      });
-      console.log('Reminder added for lead:', reminderLeadName);
+      console.log('🏪 Assigning store for lead:', leadName, 'API ID:', apiId);
+
+      const response = await leadsService.assignStore(apiId);
+
+      if (response?.success) {
+        console.log('✅ Store assigned successfully:', response.message);
+        toast.success(response.message || 'Store assigned successfully');
+
+        // Reload leads to refresh the data
+        await loadLeads();
+      } else {
+        throw new Error('Failed to assign store');
+      }
+    } catch (err) {
+      console.error('❌ Error assigning store:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to assign store';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -481,7 +475,7 @@ export default function LeadsPage() {
             onEditLead={handleEditLead}
             onDeleteLead={handleDeleteLead}
             onAddFeedback={handleOpenFeedbackModal}
-            onAddReminder={handleOpenReminderModal}
+            onAssignStore={handleAssignStore}
             onMarkAsJunk={handleMarkAsJunk}
             onAddLead={() => setIsAddModalOpen(true)}
           />
@@ -550,13 +544,6 @@ export default function LeadsPage() {
             attempts: 0,
             createdAt: u.createdAt
           }))}
-        />
-
-        <AddReminderModal
-          isOpen={isReminderModalOpen}
-          onClose={handleCloseReminderModal}
-          onSave={handleSaveReminder}
-          entityName={reminderLeadName}
         />
       </div>
       </div>

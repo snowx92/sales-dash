@@ -14,8 +14,8 @@ import {
   Mail,
   MessageSquare,
   MessageCircle,
-  Bell,
-  Ban
+  Ban,
+  Store
 } from "lucide-react";
 import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
 import { formatPhoneForDisplay } from '@/lib/utils/phone';
@@ -28,7 +28,7 @@ interface LeadsTableProps {
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (id: number) => void;
   onAddFeedback: (id: number, leadName: string) => void;
-  onAddReminder: (id: number, name: string, email: string, phone: string) => void;
+  onAssignStore?: (id: number, leadName: string) => void;
   onMarkAsJunk: (id: number) => void;
 }
 
@@ -39,7 +39,7 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
   onEditLead,
   onDeleteLead,
   onAddFeedback,
-  onAddReminder,
+  onAssignStore,
   onMarkAsJunk
 }) => {
 
@@ -193,16 +193,18 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                         >
                           <MessageSquare className="h-3 w-3" />
                         </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onAddReminder(lead.id, lead.name, lead.email, lead.phone);
-                          }}
-                          className="text-orange-600 hover:text-orange-900 transition-colors p-1"
-                          title="Add Reminder"
-                        >
-                          <Bell className="h-3 w-3" />
-                        </button>
+                        {onAssignStore && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAssignStore(lead.id, lead.name);
+                            }}
+                            className="text-indigo-600 hover:text-indigo-900 transition-colors p-1"
+                            title="Assign Store"
+                          >
+                            <Store className="h-3 w-3" />
+                          </button>
+                        )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

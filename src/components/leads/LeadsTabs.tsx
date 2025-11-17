@@ -24,7 +24,7 @@ interface LeadsTabsProps {
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (id: number) => void;
   onAddFeedback: (id: number, leadName: string) => void;
-  onAddReminder: (id: number, name: string, email: string, phone: string) => void;
+  onAssignStore?: (id: number, leadName: string) => void;
   onMarkAsJunk: (id: number) => void;
   onAddLead: () => void;
 }
@@ -42,7 +42,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
   onEditLead,
   onDeleteLead,
   onAddFeedback,
-  onAddReminder,
+  onAssignStore,
   onMarkAsJunk,
   onAddLead,
 }) => {
@@ -208,7 +208,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
                 onEditLead={onEditLead}
                 onDeleteLead={onDeleteLead}
                 onAddFeedback={onAddFeedback}
-                onAddReminder={onAddReminder}
+                onAssignStore={onAssignStore}
                 onMarkAsJunk={onMarkAsJunk}
               />
               

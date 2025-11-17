@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { ResponsiveWrapper } from "@/components/layout/ResponsiveWrapper";
@@ -418,7 +418,43 @@ export default function RetentionPage() {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [tabCounts, setTabCounts] = useState({
+    all: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    junk: 0
+  });
 
+  // Fetch total counts for each tab
+  useEffect(() => {
+    async function fetchCounts() {
+      try {
+        const allRes = await retentionService.getEndedSubscriptions({ pageNo: 1, limit: 1 });
+        const highRes = await retentionService.getEndedSubscriptions({ priority: 'HIGH', pageNo: 1, limit: 1 });
+        const mediumRes = await retentionService.getEndedSubscriptions({ priority: 'MEDIUM', pageNo: 1, limit: 1 });
+        const lowRes = await retentionService.getEndedSubscriptions({ priority: 'LOW', pageNo: 1, limit: 1 });
+        const junkRes = await retentionService.getEndedSubscriptions({ priority: 'JUNK', pageNo: 1, limit: 1 });
+        setTabCounts({
+          all: allRes?.totalItems || 0,
+          high: highRes?.totalItems || 0,
+          medium: mediumRes?.totalItems || 0,
+          low: lowRes?.totalItems || 0,
+          junk: junkRes?.totalItems || 0
+        });
+      } catch (err) {
+        // fallback to current page counts if error
+        setTabCounts({
+          all: merchants.length,
+          high: merchants.filter(m => m.priority === 'HIGH').length,
+          medium: merchants.filter(m => m.priority === 'MEDIUM').length,
+          low: merchants.filter(m => m.priority === 'LOW').length,
+          junk: merchants.filter(m => m.priority === 'JUNK').length
+        });
+      }
+    }
+    fetchCounts();
+  }, [searchTerm]);
   // Reminder states
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [reminderMerchantId, setReminderMerchantId] = useState<string | null>(null);
@@ -653,7 +689,7 @@ export default function RetentionPage() {
                 <Users className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">All</span>
                 <span className="px-1.5 py-0.5 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
-                  {merchants.length}
+                  {tabCounts.all}
                 </span>
               </TabsTrigger>
               <TabsTrigger 
@@ -665,7 +701,7 @@ export default function RetentionPage() {
                 <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
                 <span className="hidden sm:inline">High</span>
                 <span className="px-1.5 py-0.5 bg-red-100 text-red-800 rounded-full text-xs font-medium">
-                  {merchants.filter(m => m.priority === 'HIGH').length}
+                  {tabCounts.high}
                 </span>
               </TabsTrigger>
               <TabsTrigger 
@@ -677,7 +713,7 @@ export default function RetentionPage() {
                 <Target className="h-3.5 w-3.5 text-yellow-600" />
                 <span className="hidden sm:inline">Medium</span>
                 <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
-                  {merchants.filter(m => m.priority === 'MEDIUM').length}
+                  {tabCounts.medium}
                 </span>
               </TabsTrigger>
               <TabsTrigger 
@@ -689,7 +725,7 @@ export default function RetentionPage() {
                 <TrendingDown className="h-3.5 w-3.5 text-green-600" />
                 <span className="hidden sm:inline">Low</span>
                 <span className="px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                  {merchants.filter(m => m.priority === 'LOW').length}
+                  {tabCounts.low}
                 </span>
               </TabsTrigger>
               <TabsTrigger 
@@ -701,7 +737,7 @@ export default function RetentionPage() {
                 <Ban className="h-3.5 w-3.5 text-orange-600" />
                 <span className="hidden sm:inline">Junk</span>
                 <span className="px-1.5 py-0.5 bg-orange-100 text-orange-800 rounded-full text-xs font-medium">
-                  {merchants.filter(m => m.priority === 'JUNK').length}
+                  {tabCounts.junk}
                 </span>
               </TabsTrigger>
             </TabsList>
