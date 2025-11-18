@@ -5,15 +5,13 @@ import { EndedSubscriptionsData, EndedSubscriptionItem, Priority, FeedbackReques
 export interface UseRetentionOptions {
   initialPage?: number;
   initialLimit?: number;
-  initialPriority?: Priority;
   autoFetch?: boolean;
 }
 
 export const useRetention = (options: UseRetentionOptions = {}) => {
   const {
     initialPage = 1,
-    initialLimit = 10,
-    initialPriority,
+    initialLimit = 50,
     autoFetch = true
   } = options;
 
@@ -27,8 +25,8 @@ export const useRetention = (options: UseRetentionOptions = {}) => {
   // Pagination and filters
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [limit, setLimit] = useState(initialLimit);
-  const [priority, setPriority] = useState<Priority | undefined>(initialPriority);
-  const [search, setSearch] = useState<string>('');
+  const [keyword, setKeyword] = useState<string>('');
+  const [priority, setPriority] = useState<'HIGH' | 'MEDIUM' | 'LOW' | 'JUNK' | undefined>(undefined);
 
   // Fetch retention data
   const fetchRetentionData = useCallback(async () => {
@@ -39,8 +37,8 @@ export const useRetention = (options: UseRetentionOptions = {}) => {
       const params = {
         pageNo: currentPage,
         limit,
-        ...(priority && { priority }),
-        ...(search && { search })
+        ...(keyword && { keyword }),
+        ...(priority && { priority })
       };
 
       const response = await retentionService.getEndedSubscriptions(params);
@@ -59,7 +57,7 @@ export const useRetention = (options: UseRetentionOptions = {}) => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, limit, priority, search]);
+  }, [currentPage, limit, keyword, priority]);
 
   // Submit feedback
   const submitFeedback = async (feedbackData: FeedbackRequest) => {
@@ -99,19 +97,19 @@ export const useRetention = (options: UseRetentionOptions = {}) => {
   };
 
   // Filter functions
-  const filterByPriority = (newPriority: Priority | undefined) => {
+  const searchRetention = (searchQuery: string) => {
+    setKeyword(searchQuery);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  const filterByPriority = (newPriority: 'HIGH' | 'MEDIUM' | 'LOW' | 'JUNK' | undefined) => {
     setPriority(newPriority);
     setCurrentPage(1); // Reset to first page when filtering
   };
 
-  const searchRetention = (searchQuery: string) => {
-    setSearch(searchQuery);
-    setCurrentPage(1); // Reset to first page when searching
-  };
-
   const clearFilters = () => {
+    setKeyword('');
     setPriority(undefined);
-    setSearch('');
     setCurrentPage(1);
   };
 
@@ -143,8 +141,8 @@ export const useRetention = (options: UseRetentionOptions = {}) => {
     hasPreviousPage: currentPage > 1,
 
     // Current filters
+    keyword,
     priority,
-    search,
     limit,
 
     // Actions
@@ -158,8 +156,8 @@ export const useRetention = (options: UseRetentionOptions = {}) => {
     previousPage,
 
     // Filtering
-    filterByPriority,
     searchRetention,
+    filterByPriority,
     clearFilters,
 
     // Settings

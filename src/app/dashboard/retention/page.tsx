@@ -32,12 +32,9 @@ import {
   Ban
 } from "lucide-react";
 import { retentionService } from "@/lib/api/retention/retentionService";
-import FloatingSalesTips from "@/components/dashboard/FloatingSalesTips";
-import SmartReminders from "@/components/dashboard/SmartReminders";
-import ActivityTracker from "@/components/dashboard/ActivityTracker";
-import WhatsAppTemplates from "@/components/dashboard/WhatsAppTemplates";
+
 import { formatPhoneForDisplay } from "@/lib/utils/phone";
-import { Lead } from "@/components/leads/types";
+
 import AddReminderModal from "@/components/modals/AddReminderModal";
 import { reminderStorage } from "@/lib/utils/reminderStorage";
 import type { MyReminderFormData } from "@/lib/types/reminder";
@@ -48,23 +45,22 @@ const RetentionExportModal = ({
   currentItems,
   totalPages,
   pageLimit,
-  currentPriority,
-  currentSearch
+  currentKeyword,
+  currentPriority
 }: {
   open: boolean;
   onClose: () => void;
   currentItems: EndedSubscriptionItem[];
   totalPages: number;
   pageLimit: number;
-  currentPriority?: Priority;
-  currentSearch?: string;
+  currentKeyword?: string;
+  currentPriority?: 'HIGH' | 'MEDIUM' | 'LOW' | 'JUNK';
 }) => {
   const [exporting, setExporting] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [pageMode, setPageMode] = useState<'current' | 'firstN' | 'all'>('current');
   const [firstN, setFirstN] = useState(3);
-  const [overridePriority, setOverridePriority] = useState<Priority | 'ALL'>(currentPriority || 'ALL');
   const [progress, setProgress] = useState<{page:number; pages:number; rows:number}>({page:0,pages:0,rows:0});
 
   const withinRange = (expiredAt: EndedSubscriptionItem['expiredAt']) => {
@@ -89,8 +85,8 @@ const RetentionExportModal = ({
         const data = await retentionService.getEndedSubscriptions({
           pageNo: p,
           limit: pageLimit,
-          ...((overridePriority !== 'ALL' ? overridePriority : currentPriority) && { priority: (overridePriority !== 'ALL' ? overridePriority : currentPriority)! }),
-          ...(currentSearch && { search: currentSearch })
+          ...(currentKeyword && { keyword: currentKeyword }),
+          ...(currentPriority && { priority: currentPriority })
         });
         if (data?.items) acc.push(...data.items);
         setProgress({page:p,pages:pagesToGet,rows:acc.length});
@@ -163,22 +159,6 @@ const RetentionExportModal = ({
               <input type="date" value={toDate} onChange={e=>setToDate(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" />
             </div>
           </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-2">Priority</label>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={()=>setOverridePriority('ALL')}
-                  className={`px-3 py-1 rounded-lg border text-xs font-medium transition-colors ${overridePriority==='ALL' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-800 hover:bg-purple-50 border-gray-300'}`}
-                >All</button>
-                {priorities.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={()=>setOverridePriority(p.id)}
-                    className={`px-3 py-1 rounded-lg border text-xs font-medium transition-colors ${overridePriority===p.id ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-800 hover:bg-purple-50 border-gray-300'}`}
-                  >{p.name}</button>
-                ))}
-              </div>
-            </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-2">Pages</label>
             <div className="flex flex-col gap-2">
@@ -199,7 +179,7 @@ const RetentionExportModal = ({
               </label>
             </div>
           </div>
-          <div className="text-xs text-gray-500">Filters applied: priority/search from current view plus optional expiration date and page scope.</div>
+          <div className="text-xs text-gray-500">Filters applied: keyword search from current view plus optional expiration date and page scope.</div>
           {exporting && (
             <div className="w-full bg-gray-100 rounded h-2 overflow-hidden">
               <div
@@ -417,7 +397,7 @@ export default function RetentionPage() {
   const [editingMerchant, setEditingMerchant] = useState<EndedSubscriptionItem | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'high' | 'medium' | 'low' | 'junk'>('all');
   const [tabCounts, setTabCounts] = useState({
     all: 0,
     high: 0,
@@ -426,35 +406,6 @@ export default function RetentionPage() {
     junk: 0
   });
 
-  // Fetch total counts for each tab
-  useEffect(() => {
-    async function fetchCounts() {
-      try {
-        const allRes = await retentionService.getEndedSubscriptions({ pageNo: 1, limit: 1 });
-        const highRes = await retentionService.getEndedSubscriptions({ priority: 'HIGH', pageNo: 1, limit: 1 });
-        const mediumRes = await retentionService.getEndedSubscriptions({ priority: 'MEDIUM', pageNo: 1, limit: 1 });
-        const lowRes = await retentionService.getEndedSubscriptions({ priority: 'LOW', pageNo: 1, limit: 1 });
-        const junkRes = await retentionService.getEndedSubscriptions({ priority: 'JUNK', pageNo: 1, limit: 1 });
-        setTabCounts({
-          all: allRes?.totalItems || 0,
-          high: highRes?.totalItems || 0,
-          medium: mediumRes?.totalItems || 0,
-          low: lowRes?.totalItems || 0,
-          junk: junkRes?.totalItems || 0
-        });
-      } catch {
-        // fallback to current page counts if error
-        setTabCounts({
-          all: merchants.length,
-          high: merchants.filter(m => m.priority === 'HIGH').length,
-          medium: merchants.filter(m => m.priority === 'MEDIUM').length,
-          low: merchants.filter(m => m.priority === 'LOW').length,
-          junk: merchants.filter(m => m.priority === 'JUNK').length
-        });
-      }
-    }
-    fetchCounts();
-  }, [searchTerm]);
   // Reminder states
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [reminderMerchantId, setReminderMerchantId] = useState<string | null>(null);
@@ -471,26 +422,26 @@ export default function RetentionPage() {
     currentPage,
     totalPages,
     totalItems,
+    keyword,
+    priority,
     // hasNextPage, // Available for custom pagination
     // hasPreviousPage, // Available for custom pagination
-    // priority, // Current filter value, available if needed
-    // search, // Current search term, available if needed
-    
+
     // Actions
     submitFeedback,
     refreshData,
-    
+
     // Navigation
     goToPage,
     // nextPage, // Available for next/previous buttons
     // previousPage, // Available for next/previous buttons
-    
+
     // Filtering
-    filterByPriority,
     searchRetention,
+    filterByPriority,
     clearFilters
   } = useRetention({
-    initialLimit: 10,
+    initialLimit: 50,
     autoFetch: true
   });
 
@@ -555,6 +506,63 @@ export default function RetentionPage() {
     searchRetention(value);
   };
 
+  // When tab changes, fetch data with the priority filter
+  useEffect(() => {
+    if (activeTab === 'all') {
+      // Fetch all data without priority filter
+      filterByPriority(undefined);
+    } else {
+      // Fetch data filtered by priority
+      filterByPriority(activeTab.toUpperCase() as 'HIGH' | 'MEDIUM' | 'LOW' | 'JUNK');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Since we're now filtering on the API side, we don't need client-side filtering
+  const filteredMerchants = merchants;
+
+  // Fetch counts for each priority by calling the API 5 times
+  useEffect(() => {
+    async function fetchTabCounts() {
+      try {
+        console.log('🔄 Fetching tab counts - calling API 5 times...');
+
+        // Call API 5 times in parallel - once for all, and once for each priority
+        const [allRes, highRes, mediumRes, lowRes, junkRes] = await Promise.all([
+          retentionService.getEndedSubscriptions({ pageNo: 1, limit: 1 }), // Call 1: All
+          retentionService.getEndedSubscriptions({ pageNo: 1, limit: 1, priority: 'HIGH' }), // Call 2: High priority
+          retentionService.getEndedSubscriptions({ pageNo: 1, limit: 1, priority: 'MEDIUM' }), // Call 3: Medium priority
+          retentionService.getEndedSubscriptions({ pageNo: 1, limit: 1, priority: 'LOW' }), // Call 4: Low priority
+          retentionService.getEndedSubscriptions({ pageNo: 1, limit: 1, priority: 'JUNK' }) // Call 5: Junk
+        ]);
+
+        const counts = {
+          all: allRes?.totalItems || 0,
+          high: highRes?.totalItems || 0,
+          medium: mediumRes?.totalItems || 0,
+          low: lowRes?.totalItems || 0,
+          junk: junkRes?.totalItems || 0
+        };
+
+        console.log('📊 Tab Counts from API:', counts);
+
+        setTabCounts(counts);
+      } catch (error) {
+        console.error('❌ Error fetching tab counts:', error);
+        // Fallback to current page counts if error
+        setTabCounts({
+          all: merchants.length,
+          high: merchants.filter(m => m.priority === 'HIGH').length,
+          medium: merchants.filter(m => m.priority === 'MEDIUM').length,
+          low: merchants.filter(m => m.priority === 'LOW').length,
+          junk: merchants.filter(m => m.priority === 'JUNK').length,
+        });
+      }
+    }
+    fetchTabCounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleOpenReminderModal = (id: string, name: string, email: string, phone: string) => {
     setReminderMerchantId(id);
     setReminderMerchantName(name);
@@ -609,79 +617,14 @@ export default function RetentionPage() {
 
   return (
     <>
-      {/* Floating Sales Tips */}
-      <FloatingSalesTips />
 
-      {/* Smart Reminders - Convert retention items to Lead format for compatibility */}
-      <SmartReminders
-        leads={merchants.map((item: EndedSubscriptionItem) => {
-          // Convert expiredAt to ISO string
-          let expiredDate = new Date().toISOString();
-          if (item.expiredAt) {
-            if (typeof item.expiredAt === 'string') {
-              expiredDate = item.expiredAt;
-            } else if (typeof item.expiredAt === 'object' && '_seconds' in item.expiredAt) {
-              expiredDate = new Date(item.expiredAt._seconds * 1000).toISOString();
-            }
-          }
-
-          // Convert priority format (HIGH/MEDIUM/LOW to high/mid/low)
-          const priorityMap: { [key: string]: 'high' | 'mid' | 'low' } = {
-            'HIGH': 'high',
-            'MEDIUM': 'mid',
-            'LOW': 'low'
-          };
-
-          return {
-            id: parseInt(item.id) || 0,
-            name: item.name,
-            phone: item.phone,
-            email: item.email,
-            website: item.storeName || '',
-            socialUrls: '',
-            leadSource: 'retention',
-            priority: priorityMap[item.priority] || 'mid',
-            status: 'follow_up',
-            attempts: item.attemps || 0,
-            lastContact: expiredDate,
-            lastUpdated: expiredDate,
-            feedback: item.feedbacks?.[0] || '',
-            createdAt: expiredDate,
-            feedbackHistory: item.feedbacks?.map((fb, idx) => ({
-              id: idx,
-              message: fb,
-              date: expiredDate
-            })) || []
-          } as Lead;
-        })}
-      />
-
-      {/* Activity Tracker */}
-      <ActivityTracker />
-
-      {/* WhatsApp Templates */}
-      <WhatsAppTemplates />
 
       <ResponsiveWrapper padding="sm">
         <div className="space-y-6 pb-8">
-          <Tabs value={activeTab} onValueChange={(value) => {
-            setActiveTab(value);
-            // Map tab values to API priority values
-            if (value === 'all') {
-              filterByPriority(undefined);
-            } else {
-              const priorityMap: { [key: string]: Priority } = {
-                'high': 'HIGH',
-                'medium': 'MEDIUM',
-                'low': 'LOW',
-                'junk': 'JUNK'
-              };
-              filterByPriority(priorityMap[value]);
-            }
-          }} className="w-full">
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="w-full">
             <TabsList className="grid w-full grid-cols-5 bg-gray-100 p-1 rounded-xl border border-gray-200 gap-1">
-              <TabsTrigger 
-                value="all" 
+              <TabsTrigger
+                value="all"
                 className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all
                   data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
                   data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
@@ -692,8 +635,8 @@ export default function RetentionPage() {
                   {tabCounts.all}
                 </span>
               </TabsTrigger>
-              <TabsTrigger 
-                value="high" 
+              <TabsTrigger
+                value="high"
                 className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all
                   data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
                   data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
@@ -704,8 +647,8 @@ export default function RetentionPage() {
                   {tabCounts.high}
                 </span>
               </TabsTrigger>
-              <TabsTrigger 
-                value="medium" 
+              <TabsTrigger
+                value="medium"
                 className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all
                   data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
                   data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
@@ -716,8 +659,8 @@ export default function RetentionPage() {
                   {tabCounts.medium}
                 </span>
               </TabsTrigger>
-              <TabsTrigger 
-                value="low" 
+              <TabsTrigger
+                value="low"
                 className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all
                   data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
                   data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
@@ -728,8 +671,8 @@ export default function RetentionPage() {
                   {tabCounts.low}
                 </span>
               </TabsTrigger>
-              <TabsTrigger 
-                value="junk" 
+              <TabsTrigger
+                value="junk"
                 className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all
                   data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
                   data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
@@ -742,8 +685,9 @@ export default function RetentionPage() {
               </TabsTrigger>
             </TabsList>
 
+          <TabsContent value={activeTab} className="space-y-6 mt-6">
           {/* Filters + Export */}
-          <div className="bg-white p-4 rounded-xl shadow-sm mt-6">
+          <div className="bg-white p-4 rounded-xl shadow-sm">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -775,8 +719,6 @@ export default function RetentionPage() {
           </div>
           </div>
 
-          {/* All Tab */}
-          <TabsContent value="all" className="space-y-6">
           {/* Expired Merchants Table */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
@@ -809,7 +751,7 @@ export default function RetentionPage() {
                       </td>
                     </tr>
                   ))
-                ) : merchants.length === 0 ? (
+                ) : filteredMerchants.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center">
                       <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -822,7 +764,7 @@ export default function RetentionPage() {
                     </td>
                   </tr>
                 ) : (
-                  merchants.map((merchant) => {
+                  filteredMerchants.map((merchant) => {
                     const priority = priorities.find(p => p.id === merchant.priority);
                     const isExpanded = expandedRows.has(merchant.id);
                     
@@ -1032,29 +974,12 @@ export default function RetentionPage() {
           {totalItems > 0 && totalPages > 1 && (
           <Pagination
             totalItems={totalItems}
-            itemsPerPage={10} // Using the hook's default limit
+            itemsPerPage={50}
             currentPage={currentPage}
             onPageChange={goToPage}
           />
           )}
           </TabsContent>
-
-          {/* High Priority Tab */}
-          <TabsContent value="high" className="space-y-6">
-          </TabsContent>
-
-          {/* Medium Priority Tab */}
-          <TabsContent value="medium" className="space-y-6">
-          </TabsContent>
-
-          {/* Low Priority Tab */}
-          <TabsContent value="low" className="space-y-6">
-          </TabsContent>
-
-          {/* Junk Tab */}
-          <TabsContent value="junk" className="space-y-6">
-          </TabsContent>
-
           </Tabs>
         </div>
 
@@ -1075,8 +1000,9 @@ export default function RetentionPage() {
           onClose={()=>setExportModalOpen(false)}
           currentItems={merchants}
           totalPages={totalPages}
-          pageLimit={10}
-          currentSearch={searchTerm}
+          pageLimit={50}
+          currentKeyword={keyword}
+          currentPriority={priority}
         />
 
         {/* Reminder Modal */}

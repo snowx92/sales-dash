@@ -57,8 +57,8 @@ export interface FeedbackResponse {
 export interface RetentionQueryParams {
   limit?: number;
   pageNo?: number;
-  priority?: Priority;
-  search?: string;
+  keyword?: string;
+  priority?: 'HIGH' | 'MEDIUM' | 'LOW' | 'JUNK';
 }
 
 // Retention overview data

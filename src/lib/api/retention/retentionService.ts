@@ -24,11 +24,11 @@ export class RetentionService extends ApiService {
       }
 
       // Add filter parameters
+      if (params.keyword) {
+        queryParams.keyword = params.keyword;
+      }
       if (params.priority) {
         queryParams.priority = params.priority;
-      }
-      if (params.search) {
-        queryParams.search = params.search;
       }
 
       console.log("🔄 RetentionService: Fetching ended subscriptions with params:", queryParams);
@@ -96,22 +96,11 @@ export class RetentionService extends ApiService {
   }
 
   /**
-   * Get ended subscriptions filtered by priority
+   * Search ended subscriptions by keyword
    */
-  async getRetentionByPriority(priority: 'LOW' | 'MEDIUM' | 'HIGH', page: number = 1, limit: number = 10): Promise<EndedSubscriptionsData | null> {
+  async searchRetention(keyword: string, page: number = 1, limit: number = 50): Promise<EndedSubscriptionsData | null> {
     return this.getEndedSubscriptions({
-      priority,
-      pageNo: page,
-      limit: limit
-    });
-  }
-
-  /**
-   * Search ended subscriptions by query
-   */
-  async searchRetention(search: string, page: number = 1, limit: number = 10): Promise<EndedSubscriptionsData | null> {
-    return this.getEndedSubscriptions({
-      search,
+      keyword,
       pageNo: page,
       limit: limit
     });
