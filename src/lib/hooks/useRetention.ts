@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { retentionService } from '@/lib/api/retention/retentionService';
-import { EndedSubscriptionsData, EndedSubscriptionItem, Priority, FeedbackRequest } from '@/lib/api/retention/types';
+import { EndedSubscriptionsData, EndedSubscriptionItem, FeedbackRequest } from '@/lib/api/retention/types';
 
 export interface UseRetentionOptions {
   initialPage?: number;
