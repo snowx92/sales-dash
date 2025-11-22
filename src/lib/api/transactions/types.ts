@@ -17,6 +17,7 @@ export interface TransactionStore {
   name: string;
   logo?: string;
   country: string;
+  link?: string;
 }
 
 export interface TransactionAdmin {
@@ -33,6 +34,8 @@ export interface Transaction {
   discountCode?: string;
   createdAt: TransactionTimestamp;
   method: string;
+  type?: string;
+  kashierLink?: string | null;
   plan: TransactionPlan;
   store: TransactionStore;
   admin: TransactionAdmin | null;

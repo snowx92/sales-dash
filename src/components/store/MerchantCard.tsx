@@ -1,7 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, ShoppingBag, Globe, Box, Eye, Calendar, Clock, LogIn, BarChart, Key, EyeOff, MapPin, Building2, XCircle, CreditCard, User } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { Users, ShoppingBag, Globe, Box, Eye, Calendar, Clock, LogIn, BarChart, Key, EyeOff, MapPin, Building2, XCircle, CreditCard, User, Wallet, AlertCircle, Sparkles, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { ActionDropdown } from "@/components/ui/ActionDropdown";
 // import logo from "@/lib/images/logo.png";
@@ -31,18 +30,17 @@ export interface MerchantCardProps {
   storeName: string;
   storeLogo: string;
   planName: string;
-  subscribeDate: Timestamp | null;
+  isTrial: boolean;
+  isExpired: boolean;
   storeUsername: string;
   totalOrders: number;
   totalEmployees: number;
+  totalCustomers: number;
   websiteLink: string;
   planExpirationDate: string;
-  ordersLimit: number;
-  currentOrders: number;
   websiteVisits: number;
   products: number;
   status: string;
-  isTrial: boolean;
   category: Category | null;
   defaultCountry: string;
   defaultCurrency: string;
@@ -54,6 +52,11 @@ export interface MerchantCardProps {
     avatar: string;
     name: string;
   };
+  createdAt: Timestamp;
+  vPayBalance: number;
+  isBeta: boolean;
+  isWebsiteExpired: boolean;
+  finishedSetup: boolean;
 }
 
 // Function to generate a unique color based on a string value with opacity and a matching text color
@@ -95,18 +98,17 @@ export function MerchantCard({
   storeName,
   storeLogo,
   planName,
-  subscribeDate,
+  isTrial,
+  isExpired,
   storeUsername,
   totalOrders,
   totalEmployees,
+  totalCustomers,
   websiteLink,
   planExpirationDate,
-  ordersLimit,
-  currentOrders,
   websiteVisits,
   products,
   status,
-  isTrial,
   category,
   defaultCountry,
   defaultCurrency,
@@ -114,6 +116,11 @@ export function MerchantCard({
   localMarkets,
   hiddenOrders,
   assignedSales,
+  createdAt,
+  vPayBalance,
+  isBeta,
+  isWebsiteExpired,
+  finishedSetup,
 }: MerchantCardProps) {
   const [imageError, setImageError] = useState(false);
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
@@ -125,8 +132,13 @@ export function MerchantCard({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const hasHiddenOrders = hiddenOrders > 0;
-  const progressPercentage = Math.round((currentOrders / ordersLimit) * 100);
-  const isExpiringSoon = new Date(planExpirationDate) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const isExpiringSoon = !isExpired && new Date(planExpirationDate) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  // Calculate days until expiration
+  const daysUntilExpiration = Math.ceil((new Date(planExpirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+  // Calculate days since creation
+  const daysSinceCreation = Math.ceil((Date.now() - new Date(createdAt._seconds * 1000).getTime()) / (1000 * 60 * 60 * 24));
 
   const handleForcePasswordReset = () => {
     setShowPasswordResetModal(true);
@@ -271,38 +283,75 @@ export function MerchantCard({
                       <Building2 className="w-3 h-3 mr-1" />
                       {isTrial ? "Trial" : planName}
                     </span>
+                    {isExpired && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200 animate-pulse">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        Expired
+                      </span>
+                    )}
                     {renewEnabled && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                         Auto
                       </span>
                     )}
-                    {isExpiringSoon && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200 animate-pulse">
+                    {isExpiringSoon && !isExpired && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200 animate-pulse">
                         <Clock className="w-3 h-3 mr-1" />
                         Soon
                       </span>
                     )}
+                    {isBeta && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        Beta
+                      </span>
+                    )}
+                    {isWebsiteExpired && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+                        <Globe className="w-3 h-3 mr-1" />
+                        Web Expired
+                      </span>
+                    )}
                   </div>
 
-                  {/* Orders Progress */}
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-gray-600">Usage</span>
-                      <span className="text-xs font-bold text-gray-900">
-                        {currentOrders.toLocaleString()} / {ordersLimit.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <Progress
-                        value={progressPercentage}
-                        className="h-1.5 bg-gray-100 rounded-full overflow-hidden"
-                      />
-                      <div className="absolute inset-y-0 right-1 flex items-center">
-                        <span className="text-xs font-medium text-gray-500">
-                          {progressPercentage}%
-                        </span>
+                  {/* Store Status Info */}
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                    {/* Setup Status */}
+                    {finishedSetup ? (
+                      <div className="flex items-center space-x-1 px-2 py-1 bg-green-50 text-green-700 rounded-md border border-green-200">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span className="font-medium">Setup Complete</span>
                       </div>
+                    ) : (
+                      <div className="flex items-center space-x-1 px-2 py-1 bg-yellow-50 text-yellow-700 rounded-md border border-yellow-200">
+                        <AlertCircle className="w-3 h-3" />
+                        <span className="font-medium">Setup Pending</span>
+                      </div>
+                    )}
+
+                    {/* Days since creation */}
+                    <div className="flex items-center space-x-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
+                      <Calendar className="w-3 h-3" />
+                      <span className="font-medium">{daysSinceCreation} days old</span>
                     </div>
+
+                    {/* Days until expiration or expired */}
+                    {isExpired ? (
+                      <div className="flex items-center space-x-1 px-2 py-1 bg-red-50 text-red-700 rounded-md border border-red-200 animate-pulse">
+                        <XCircle className="w-3 h-3" />
+                        <span className="font-medium">Plan Expired</span>
+                      </div>
+                    ) : daysUntilExpiration > 0 && daysUntilExpiration <= 7 ? (
+                      <div className="flex items-center space-x-1 px-2 py-1 bg-orange-50 text-orange-700 rounded-md border border-orange-200">
+                        <Clock className="w-3 h-3" />
+                        <span className="font-medium">{daysUntilExpiration} days left</span>
+                      </div>
+                    ) : daysUntilExpiration > 0 ? (
+                      <div className="flex items-center space-x-1 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md border border-emerald-200">
+                        <Clock className="w-3 h-3" />
+                        <span className="font-medium">{daysUntilExpiration} days left</span>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -310,10 +359,11 @@ export function MerchantCard({
 
             {/* Stats Grid - More Compact */}
             <div className="px-4 pb-3">
-              <div className="grid grid-cols-3 lg:grid-cols-5 gap-2">
+              <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
                 <StatCard icon={ShoppingBag} value={totalOrders} label="Orders" color="blue" />
                 <StatCard icon={Box} value={products} label="Products" color="purple" />
                 <StatCard icon={Eye} value={websiteVisits} label="Visits" color="green" />
+                <StatCard icon={User} value={totalCustomers} label="Customers" color="pink" />
                 <StatCard icon={Users} value={totalEmployees} label="Team" color="orange" />
                 <StatCard icon={MapPin} value={localMarkets.length} label="Markets" color="indigo" />
               </div>
@@ -321,22 +371,28 @@ export function MerchantCard({
 
             {/* Footer Info - Condensed */}
             <div className="px-4 py-3 bg-gray-50/50 border-t border-gray-100">
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-                <InfoItem 
-                  icon={Calendar} 
-                  label="Subscribed" 
-                  value={subscribeDate ? new Date(subscribeDate._seconds * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : 'Not subscribed'} 
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                <InfoItem
+                  icon={Calendar}
+                  label="Created"
+                  value={createdAt ? new Date(createdAt._seconds * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : 'N/A'}
                 />
-                <InfoItem 
-                  icon={Clock} 
-                  label="Expires" 
-                  value={new Date(planExpirationDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })} 
-                  highlight={isExpiringSoon}
+                <InfoItem
+                  icon={Clock}
+                  label="Expires"
+                  value={new Date(planExpirationDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
+                  highlight={isExpiringSoon || isExpired}
                 />
-                <InfoItem 
-                  icon={Globe} 
-                  label="Location" 
-                  value={`${defaultCountry} • ${defaultCurrency}`} 
+                <InfoItem
+                  icon={Globe}
+                  label="Location"
+                  value={`${defaultCountry} • ${defaultCurrency}`}
+                />
+                <InfoItem
+                  icon={Wallet}
+                  label="VPay"
+                  value={`${vPayBalance.toFixed(2)} ${defaultCurrency}`}
+                  highlight={vPayBalance > 0}
                 />
               </div>
 
@@ -477,8 +533,6 @@ export function MerchantCard({
           storeName,
           storeLogo,
           planName,
-          currentOrders,
-          ordersLimit,
         }}
         onSubscriptionComplete={async () => {
           // Refresh store data after subscription
@@ -491,16 +545,16 @@ export function MerchantCard({
   );
 }
 
-function StatCard({ 
-  icon: Icon, 
-  value, 
-  label, 
-  color 
-}: { 
-  icon: LucideIcon; 
-  value: number; 
-  label: string; 
-  color: 'blue' | 'purple' | 'green' | 'orange' | 'indigo';
+function StatCard({
+  icon: Icon,
+  value,
+  label,
+  color
+}: {
+  icon: LucideIcon;
+  value: number;
+  label: string;
+  color: 'blue' | 'purple' | 'green' | 'orange' | 'indigo' | 'pink';
 }) {
   const colorConfig = {
     blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200' },
@@ -508,6 +562,7 @@ function StatCard({
     green: { bg: 'bg-green-50', text: 'text-green-600', border: 'border-green-200' },
     orange: { bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-200' },
     indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-200' },
+    pink: { bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-200' },
   };
 
   const config = colorConfig[color];
@@ -536,12 +591,27 @@ function InfoItem({
   value: string;
   highlight?: boolean;
 }) {
+  // Determine color based on label and highlight
+  const getHighlightColor = () => {
+    if (!highlight) return { icon: 'text-gray-500', text: 'text-gray-900' };
+
+    if (label === 'Expires') {
+      return { icon: 'text-red-500', text: 'text-red-600' };
+    }
+    if (label === 'VPay') {
+      return { icon: 'text-emerald-500', text: 'text-emerald-600' };
+    }
+    return { icon: 'text-blue-500', text: 'text-blue-600' };
+  };
+
+  const colors = getHighlightColor();
+
   return (
     <div className="flex items-center space-x-1.5">
-      <Icon className={`w-3 h-3 flex-shrink-0 ${highlight ? 'text-red-500' : 'text-gray-500'}`} />
+      <Icon className={`w-3 h-3 flex-shrink-0 ${colors.icon}`} />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-        <p className={`text-xs font-semibold truncate ${highlight ? 'text-red-600' : 'text-gray-900'}`}>
+        <p className={`text-xs font-semibold truncate ${colors.text}`}>
           {value}
         </p>
       </div>

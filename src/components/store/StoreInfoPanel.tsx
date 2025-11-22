@@ -335,8 +335,6 @@ const StoreInfoPanel: React.FC<StoreInfoPanelProps> = ({ storeData }) => {
           storeName: storeData.name,
           storeLogo: storeData.logo,
           planName: storeData.planName,
-          currentOrders: storeData.metrics.totalProducts,
-          ordersLimit: 1000 // You might want to get this from your API
         }}
         onSubscriptionComplete={handleSubscriptionComplete}
       />

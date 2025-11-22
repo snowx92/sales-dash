@@ -54,7 +54,8 @@ interface Transaction {
     avatar?: string;
     email?: string;
   };
-  kashierLink?: string;
+  kashierLink?: string | null;
+  discountCode?: string;
 }
 import Link from "next/link"
 
@@ -123,7 +124,10 @@ function getDurationLabel(duration: string) {
     case "MONTH":
       return "Monthly"
     case "QUARTER":
+    case "QUARTAR": // Handle API typo
       return "Quarterly"
+    case "HALF":
+      return "6 Months"
     case "YEAR":
       return "Yearly"
     default:
@@ -136,7 +140,10 @@ function getDurationColor(duration: string) {
     case "MONTH":
       return "bg-blue-50 text-blue-700"
     case "QUARTER":
+    case "QUARTAR": // Handle API typo
       return "bg-green-50 text-green-700"
+    case "HALF":
+      return "bg-teal-50 text-teal-700"
     case "YEAR":
       return "bg-purple-50 text-purple-700"
     default:
@@ -430,13 +437,15 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
               <div className="text-center sm:text-left">
                 <h3 className="text-lg sm:text-xl font-bold text-gray-800">{transaction.store.name}</h3>
                 <p className="text-gray-500 text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                  <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">@{transaction.store.merchantId}</span>
+                  <span className="text-gray-500 hidden sm:inline">•</span>
                   <span>{transaction.store.country}</span>
                   {transaction.store.link && (
                     <>
                       <span className="text-gray-500 hidden sm:inline">•</span>
-                      <Link 
-                        href={transaction.store.link} 
-                        target="_blank" 
+                      <Link
+                        href={transaction.store.link}
+                        target="_blank"
                         className="text-indigo-600 hover:text-indigo-800 flex items-center justify-center sm:justify-start gap-1 transition-colors"
                       >
                         Visit store <ExternalLink size={12} />
@@ -490,14 +499,42 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
             <div className="bg-white rounded-xl p-3 sm:p-4 border border-indigo-100/30 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-3">
                 <div className="text-xs sm:text-sm text-gray-500">Subscription Plan</div>
-                <Badge className={`${getPlanBadgeColor(transaction.plan.id)} text-xs sm:text-sm w-fit`}>
-                  {transaction.plan.duration}
-                </Badge>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge
+                    variant="outline"
+                    className={`${
+                      transaction.type === "NEW"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    } text-xs sm:text-sm w-fit`}
+                  >
+                    {getTransactionTypeLabel(transaction.type)}
+                  </Badge>
+                  <Badge className={`${getPlanBadgeColor(transaction.plan.id)} text-xs sm:text-sm w-fit`}>
+                    {transaction.plan.duration}
+                  </Badge>
+                </div>
               </div>
               <div className="text-base sm:text-lg font-bold text-gray-800">{transaction.plan.name}</div>
               <div className="text-xs sm:text-sm text-gray-500">
                 Created on {formatTimestamp(transaction.createdAt.seconds)}
               </div>
+              {transaction.discountCode && (
+                <div className="mt-2 flex items-center gap-2 px-2 py-1.5 bg-green-50 border border-green-200 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
+                    <path d="M21.5 12.5l-1.5-1.5"></path>
+                    <path d="M2.5 12.5l1.5-1.5"></path>
+                    <path d="M7 21h10"></path>
+                    <path d="M12 21V3"></path>
+                    <path d="m15 6 3 3-3 3"></path>
+                    <path d="m9 6-3 3 3 3"></path>
+                  </svg>
+                  <div className="flex-1">
+                    <div className="text-xs text-green-600 font-medium">Discount Code Applied</div>
+                    <div className="text-xs font-bold text-green-700">{transaction.discountCode}</div>
+                  </div>
+                </div>
+              )}
             </div>
             
             {/* Payment Link */}

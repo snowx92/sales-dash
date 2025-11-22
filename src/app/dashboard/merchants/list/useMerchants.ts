@@ -29,14 +29,13 @@ interface Merchant {
   storeLogo: string;
   planName: string;
   isTrial: boolean;
-  subscribeDate: Timestamp | null;
+  isExpired: boolean;
   storeUsername: string;
   totalOrders: number;
   totalEmployees: number;
+  totalCustomers: number;
   websiteLink: string;
   planExpirationDate: string;
-  ordersLimit: number;
-  currentOrders: number;
   websiteVisits: number;
   products: number;
   hiddenOrders: number;
@@ -47,6 +46,11 @@ interface Merchant {
   renewEnabled: boolean;
   localMarkets: string[];
   assignedSales?: AssignedSales;
+  createdAt: Timestamp;
+  vPayBalance: number;
+  isBeta: boolean;
+  isWebsiteExpired: boolean;
+  finishedSetup: boolean;
 }
 
 // Export Merchant type for use in other components 
@@ -241,19 +245,18 @@ export const useMerchants = () => {
           storeName: store.name,
           storeLogo: store.logo || "/placeholder.svg",
           planName: store.plan?.planName || "N/A",
-          subscribeDate: store.plan?.subscribeDate || null,
+          isTrial: store.plan?.isTrial || false,
+          isExpired: store.plan?.isExpired || false,
           storeUsername: store.merchantId,
           totalOrders: store.counters?.orders || 0,
           totalEmployees: store.counters?.teamCount || 0,
+          totalCustomers: store.counters?.customers || 0,
           websiteLink: store.defaultDomain || "",
-          isTrial: store.plan?.isTrial || false,
           planExpirationDate: store.plan?.expireDate?._seconds
             ? new Date(store.plan.expireDate._seconds * 1000)
                 .toISOString()
                 .split("T")[0]
             : "N/A",
-          ordersLimit: store.plan?.maxOrders || 0,
-          currentOrders: store.plan?.currentOrders || 0,
           websiteVisits: store.counters?.visits || 0,
           products: store.counters?.products || 0,
           hiddenOrders: store.counters?.hiddenOrders || 0,
@@ -272,6 +275,11 @@ export const useMerchants = () => {
           renewEnabled: store.plan?.renewEnabled || false,
           localMarkets: store.localMarkets || [],
           assignedSales: store.assignedSales || undefined,
+          createdAt: store.createdAt,
+          vPayBalance: store.vPayBalance || 0,
+          isBeta: store.isBeta || false,
+          isWebsiteExpired: store.isWebsiteExpired || false,
+          finishedSetup: store.finishedSetup || false,
         }));
         console.log("[Stores API] Processed merchants:", apiMerchants);
         setMerchants(apiMerchants);

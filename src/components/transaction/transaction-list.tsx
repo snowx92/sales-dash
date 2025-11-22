@@ -42,7 +42,8 @@ interface Transaction {
     avatar?: string;
     email?: string;
   };
-  kashierLink?: string;
+  kashierLink?: string | null;
+  discountCode?: string;
 }
 
 // Utility function moved directly to this component

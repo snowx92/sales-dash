@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react"
 
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { SubscriptionService } from '@/lib/api/stores/subscriptions/SubscriptionService'
@@ -17,8 +16,6 @@ interface StoreData {
   storeName: string;
   storeLogo: string;
   planName: string;
-  currentOrders: number;
-  ordersLimit: number;
 }
 
 export interface MerchantModalProps {
@@ -53,8 +50,6 @@ const DEFAULT_STORE_DATA: StoreData = {
   storeName: 'Loading...',
   storeLogo: '/logo.png',
   planName: 'Loading...',
-  currentOrders: 0,
-  ordersLimit: 0,
 };
 
 export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA, onSubscriptionComplete }: MerchantModalProps) {
@@ -239,17 +234,11 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
           </div>
         </div>
 
-        <div className="mb-8">
-          <div className="flex justify-between text-sm mb-2">
-            <span className="text-gray-600">Order Usage</span>
-            <span className="font-medium text-gray-800">
-              {storeData.currentOrders} / {storeData.ordersLimit}
-            </span>
+        <div className="mb-8 p-4 bg-gray-50 rounded-lg">
+          <div className="text-sm text-gray-600">
+            <span className="font-medium">Current Plan: </span>
+            <span className="text-gray-900 font-semibold">{storeData.planName}</span>
           </div>
-          <Progress 
-            value={(storeData.currentOrders / storeData.ordersLimit) * 100} 
-            className="h-2 rounded-full bg-gray-100"
-          />
         </div>
 
         <div className="space-y-6">

@@ -15,7 +15,7 @@ const mapApiTransaction = (apiTx: ApiTransaction): Transaction => ({
   currency: apiTx.currency,
   status: "completed", // Default status since API doesn't provide this
   paymentMethod: apiTx.method,
-  type: "subscription", // Default type since API doesn't provide this
+  type: apiTx.type || "subscription", // Use API type (RENEW/NEW)
   method: apiTx.method,
   createdAt: {
     seconds: apiTx.createdAt._seconds,
@@ -26,18 +26,21 @@ const mapApiTransaction = (apiTx: ApiTransaction): Transaction => ({
     name: apiTx.store.name,
     logo: apiTx.store.logo,
     country: apiTx.store.country,
-    merchantId: apiTx.store.merchantId
+    merchantId: apiTx.store.merchantId,
+    link: apiTx.store.link
   },
   plan: {
     id: apiTx.plan.id,
     name: apiTx.plan.name,
-    duration: apiTx.plan.duration.toLowerCase()
+    duration: apiTx.plan.duration
   },
   admin: apiTx.admin ? {
     name: apiTx.admin.name,
     email: apiTx.admin.email,
     avatar: apiTx.admin.avatar
-  } : undefined
+  } : undefined,
+  kashierLink: apiTx.kashierLink,
+  discountCode: apiTx.discountCode
 });
 
 // Component Transaction type - keeping for compatibility with existing TransactionList component
@@ -76,7 +79,8 @@ interface Transaction {
     avatar?: string
     email?: string
   }
-  kashierLink?: string
+  kashierLink?: string | null
+  discountCode?: string
 }
 
 // API response structure

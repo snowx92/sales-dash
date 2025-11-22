@@ -32,6 +32,7 @@ interface DailyTransactions {
     currency: string;
     createdAt: {
       seconds?: number;
+      _seconds: number;
       _nanoseconds: number;
     };
     amount: number;
@@ -56,7 +57,8 @@ interface DailyTransactions {
       avatar?: string;
       email?: string;
     };
-    kashierLink?: string;
+    kashierLink?: string | null;
+    discountCode?: string;
     user?: {
       name: string;
       phone: string;

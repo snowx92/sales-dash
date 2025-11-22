@@ -27,6 +27,7 @@ export interface Category {
 export interface Plan {
   id: string;
   isTrial: boolean;
+  isExpired: boolean;
   planName: string;
   subscribeDate: Timestamp;
   expireDate: Timestamp;
@@ -58,7 +59,14 @@ export interface Store {
   defaultCurrency: string;
   domains: string[];
   defaultDomain: string;
+  createdAt: Timestamp;
+  apiKey: string;
   category: Category;
+  vPayBalance: number;
+  assignedTo: string;
+  isBeta: boolean;
+  isWebsiteExpired: boolean;
+  websiteExpireDate: Timestamp | null;
   plan: Plan;
   counters: Counters;
   localMarkets: string[];
