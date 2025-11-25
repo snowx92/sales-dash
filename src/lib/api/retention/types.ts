@@ -15,6 +15,13 @@ export interface EndedSubscriptionsData {
   currentPage: number;
   totalPages: number;
   docsReaded: number;
+  // Priority counts (optional, returned by the API)
+  expiredCount?: number;
+  highPriorityCount?: number;
+  lowPriorityCount?: number;
+  mediumPriorityCount?: number;
+  junkPriorityCount?: number;
+  totalAttempts?: number;
 }
 
 // Priority type for feedback
@@ -57,6 +64,18 @@ export interface FeedbackResponse {
 export interface RetentionQueryParams {
   limit?: number;
   pageNo?: number;
+  keyword?: string;
+  priority?: 'HIGH' | 'MEDIUM' | 'LOW' | 'JUNK';
+}
+
+// Period type for ending subscriptions
+export type Period = 'TODAY' | 'NEXT_THREE_DAYS' | 'THIS_WEEK' | 'THIS_MONTH';
+
+// Query parameters for ending-in-period endpoint
+export interface EndingInPeriodQueryParams {
+  limit?: number;
+  pageNo?: number;
+  period: Period;
   keyword?: string;
   priority?: 'HIGH' | 'MEDIUM' | 'LOW' | 'JUNK';
 }

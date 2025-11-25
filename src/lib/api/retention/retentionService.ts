@@ -1,10 +1,11 @@
 import { ApiService } from "../services/ApiService";
-import { 
-  EndedSubscriptionsData, 
-  FeedbackRequest, 
-  FeedbackResponse, 
+import {
+  EndedSubscriptionsData,
+  FeedbackRequest,
+  FeedbackResponse,
   RetentionQueryParams,
-  RetentionOverviewData 
+  RetentionOverviewData,
+  EndingInPeriodQueryParams
 } from './types';
 
 export class RetentionService extends ApiService {
@@ -125,6 +126,47 @@ export class RetentionService extends ApiService {
       return response;
     } catch (error) {
       console.error("🚨 RetentionService: Error fetching retention overview:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get subscriptions ending in a specific period
+   */
+  async getEndingInPeriod(params: EndingInPeriodQueryParams): Promise<EndedSubscriptionsData | null> {
+    try {
+      const queryParams: Record<string, string> = {
+        period: params.period
+      };
+
+      // Add pagination parameters
+      if (params.limit !== undefined) {
+        queryParams.limit = params.limit.toString();
+      }
+      if (params.pageNo !== undefined) {
+        queryParams.pageNo = params.pageNo.toString();
+      }
+
+      // Add filter parameters
+      if (params.keyword) {
+        queryParams.keyword = params.keyword;
+      }
+      if (params.priority) {
+        queryParams.priority = params.priority;
+      }
+
+      console.log("🔄 RetentionService: Fetching ending-in-period subscriptions with params:", queryParams);
+
+      const response = await this.get<EndedSubscriptionsData>(
+        "/retention/ending-in-period",
+        queryParams
+      );
+
+      console.log("🔄 RetentionService: Ending-in-period response received:", response);
+
+      return response;
+    } catch (error) {
+      console.error("🚨 RetentionService: Error fetching ending-in-period subscriptions:", error);
       throw error;
     }
   }

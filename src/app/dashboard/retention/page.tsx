@@ -6,7 +6,8 @@ import Image from "next/image";
 import { ResponsiveWrapper } from "@/components/layout/ResponsiveWrapper";
 import { Pagination } from "@/components/tables/Pagination";
 import { useRetention } from "@/lib/hooks/useRetention";
-import { EndedSubscriptionItem, Priority } from "@/lib/api/retention/types";
+import { useEndingPeriod } from "@/lib/hooks/useEndingPeriod";
+import { EndedSubscriptionItem, Priority, Period } from "@/lib/api/retention/types";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -29,7 +30,10 @@ import {
   Bell,
   TrendingDown,
   Users,
-  Ban
+  Ban,
+  Clock,
+  CalendarDays,
+  CalendarRange
 } from "lucide-react";
 import { retentionService } from "@/lib/api/retention/retentionService";
 
@@ -397,6 +401,11 @@ export default function RetentionPage() {
   const [editingMerchant, setEditingMerchant] = useState<EndedSubscriptionItem | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // View mode: 'expired' for already expired, 'expiring' for expiring soon
+  const [viewMode, setViewMode] = useState<'expired' | 'expiring'>('expiring');
+
+  // Tabs for expired view
   const [activeTab, setActiveTab] = useState<'all' | 'high' | 'medium' | 'low' | 'junk'>('all');
   const [tabCounts, setTabCounts] = useState({
     all: 0,
@@ -406,6 +415,15 @@ export default function RetentionPage() {
     junk: 0
   });
 
+  // Period tabs for expiring view
+  const [activePeriod, setActivePeriod] = useState<Period>('TODAY');
+  const [periodCounts, setPeriodCounts] = useState({
+    TODAY: 0,
+    NEXT_THREE_DAYS: 0,
+    THIS_WEEK: 0,
+    THIS_MONTH: 0
+  });
+
   // Reminder states
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [reminderMerchantId, setReminderMerchantId] = useState<string | null>(null);
@@ -413,37 +431,62 @@ export default function RetentionPage() {
   const [reminderMerchantEmail, setReminderMerchantEmail] = useState<string>('');
   const [reminderMerchantPhone, setReminderMerchantPhone] = useState<string>('');
 
-  // Use the retention hook for API integration
+  // Use the retention hook for API integration (expired subscriptions)
   const {
     items: merchants,
     isLoading,
     error,
-    // isSubmittingFeedback, // Available if needed for loading states
     currentPage,
     totalPages,
     totalItems,
     keyword,
     priority,
-    // hasNextPage, // Available for custom pagination
-    // hasPreviousPage, // Available for custom pagination
-
-    // Actions
     submitFeedback,
     refreshData,
-
-    // Navigation
     goToPage,
-    // nextPage, // Available for next/previous buttons
-    // previousPage, // Available for next/previous buttons
-
-    // Filtering
     searchRetention,
     filterByPriority,
     clearFilters
   } = useRetention({
     initialLimit: 50,
-    autoFetch: true
+    autoFetch: viewMode === 'expired'
   });
+
+  // Use the ending period hook (expiring subscriptions)
+  const {
+    items: expiringMerchants,
+    isLoading: isLoadingExpiring,
+    error: errorExpiring,
+    currentPage: currentPageExpiring,
+    totalPages: totalPagesExpiring,
+    totalItems: totalItemsExpiring,
+    keyword: keywordExpiring,
+    priority: priorityExpiring,
+    submitFeedback: submitFeedbackExpiring,
+    refreshData: refreshDataExpiring,
+    goToPage: goToPageExpiring,
+    searchRetention: searchRetentionExpiring,
+    clearFilters: clearFiltersExpiring
+  } = useEndingPeriod({
+    initialLimit: 100,
+    autoFetch: viewMode === 'expiring',
+    period: activePeriod
+  });
+
+  // Get current data based on view mode
+  const currentMerchants = viewMode === 'expired' ? merchants : expiringMerchants;
+  const currentIsLoading = viewMode === 'expired' ? isLoading : isLoadingExpiring;
+  const currentError = viewMode === 'expired' ? error : errorExpiring;
+  const currentCurrentPage = viewMode === 'expired' ? currentPage : currentPageExpiring;
+  const currentTotalPages = viewMode === 'expired' ? totalPages : totalPagesExpiring;
+  const currentTotalItems = viewMode === 'expired' ? totalItems : totalItemsExpiring;
+  const currentKeyword = viewMode === 'expired' ? keyword : keywordExpiring;
+  const currentPriority = viewMode === 'expired' ? priority : priorityExpiring;
+  const currentSubmitFeedback = viewMode === 'expired' ? submitFeedback : submitFeedbackExpiring;
+  const currentRefreshData = viewMode === 'expired' ? refreshData : refreshDataExpiring;
+  const currentGoToPage = viewMode === 'expired' ? goToPage : goToPageExpiring;
+  const currentSearchRetention = viewMode === 'expired' ? searchRetention : searchRetentionExpiring;
+  const currentClearFilters = viewMode === 'expired' ? clearFilters : clearFiltersExpiring;
 
   const handleEditMerchant = (merchant: EndedSubscriptionItem) => {
     console.log('Editing merchant:', merchant);
@@ -462,7 +505,7 @@ export default function RetentionPage() {
         feedback: updates.feedback,
         priority: updates.priority
       });
-      
+
       // Validate before sending
       if (!id) {
         toast.error('ID is missing. Cannot submit feedback.');
@@ -476,8 +519,8 @@ export default function RetentionPage() {
         toast.error('Priority is required.');
         return;
       }
-      
-      await submitFeedback({
+
+      await currentSubmitFeedback({
         id: id,
         feedback: updates.feedback,
         priority: updates.priority
@@ -503,53 +546,55 @@ export default function RetentionPage() {
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
-    searchRetention(value);
+    currentSearchRetention(value);
   };
 
-  // When tab changes, fetch data with the priority filter
+  // When tab changes in expired view, fetch data with the priority filter
   useEffect(() => {
-    if (activeTab === 'all') {
-      // Fetch all data without priority filter
-      filterByPriority(undefined);
-    } else {
-      // Fetch data filtered by priority
-      filterByPriority(activeTab.toUpperCase() as 'HIGH' | 'MEDIUM' | 'LOW' | 'JUNK');
+    if (viewMode === 'expired') {
+      if (activeTab === 'all') {
+        filterByPriority(undefined);
+      } else {
+        filterByPriority(activeTab.toUpperCase() as 'HIGH' | 'MEDIUM' | 'LOW' | 'JUNK');
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, viewMode]);
 
-  // Since we're now filtering on the API side, we don't need client-side filtering
-  const filteredMerchants = merchants;
+  // When period changes in expiring view, fetch data
+  useEffect(() => {
+    if (viewMode === 'expiring') {
+      refreshDataExpiring();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePeriod, viewMode]);
 
-  // Fetch counts for each priority by calling the API 5 times
+  // Use current merchants based on view mode
+  const filteredMerchants = currentMerchants;
+
+  // Fetch counts for each priority from a single API call (for expired view)
   useEffect(() => {
     async function fetchTabCounts() {
       try {
-        console.log('🔄 Fetching tab counts - calling API 5 times...');
+        console.log('🔄 Fetching tab counts from single API call...');
 
-        // Call API 5 times in parallel - once for all, and once for each priority
-        const [allRes, highRes, mediumRes, lowRes, junkRes] = await Promise.all([
-          retentionService.getEndedSubscriptions({ pageNo: 1, limit: 1 }), // Call 1: All
-          retentionService.getEndedSubscriptions({ pageNo: 1, limit: 1, priority: 'HIGH' }), // Call 2: High priority
-          retentionService.getEndedSubscriptions({ pageNo: 1, limit: 1, priority: 'MEDIUM' }), // Call 3: Medium priority
-          retentionService.getEndedSubscriptions({ pageNo: 1, limit: 1, priority: 'LOW' }), // Call 4: Low priority
-          retentionService.getEndedSubscriptions({ pageNo: 1, limit: 1, priority: 'JUNK' }) // Call 5: Junk
-        ]);
+        // Single API call that returns all counts
+        const response = await retentionService.getEndedSubscriptions({ pageNo: 1, limit: 50 });
 
-        const counts = {
-          all: allRes?.totalItems || 0,
-          high: highRes?.totalItems || 0,
-          medium: mediumRes?.totalItems || 0,
-          low: lowRes?.totalItems || 0,
-          junk: junkRes?.totalItems || 0
-        };
+        if (response) {
+          const counts = {
+            all: response.expiredCount || response.totalItems || 0,
+            high: response.highPriorityCount || 0,
+            medium: response.mediumPriorityCount || 0,
+            low: response.lowPriorityCount || 0,
+            junk: response.junkPriorityCount || 0
+          };
 
-        console.log('📊 Tab Counts from API:', counts);
-
-        setTabCounts(counts);
+          console.log('📊 Tab Counts from API:', counts);
+          setTabCounts(counts);
+        }
       } catch (error) {
         console.error('❌ Error fetching tab counts:', error);
-        // Fallback to current page counts if error
         setTabCounts({
           all: merchants.length,
           high: merchants.filter(m => m.priority === 'HIGH').length,
@@ -561,6 +606,35 @@ export default function RetentionPage() {
     }
     fetchTabCounts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch counts for each period by calling the API 4 times (for expiring view)
+  useEffect(() => {
+    async function fetchPeriodCounts() {
+      try {
+        console.log('🔄 Fetching period counts - calling API 4 times...');
+
+        const [todayRes, next3DaysRes, thisWeekRes, thisMonthRes] = await Promise.all([
+          retentionService.getEndingInPeriod({ pageNo: 1, limit: 1, period: 'TODAY' }),
+          retentionService.getEndingInPeriod({ pageNo: 1, limit: 1, period: 'NEXT_THREE_DAYS' }),
+          retentionService.getEndingInPeriod({ pageNo: 1, limit: 1, period: 'THIS_WEEK' }),
+          retentionService.getEndingInPeriod({ pageNo: 1, limit: 1, period: 'THIS_MONTH' })
+        ]);
+
+        const counts = {
+          TODAY: todayRes?.totalItems || 0,
+          NEXT_THREE_DAYS: next3DaysRes?.totalItems || 0,
+          THIS_WEEK: thisWeekRes?.totalItems || 0,
+          THIS_MONTH: thisMonthRes?.totalItems || 0
+        };
+
+        console.log('📊 Period Counts from API:', counts);
+        setPeriodCounts(counts);
+      } catch (error) {
+        console.error('❌ Error fetching period counts:', error);
+      }
+    }
+    fetchPeriodCounts();
   }, []);
 
   const handleOpenReminderModal = (id: string, name: string, email: string, phone: string) => {
@@ -596,15 +670,278 @@ export default function RetentionPage() {
     }
   };
 
-  if (error) {
+  // Render table component
+  const renderTable = () => (
+    <>
+      {/* Expired Merchants Table */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Store</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Customer</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Impact</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Expired</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Attempts</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Priority</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {currentIsLoading ? (
+                [...Array(5)].map((_, index) => (
+                  <tr key={index}>
+                    <td colSpan={7} className="px-6 py-4">
+                      <div className="animate-pulse flex space-x-4">
+                        <div className="rounded-full bg-gray-200 h-8 w-8"></div>
+                        <div className="flex-1 space-y-2 py-1">
+                          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : filteredMerchants.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center">
+                    <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No {viewMode === 'expiring' ? 'expiring' : 'expired'} plans
+                    </h3>
+                    <p className="text-gray-600">
+                      {viewMode === 'expiring' ? 'No subscriptions expiring in this period.' : 'Great! All merchants have active subscriptions.'}
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filteredMerchants.map((merchant) => {
+                  const priority = priorities.find(p => p.id === merchant.priority);
+                  const isExpanded = expandedRows.has(merchant.id);
+
+                  return (
+                    <React.Fragment key={merchant.id}>
+                      <motion.tr
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => toggleRowExpansion(merchant.id)}
+                      >
+                        {/* Store Name & Link */}
+                        <td className="px-3 py-2 whitespace-nowrap max-w-[220px]">
+                          <div className="flex items-center">
+                            {merchant.logo ? (
+                              <Image
+                                src={merchant.logo}
+                                alt={merchant.storeName}
+                                width={32}
+                                height={32}
+                                className="w-8 h-8 rounded-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  target.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                            ) : null}
+                            <div className={`w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm ${merchant.logo ? 'hidden' : ''}`}>
+                              {merchant.storeName.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="ml-3 overflow-hidden">
+                              <div className="text-sm font-medium text-gray-900 truncate">{merchant.storeName}</div>
+                              <div className="text-sm text-gray-500 truncate">
+                                {merchant.link ? (
+                                  <a
+                                    href={merchant.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    View Store
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                ) : (
+                                  <span className="text-gray-400">No link available</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="ml-2">
+                              {isExpanded ?
+                                <ChevronUp className="h-4 w-4 text-gray-400" /> :
+                                <ChevronDown className="h-4 w-4 text-gray-400" />
+                              }
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Customer Info */}
+                        <td className="px-3 py-2 whitespace-nowrap max-w-[200px]">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{merchant.name}</div>
+                            <div className="text-sm text-gray-500 truncate">{merchant.email}</div>
+                            <div className="text-sm font-medium text-green-600">{formatPhoneForDisplay(merchant.phone)}</div>
+                          </div>
+                        </td>
+
+                        {/* Impact Score */}
+                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm font-medium text-gray-900">
+                              {merchant.impact.toLocaleString()} EGP
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Expired Date */}
+                        <td className="px-3 py-2 whitespace-nowrap text-sm">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-red-400" />
+                            <span className="text-sm text-gray-900">
+                              {formatExpiredDate(merchant.expiredAt)}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Attempts */}
+                        <td className="px-3 py-2 whitespace-nowrap text-sm">
+                          <div className="flex items-center gap-1">
+                            <Target className="h-3 w-3 text-gray-400" />
+                            <span className="text-sm text-gray-900">{merchant.attemps}</span>
+                          </div>
+                        </td>
+
+                        {/* Priority */}
+                        <td className="px-3 py-2 whitespace-nowrap text-sm">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${priority?.color}`}>
+                            {priority?.name}
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`tel:${merchant.phone}`, '_self');
+                              }}
+                              className="p-1 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Call"
+                            >
+                              <Phone className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const url = buildWhatsAppUrl(merchant.phone, 'Hello');
+                                window.open(url, '_blank');
+                              }}
+                              className="p-1 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="WhatsApp"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`mailto:${merchant.email}`, '_self');
+                              }}
+                              className="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Email"
+                            >
+                              <Mail className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenReminderModal(
+                                  merchant.id,
+                                  (merchant.storeName || merchant.name),
+                                  merchant.email,
+                                  merchant.phone
+                                );
+                              }}
+                              className="p-1 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                              title="Add Reminder"
+                            >
+                              <Bell className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditMerchant(merchant);
+                              }}
+                              className="p-1 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </motion.tr>
+
+                      {/* Expanded Row - Feedback History */}
+                      {isExpanded && (
+                        <motion.tr
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                        >
+                          <td colSpan={7} className="px-6 py-4 bg-gray-50">
+                            <div className="space-y-3">
+                              <h4 className="font-medium text-gray-900">Previous Feedback</h4>
+                              {merchant.feedbacks.length > 0 ? (
+                                <div className="space-y-2">
+                                  {merchant.feedbacks.map((feedback, index) => (
+                                    <div key={index} className="bg-white p-3 rounded-lg border border-gray-200">
+                                      <p className="text-sm text-gray-700">{feedback}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-gray-500">No feedback recorded yet.</p>
+                              )}
+                              <div className="mt-3 text-xs text-gray-500">
+                                <p>ID: {merchant.id}</p>
+                                <p>Merchant ID: {merchant.merchantId}</p>
+                                <p>Renew Count: {merchant.renewCounts}</p>
+                              </div>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Pagination */}
+      {currentTotalItems > 0 && currentTotalPages > 1 && (
+        <Pagination
+          totalItems={currentTotalItems}
+          itemsPerPage={viewMode === 'expired' ? 50 : 100}
+          currentPage={currentCurrentPage}
+          onPageChange={currentGoToPage}
+        />
+      )}
+    </>
+  );
+
+  if (currentError) {
     return (
       <ResponsiveWrapper padding="sm">
         <div className="text-center py-12">
           <AlertTriangle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Data</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600 mb-4">{currentError}</p>
           <button
-            onClick={refreshData}
+            onClick={currentRefreshData}
             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
           >
             <RefreshCw className="h-4 w-4 inline mr-2" />
@@ -617,11 +954,133 @@ export default function RetentionPage() {
 
   return (
     <>
-
-
       <ResponsiveWrapper padding="sm">
         <div className="space-y-6 pb-8">
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="w-full">
+          {/* View Mode Toggle */}
+          <div className="bg-white p-4 rounded-xl shadow-sm">
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setViewMode('expiring')}
+                className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                  viewMode === 'expiring'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <Clock className="h-5 w-5" />
+                Expiring Soon
+              </button>
+              <button
+                onClick={() => setViewMode('expired')}
+                className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                  viewMode === 'expired'
+                    ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <XCircle className="h-5 w-5" />
+                Already Expired
+              </button>
+            </div>
+          </div>
+
+          {/* Expiring Soon View */}
+          {viewMode === 'expiring' && (
+            <Tabs value={activePeriod} onValueChange={(value) => setActivePeriod(value as Period)} className="w-full">
+              <TabsList className="grid w-full grid-cols-4 bg-gradient-to-r from-orange-50 to-red-50 p-1 rounded-xl border border-orange-200 gap-1">
+                <TabsTrigger
+                  value="TODAY"
+                  className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-3 text-xs font-medium transition-all
+                    data-[state=active]:bg-white data-[state=active]:text-orange-900 data-[state=active]:shadow-md
+                    data-[state=inactive]:text-orange-700 data-[state=inactive]:hover:text-orange-900"
+                >
+                  <Clock className="h-4 w-4" />
+                  <span className="hidden sm:inline">Today</span>
+                  <span className="px-2 py-0.5 bg-orange-100 text-orange-900 rounded-full text-xs font-bold">
+                    {periodCounts.TODAY}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="NEXT_THREE_DAYS"
+                  className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-3 text-xs font-medium transition-all
+                    data-[state=active]:bg-white data-[state=active]:text-orange-900 data-[state=active]:shadow-md
+                    data-[state=inactive]:text-orange-700 data-[state=inactive]:hover:text-orange-900"
+                >
+                  <CalendarDays className="h-4 w-4" />
+                  <span className="hidden sm:inline">Next 3 Days</span>
+                  <span className="px-2 py-0.5 bg-orange-100 text-orange-900 rounded-full text-xs font-bold">
+                    {periodCounts.NEXT_THREE_DAYS}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="THIS_WEEK"
+                  className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-3 text-xs font-medium transition-all
+                    data-[state=active]:bg-white data-[state=active]:text-orange-900 data-[state=active]:shadow-md
+                    data-[state=inactive]:text-orange-700 data-[state=inactive]:hover:text-orange-900"
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span className="hidden sm:inline">This Week</span>
+                  <span className="px-2 py-0.5 bg-orange-100 text-orange-900 rounded-full text-xs font-bold">
+                    {periodCounts.THIS_WEEK}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="THIS_MONTH"
+                  className="flex items-center justify-center gap-1.5 rounded-lg px-2 py-3 text-xs font-medium transition-all
+                    data-[state=active]:bg-white data-[state=active]:text-orange-900 data-[state=active]:shadow-md
+                    data-[state=inactive]:text-orange-700 data-[state=inactive]:hover:text-orange-900"
+                >
+                  <CalendarRange className="h-4 w-4" />
+                  <span className="hidden sm:inline">This Month</span>
+                  <span className="px-2 py-0.5 bg-orange-100 text-orange-900 rounded-full text-xs font-bold">
+                    {periodCounts.THIS_MONTH}
+                  </span>
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value={activePeriod} className="space-y-6 mt-6">
+                {/* Filters + Export */}
+                <div className="bg-white p-4 rounded-xl shadow-sm">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <input
+                          type="text"
+                          placeholder="Search by name, email, or store..."
+                          value={searchTerm}
+                          onChange={(e) => handleSearch(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 items-start">
+                      <button
+                        onClick={currentClearFilters}
+                        className="px-3 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1"
+                      >
+                        <Filter className="h-4 w-4" />
+                        Clear
+                      </button>
+                      <button
+                        onClick={() => setExportModalOpen(true)}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" /> Export
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table for expiring subscriptions */}
+                {renderTable()}
+              </TabsContent>
+            </Tabs>
+          )}
+
+          {/* Already Expired View */}
+          {viewMode === 'expired' && (
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="w-full">
             <TabsList className="grid w-full grid-cols-5 bg-gray-100 p-1 rounded-xl border border-gray-200 gap-1">
               <TabsTrigger
                 value="all"
@@ -685,302 +1144,45 @@ export default function RetentionPage() {
               </TabsTrigger>
             </TabsList>
 
-          <TabsContent value={activeTab} className="space-y-6 mt-6">
-          {/* Filters + Export */}
-          <div className="bg-white p-4 rounded-xl shadow-sm">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <input
-                  type="text"
-                  placeholder="Search by name, email, or store..."
-                  value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 items-start">
-              <button
-                onClick={clearFilters}
-                className="px-3 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1"
-              >
-                <Filter className="h-4 w-4" />
-                Clear
-              </button>
-              <button
-                onClick={() => setExportModalOpen(true)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" /> Export
-              </button>
-            </div>
-          </div>
-          </div>
-
-          {/* Expired Merchants Table */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            {/* Use table-fixed and smaller paddings so table fits screens; add truncation for long content */}
-            <table className="w-full table-fixed">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Store</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Customer</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Impact</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">Expired</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Attempts</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Priority</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {isLoading ? (
-                  // Loading skeleton
-                  [...Array(5)].map((_, index) => (
-                    <tr key={index}>
-                      <td colSpan={7} className="px-6 py-4">
-                        <div className="animate-pulse flex space-x-4">
-                          <div className="rounded-full bg-gray-200 h-8 w-8"></div>
-                          <div className="flex-1 space-y-2 py-1">
-                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : filteredMerchants.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
-                      <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        No expired plans
-                      </h3>
-                      <p className="text-gray-600">
-                        Great! All merchants have active subscriptions.
-                      </p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredMerchants.map((merchant) => {
-                    const priority = priorities.find(p => p.id === merchant.priority);
-                    const isExpanded = expandedRows.has(merchant.id);
-                    
-                    return (
-                      <React.Fragment key={merchant.id}>
-                        <motion.tr
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="hover:bg-gray-50 transition-colors cursor-pointer"
-                          onClick={() => toggleRowExpansion(merchant.id)}
-                        >
-                          {/* Store Name & Link */}
-                              <td className="px-3 py-2 whitespace-nowrap max-w-[220px]">
-                            <div className="flex items-center">
-                              {merchant.logo ? (
-                                <Image 
-                                  src={merchant.logo} 
-                                  alt={merchant.storeName}
-                                  width={32}
-                                  height={32}
-                                  className="w-8 h-8 rounded-full object-cover"
-                                  onError={(e) => {
-                                    // Fallback to initial if image fails to load
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                    target.nextElementSibling?.classList.remove('hidden');
-                                  }}
-                                />
-                              ) : null}
-                              <div className={`w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm ${merchant.logo ? 'hidden' : ''}`}>
-                                {merchant.storeName.charAt(0).toUpperCase()}
-                              </div>
-                              <div className="ml-3 overflow-hidden">
-                                <div className="text-sm font-medium text-gray-900 truncate">{merchant.storeName}</div>
-                                <div className="text-sm text-gray-500 truncate">
-                                  {merchant.link ? (
-                                    <a 
-                                      href={merchant.link} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer" 
-                                      className="text-blue-600 hover:underline inline-flex items-center gap-1"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      View Store
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  ) : (
-                                    <span className="text-gray-400">No link available</span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="ml-2">
-                                {isExpanded ? 
-                                  <ChevronUp className="h-4 w-4 text-gray-400" /> : 
-                                  <ChevronDown className="h-4 w-4 text-gray-400" />
-                                }
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Customer Info */}
-                          <td className="px-3 py-2 whitespace-nowrap max-w-[200px]">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{merchant.name}</div>
-                              <div className="text-sm text-gray-500 truncate">{merchant.email}</div>
-                              <div className="text-sm font-medium text-green-600">{formatPhoneForDisplay(merchant.phone)}</div>
-                            </div>
-                          </td>
-
-                          {/* Impact Score */}
-                          <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
-                            <div className="flex items-center gap-1">
-                              <span className="text-sm font-medium text-gray-900">
-                                {merchant.impact.toLocaleString()} EGP
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Expired Date */}
-                          <td className="px-3 py-2 whitespace-nowrap text-sm">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3 text-red-400" />
-                              <span className="text-sm text-gray-900">
-                                {formatExpiredDate(merchant.expiredAt)}
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Attempts */}
-                          <td className="px-3 py-2 whitespace-nowrap text-sm">
-                            <div className="flex items-center gap-1">
-                              <Target className="h-3 w-3 text-gray-400" />
-                              <span className="text-sm text-gray-900">{merchant.attemps}</span>
-                            </div>
-                          </td>
-
-                          {/* Priority */}
-                          <td className="px-3 py-2 whitespace-nowrap text-sm">
-                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${priority?.color}`}>
-                              {priority?.name}
-                            </span>
-                          </td>
-
-                          {/* Actions */}
-                          <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  window.open(`tel:${merchant.phone}`, '_self');
-                                }}
-                                className="p-1 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                title="Call"
-                              >
-                                <Phone className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const url = buildWhatsAppUrl(merchant.phone, 'Hello');
-                                  window.open(url, '_blank');
-                                }}
-                                className="p-1 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                title="WhatsApp"
-                              >
-                                <MessageCircle className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  window.open(`mailto:${merchant.email}`, '_self');
-                                }}
-                                className="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="Email"
-                              >
-                                <Mail className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenReminderModal(
-                                    merchant.id,
-                                    (merchant.storeName || merchant.name),
-                                    merchant.email,
-                                    merchant.phone
-                                  );
-                                }}
-                                className="p-1 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                                title="Add Reminder"
-                              >
-                                <Bell className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditMerchant(merchant);
-                                }}
-                                className="p-1 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                                title="Edit"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </motion.tr>
-
-                        {/* Expanded Row - Feedback History */}
-                        {isExpanded && (
-                          <motion.tr
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                          >
-                            <td colSpan={7} className="px-6 py-4 bg-gray-50">
-                              <div className="space-y-3">
-                                <h4 className="font-medium text-gray-900">Previous Feedback</h4>
-                                {merchant.feedbacks.length > 0 ? (
-                                  <div className="space-y-2">
-                                    {merchant.feedbacks.map((feedback, index) => (
-                                      <div key={index} className="bg-white p-3 rounded-lg border border-gray-200">
-                                        <p className="text-sm text-gray-700">{feedback}</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-gray-500">No feedback recorded yet.</p>
-                                )}
-                                <div className="mt-3 text-xs text-gray-500">
-                                  <p>ID: {merchant.id}</p>
-                                  <p>Merchant ID: {merchant.merchantId}</p>
-                                  <p>Renew Count: {merchant.renewCounts}</p>
-                                </div>
-                              </div>
-                            </td>
-                          </motion.tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })
-                )}
-                      </tbody>
-                    </table>
+              <TabsContent value={activeTab} className="space-y-6 mt-6">
+                {/* Filters + Export */}
+                <div className="bg-white p-4 rounded-xl shadow-sm">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <input
+                          type="text"
+                          placeholder="Search by name, email, or store..."
+                          value={searchTerm}
+                          onChange={(e) => handleSearch(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 items-start">
+                      <button
+                        onClick={currentClearFilters}
+                        className="px-3 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1"
+                      >
+                        <Filter className="h-4 w-4" />
+                        Clear
+                      </button>
+                      <button
+                        onClick={() => setExportModalOpen(true)}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" /> Export
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-          {/* Pagination */}
-          {totalItems > 0 && totalPages > 1 && (
-          <Pagination
-            totalItems={totalItems}
-            itemsPerPage={50}
-            currentPage={currentPage}
-            onPageChange={goToPage}
-          />
+                {/* Table for expired subscriptions */}
+                {renderTable()}
+              </TabsContent>
+            </Tabs>
           )}
-          </TabsContent>
-          </Tabs>
         </div>
 
         {/* Edit Modal */}
@@ -998,11 +1200,11 @@ export default function RetentionPage() {
         <RetentionExportModal
           open={exportModalOpen}
           onClose={()=>setExportModalOpen(false)}
-          currentItems={merchants}
-          totalPages={totalPages}
-          pageLimit={50}
-          currentKeyword={keyword}
-          currentPriority={priority}
+          currentItems={currentMerchants}
+          totalPages={currentTotalPages}
+          pageLimit={viewMode === 'expired' ? 50 : 100}
+          currentKeyword={currentKeyword}
+          currentPriority={currentPriority}
         />
 
         {/* Reminder Modal */}

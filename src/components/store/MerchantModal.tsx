@@ -78,14 +78,15 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
     console.log("[Subscription Modal] Starting subscription process...");
     
     // Validate inputs
-    if (!planType || !duration || !amount) {
+
+    if (!planType || !duration || amount === "" || amount === null || amount === undefined) {
       toast.error('Validation Error: Please fill in all fields');
       return;
     }
 
     const numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      toast.error('Invalid Amount: Please enter a valid amount');
+    if (isNaN(numericAmount) || numericAmount < 0) {
+      toast.error('Invalid Amount: Please enter a valid (zero or positive) amount');
       return;
     }
 
@@ -138,14 +139,15 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
     console.log("[Payment Link] Starting payment link generation...");
 
     // Validate inputs
-    if (!planType || !duration || !amount) {
+
+    if (!planType || !duration || amount === "" || amount === null || amount === undefined) {
       toast.error('Validation Error: Please fill in all fields');
       return;
     }
 
     const numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      toast.error('Invalid Amount: Please enter a valid amount');
+    if (isNaN(numericAmount) || numericAmount < 0) {
+      toast.error('Invalid Amount: Please enter a valid (zero or positive) amount');
       return;
     }
 
