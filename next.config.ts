@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  turbopack: {},
+  
   images: {
     domains: [
       "vondera-bucket.s3.amazonaws.com",
