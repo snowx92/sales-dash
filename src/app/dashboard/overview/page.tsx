@@ -262,18 +262,34 @@ export default function ReportsPage() {
 
   const getChartData = (chartType: 'merchants' | 'newSubscribtion' | 'renewSubscribtions') => {
     if (!overviewData?.charts?.[chartType]) {
+      console.log(`⚠️ No chart data for ${chartType}`);
       return {
         current: [],
-        previous: []
+        previous: [],
+        dates: []
       };
     }
     
     const chartData = overviewData.charts[chartType];
     
-    return {
+    // Extract dates from current duration data (they should match across current and previous)
+    const dates = chartData.currentDurationData?.map(point => point.date) || [];
+    
+    const result = {
       current: chartData.currentDurationData?.map(point => point.value) || [],
-      previous: chartData.prevDurationData?.map(point => point.value) || []
+      previous: chartData.prevDurationData?.map(point => point.value) || [],
+      dates: dates
     };
+    
+    console.log(`📊 Chart data for ${chartType}:`, {
+      dates: dates,
+      currentPoints: chartData.currentDurationData?.length || 0,
+      previousPoints: chartData.prevDurationData?.length || 0,
+      currentValues: result.current,
+      previousValues: result.previous
+    });
+    
+    return result;
   };
 
   const getPlanCountsData = () => {
@@ -461,6 +477,7 @@ export default function ReportsPage() {
                     }
                   ]}
                   dateRange={tempDateRange}
+                  dates={getChartData('newSubscribtion').dates}
                   showPercentage={false}
                 />
               </ResponsiveCard>
@@ -484,6 +501,7 @@ export default function ReportsPage() {
                     }
                   ]}
                   dateRange={tempDateRange}
+                  dates={getChartData('renewSubscribtions').dates}
                   showPercentage={false}
                 />
               </ResponsiveCard>
@@ -510,6 +528,7 @@ export default function ReportsPage() {
                     }
                   ]}
                   dateRange={tempDateRange}
+                  dates={getChartData('merchants').dates}
                   showPercentage={false}
                 />
               </ResponsiveCard>

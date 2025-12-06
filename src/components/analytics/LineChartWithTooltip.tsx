@@ -38,6 +38,7 @@ interface Dataset {
   borderColor: string;
   backgroundColor: string;
   borderDash?: number[];
+  dates?: string[]; // Optional dates for each data point
 }
 
 interface LineChartWithTooltipProps {
@@ -48,14 +49,14 @@ interface LineChartWithTooltipProps {
     to: string;
   };
   showPercentage?: boolean;
-
+  dates?: string[]; // Optional explicit dates array
 }
 
 export default function LineChartWithTooltip({ 
   title, 
   datasets,
   dateRange,
-
+  dates: explicitDates,
 }: LineChartWithTooltipProps) 
 {
 
@@ -97,33 +98,37 @@ export default function LineChartWithTooltip({
     return labels;
   };
 
-  const dateLabels = generateDateLabels();
+  // Use explicit dates if provided, otherwise generate from range
+  const dateLabels = explicitDates && explicitDates.length > 0 ? explicitDates : generateDateLabels();
   const timeUnit = getTimeUnit();
 
 
   const chartData = {
     labels: dateLabels,
     datasets: datasets.map(dataset => {
-      // Calculate the step size based on total days and number of data points
-      const totalDays = getDaysBetweenDates(dateRange.from, dateRange.to);
-      const stepSize = Math.floor(totalDays / (dataset.data.length - 1));
+      // If we have explicit dates, use data as-is (no distribution needed)
+      // Otherwise, distribute data across generated date labels
+      let finalData = dataset.data;
       
-
-
-      // Create data points at regular intervals
-      const distributedData = new Array(dateLabels.length).fill(null);
-      dataset.data.forEach((value, index) => {
-        const dayIndex = index * stepSize;
-        if (dayIndex < dateLabels.length) {
-          distributedData[dayIndex] = value;
-        }
-      });
-
-
+      if (!explicitDates || explicitDates.length === 0) {
+        // Old behavior: distribute data across generated labels
+        const totalDays = getDaysBetweenDates(dateRange.from, dateRange.to);
+        const stepSize = Math.floor(totalDays / (dataset.data.length - 1));
+        
+        const distributedData = new Array(dateLabels.length).fill(null);
+        dataset.data.forEach((value, index) => {
+          const dayIndex = index * stepSize;
+          if (dayIndex < dateLabels.length) {
+            distributedData[dayIndex] = value;
+          }
+        });
+        
+        finalData = distributedData;
+      }
 
       return {
         ...dataset,
-        data: distributedData,
+        data: finalData,
         tension: 0.4,
         borderWidth: 2,
         fill: true,
