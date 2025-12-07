@@ -23,18 +23,20 @@ export interface ForcePasswordResetResponse {
 }
 
 export type PlanId = 'pro' | 'starter' | 'plus';
-export type DurationId = 'month' | 'quarter' | 'half' | 'year';
+export type DurationId = 'month' | 'quartar' | 'half' | 'year';
 
 export interface SubscriptionRequest {
   planId: PlanId;
   durationId: DurationId;
   paidAmount: number;
+  currency?: string;
 }
 
 export interface PaymentLinkRequest {
   planId: PlanId;
   durationId: DurationId;
   paidAmount: number;
+  currency?: string;
 }
 
 export interface SubscriptionResponse {
@@ -43,17 +45,98 @@ export interface SubscriptionResponse {
   data?: Record<string, unknown>;
 }
 
+export interface PaymentLinkData {
+  success: boolean;
+  trxId: string | null;
+  paymentLink: string;
+}
+
 export interface PaymentLinkResponse {
   status: number;
   message: string;
-  data: {
-    success: boolean;
-    trxId: string | null;
-    paymentLink: string;
+  data: PaymentLinkData;
+}
+
+export interface PlanFeatures {
+  expansesAccess?: boolean;
+  productsOffersAccess?: boolean;
+  funnelsAccess?: boolean;
+  popUpAccess?: boolean;
+  customPagesAccess?: boolean;
+  pixelAccess?: boolean;
+  removeBrandingAccess?: boolean;
+  orderRiskSystemAccess?: boolean;
+  apiAccess?: boolean;
+  customSEO?: boolean;
+  vInboxAccess?: boolean;
+  multiCountryAccess?: boolean;
+  liveViewAccess?: boolean;
+  teamMembersCount?: number;
+  customerManagmentLevel?: number;
+  gatewaysLevel?: number;
+  shippingLevel?: number;
+  builderLevel?: number;
+  domainManagmentLevel?: number;
+  analyticsLevel?: number;
+  monthlyEmailsLimit?: number;
+  abandonCartsAccess?: boolean;
+  mailCampaignsAccess?: boolean;
+  customSalesChannels?: boolean;
+  catalogAccess?: boolean;
+  vonderaAiAccess?: boolean;
+  expansesLevel?: number;
+}
+
+export interface Plan {
+  id: string;
+  name: string;
+  description: string;
+  featured: boolean;
+  actionType: 'UPGRADE' | 'DOWNGRADE' | 'RENEW';
+  currency: string;
+  prices: {
+    month: number;
+    quartar: number;
+    year: number;
+    half: number;
   };
+  features: PlanFeatures;
+  level: number;
+}
+
+export interface GetPlansResponse {
+  status: number;
+  message: string;
+  data: Plan[];
 }
 
 class StoresActionsApi extends ApiService {
+  /**
+   * Get available plans for a specific store
+   * Sales person can view available plans with pricing and features
+   * @param storeId - The ID of the store to get plans for
+   * @returns Promise<Plan[] | null> - Returns array of available plans
+   */
+  async getStorePlans(storeId: string): Promise<Plan[] | null> {
+    try {
+      console.log(`📋 StoresActions: Getting plans for store ${storeId}...`);
+
+      // ApiService automatically extracts the 'data' property, so we get the plans array directly
+      const plans = await this.get<Plan[]>(`/stores/single/${storeId}/plans`);
+
+      if (plans && Array.isArray(plans)) {
+        console.log("✅ StoresActions: Store plans retrieved successfully", plans);
+        return plans;
+      } else {
+        console.warn("⚠️ StoresActions: Invalid plans response format:", plans);
+        return null;
+      }
+    } catch (error) {
+      console.error("🚨 StoresActions: Error getting store plans:", error);
+      return null;
+    }
+  }
+
   /**
    * Get store login credentials for a specific store
    * Sales person can view store credentials to help with access
@@ -131,11 +214,16 @@ class StoresActionsApi extends ApiService {
 
       console.log(`📦 StoresActions: Subscribing store ${storeId} to ${subscriptionData.planId} plan...`);
 
-      const requestBody = {
+      const requestBody: Record<string, unknown> = {
         planId: subscriptionData.planId,
         durationId: subscriptionData.durationId,
         paidAmount: subscriptionData.paidAmount
       };
+
+      // Add currency if provided
+      if (subscriptionData.currency) {
+        requestBody.currency = subscriptionData.currency;
+      }
 
       const response = await this.post<SubscriptionResponse>(`/stores/single/${storeId}/subscribe`, requestBody);
 
@@ -159,7 +247,7 @@ class StoresActionsApi extends ApiService {
    * @param paymentData - Payment link details (planId, durationId, paidAmount)
    * @returns Promise<PaymentLinkResponse | null>
    */
-  async generatePaymentLink(storeId: string, paymentData: PaymentLinkRequest): Promise<PaymentLinkResponse | null> {
+  async generatePaymentLink(storeId: string, paymentData: PaymentLinkRequest): Promise<PaymentLinkData | null> {
     try {
       if (!paymentData.planId || !paymentData.durationId || !paymentData.paidAmount) {
         console.warn("⚠️ StoresActions: Invalid payment link data provided");
@@ -168,19 +256,26 @@ class StoresActionsApi extends ApiService {
 
       console.log(`🔗 StoresActions: Generating payment link for store ${storeId}...`);
 
-      const requestBody = {
+      const requestBody: Record<string, unknown> = {
         planId: paymentData.planId,
         durationId: paymentData.durationId,
         paidAmount: paymentData.paidAmount
       };
 
-      const response = await this.post<PaymentLinkResponse>(`/stores/single/${storeId}/subscribe/link`, requestBody);
+      // Add currency if provided
+      if (paymentData.currency) {
+        requestBody.currency = paymentData.currency;
+      }
 
-      if (response && response.data?.paymentLink) {
+      // ApiService automatically extracts the 'data' property, so we get the payment link data directly
+      const data = await this.post<PaymentLinkData>(`/stores/single/${storeId}/subscribe/link`, requestBody);
+
+      if (data && data.paymentLink) {
         console.log("✅ StoresActions: Payment link generated successfully");
-        return response;
+        console.log("Payment link data:", data);
+        return data;
       } else {
-        console.warn("⚠️ StoresActions: Invalid payment link response format:", response);
+        console.warn("⚠️ StoresActions: Invalid payment link response format:", data);
         return null;
       }
     } catch (error) {

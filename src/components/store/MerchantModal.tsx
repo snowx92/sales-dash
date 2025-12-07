@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { SubscriptionService } from '@/lib/api/stores/subscriptions/SubscriptionService'
-import { storesActionsApi } from '@/lib/api/stores/actions/storesActions'
+import { storesActionsApi, Plan } from '@/lib/api/stores/actions/storesActions'
 import { toast } from 'sonner';
 import { Link, Copy } from 'lucide-react';
 
@@ -60,17 +60,71 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
   const [isGeneratingLink, setIsGeneratingLink] = useState(false)
   const [error, setError] = useState("")
   const [paymentLink, setPaymentLink] = useState<string | null>(null)
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [isLoadingPlans, setIsLoadingPlans] = useState(false)
+  const [currency, setCurrency] = useState("EGP") // Default currency
   // Using sonner toast directly
 
+  // Fetch plans when modal opens
   useEffect(() => {
-    if (planType && duration) {
+    if (isOpen && storeData.id) {
+      const fetchPlans = async () => {
+        setIsLoadingPlans(true);
+        try {
+          const fetchedPlans = await storesActionsApi.getStorePlans(storeData.id);
+          console.log("[MerchantModal] Fetched plans:", fetchedPlans);
+
+          if (fetchedPlans && fetchedPlans.length > 0) {
+            setPlans(fetchedPlans);
+            // Set currency from the first plan (all plans should have the same currency)
+            setCurrency(fetchedPlans[0].currency || "EGP");
+            console.log("[MerchantModal] Currency set to:", fetchedPlans[0].currency || "EGP");
+          } else {
+            console.warn("[MerchantModal] No plans fetched or empty array");
+          }
+        } catch (error) {
+          console.error("[MerchantModal] Error fetching plans:", error);
+          toast.error("Failed to load plans");
+        } finally {
+          setIsLoadingPlans(false);
+        }
+      };
+      fetchPlans();
+    }
+  }, [isOpen, storeData.id]);
+
+  useEffect(() => {
+    if (planType && duration && plans.length > 0) {
+      // Find the selected plan
+      const selectedPlan = plans.find(p => p.id === planType);
+      console.log("[MerchantModal] Selected plan:", selectedPlan);
+      console.log("[MerchantModal] Duration:", duration);
+
+      if (selectedPlan) {
+        // Get price based on duration
+        const price = selectedPlan.prices[duration as keyof typeof selectedPlan.prices];
+        console.log("[MerchantModal] Price from API:", price);
+
+        if (price !== undefined && price !== null) {
+          setAmount(price.toString());
+          // Update currency from the selected plan
+          setCurrency(selectedPlan.currency || "EGP");
+        } else {
+          console.warn("[MerchantModal] Price not found for duration:", duration);
+        }
+      } else {
+        console.warn("[MerchantModal] Plan not found:", planType);
+      }
+    } else if (planType && duration) {
+      // Fallback to hardcoded prices if plans not loaded
+      console.log("[MerchantModal] Using fallback prices");
       const basePrice = PLAN_PRICES[planType as keyof typeof PLAN_PRICES];
       const multiplier = DURATION_MULTIPLIERS[duration as keyof typeof DURATION_MULTIPLIERS];
       if (basePrice && multiplier) {
         setAmount((basePrice * multiplier).toString());
       }
     }
-  }, [planType, duration]);
+  }, [planType, duration, plans]);
 
   if (!isOpen) return null;
 
@@ -100,17 +154,18 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
       const subscriptionData = {
         planId: planType, // e.g., "starter", "plus", "pro"
         durationId: duration, // e.g., "month", "quartar", "year"
-        paidAmount: numericAmount
+        paidAmount: numericAmount,
+        currency: currency
       };
 
       console.log("[Subscription] Creating subscription:", subscriptionData);
-      
+
       // Call the subscription API
       await subscriptionService.createSubscription(storeData.id, subscriptionData);
-      
+
       // Show success toast
       toast.success(
-        `Successfully subscribed to ${planType} plan for ${DURATION_LABELS[duration as keyof typeof DURATION_LABELS]} duration with amount ${numericAmount} EGP`
+        `Successfully subscribed to ${planType} plan for ${DURATION_LABELS[duration as keyof typeof DURATION_LABELS]} duration with amount ${numericAmount} ${currency}`
       );
 
       // Then refresh the data before closing the modal
@@ -161,29 +216,30 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
       // Create payment link request
       const paymentData = {
         planId: planType as 'pro' | 'starter' | 'plus',
-        durationId: duration as 'month' | 'quarter' | 'half' | 'year',
-        paidAmount: numericAmount
+        durationId: duration as 'month' | 'quartar' | 'half' | 'year',
+        paidAmount: numericAmount,
+        currency: currency
       };
 
       console.log("[Payment Link] Generating link:", paymentData);
 
       // Call the payment link API
-      const response = await storesActionsApi.generatePaymentLink(storeData.id, paymentData);
+      const data = await storesActionsApi.generatePaymentLink(storeData.id, paymentData);
 
-      if (response && response.data?.paymentLink) {
+      if (data && data.paymentLink) {
         // If a paymentLink is present, accept it even if the gateway flagged success=false.
         // Many gateways return a link but mark 'success' false for non-fatal reasons
         // (e.g., trxId not created yet). Prefer returning the link to the user and
         // show a warning so they can still proceed.
-        setPaymentLink(response.data.paymentLink);
-        if (response.data.success === false) {
+        setPaymentLink(data.paymentLink);
+        if (data.success === false) {
           toast.success('Payment link generated (gateway returned partial success). Please verify transaction status.');
-          console.warn('[Payment Link] Gateway reported success=false, trxId:', response.data.trxId);
+          console.warn('[Payment Link] Gateway reported success=false, trxId:', data.trxId);
         } else {
           toast.success('Payment link generated successfully!');
         }
-        console.log("[Payment Link] Link:", response.data.paymentLink);
-        console.log("[Payment Link] Transaction ID:", response.data.trxId);
+        console.log("[Payment Link] Link:", data.paymentLink);
+        console.log("[Payment Link] Transaction ID:", data.trxId);
       } else {
         throw new Error('Failed to generate payment link');
       }
@@ -285,16 +341,21 @@ export function MerchantModal({ isOpen, onClose, storeData = DEFAULT_STORE_DATA,
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Amount
+              Amount ({currency})
             </label>
-            <Input
-              type="number"
-              className="bg-white text-gray-900 border border-gray-300 placeholder:text-gray-500"
-              placeholder="Enter amount"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              disabled={isSubmitting}
-            />
+            <div className="relative">
+              <Input
+                type="number"
+                className="bg-white text-gray-900 border border-gray-300 placeholder:text-gray-500 pr-16"
+                placeholder="Enter amount"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                disabled={isSubmitting || isLoadingPlans}
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <span className="text-gray-500 text-sm font-medium">{currency}</span>
+              </div>
+            </div>
           </div>
         </div>
 

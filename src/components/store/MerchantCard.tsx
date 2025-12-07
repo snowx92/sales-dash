@@ -391,7 +391,7 @@ export function MerchantCard({
                 <InfoItem
                   icon={Wallet}
                   label="VPay"
-                  value={`${vPayBalance.toFixed(2)} ${defaultCurrency}`}
+                  value={`${vPayBalance.toFixed(2)} EGP`}
                   highlight={vPayBalance > 0}
                 />
               </div>
