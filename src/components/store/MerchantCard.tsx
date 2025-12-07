@@ -211,6 +211,10 @@ export function MerchantCard({
         return { bg: "bg-green-50", text: "text-green-700", border: "border-green-200", label: "Active" };
       case "stopped":
         return { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", label: "Inactive" };
+      case "expired":
+        return { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200", label: "Expired" };
+      case "not_subscribed":
+        return { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", label: "Unsubscribed" };
       default:
         return { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200", label: status };
     }

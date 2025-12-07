@@ -260,11 +260,11 @@ export const useMerchants = () => {
           websiteVisits: store.counters?.visits || 0,
           products: store.counters?.products || 0,
           hiddenOrders: store.counters?.hiddenOrders || 0,
-          status: store.plan?.planName === "free"
+          status: store.plan?.planName?.toLowerCase() === "free"
             ? "not_subscribed"
-            : store.enabled
-            ? "subscribed"
-            : "not_subscribed",
+            : store.plan?.isExpired
+            ? "expired"
+            : "subscribed",
           category: store.category ? {
             id: Number(store.category.id) || 0,
             icon: store.category.icon || '',
