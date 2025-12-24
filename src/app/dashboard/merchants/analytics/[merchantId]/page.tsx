@@ -221,26 +221,26 @@ export default function MerchantAnalyticsPage() {
       Courier: storeData.store.localMarkets.length > 0 ? 'Local' : 'Not Available'
     },
     achievements: {
-      streak: storeData.store.plan.usagePercent,
-      totalSpent: storeData.store.plan.currentOrders.toString(),
+      streak: storeData.store.plan.usagePercent || 0,
+      totalSpent: (storeData.store.plan.currentOrders ?? 0).toString(),
       isTop50: storeData.store.plan.planName === 'pro',
-      isHot: storeData.store.plan.usagePercent > 80
+      isHot: (storeData.store.plan.usagePercent || 0) > 80
     }
   }
 
   const stats = [
     {
       title: "Total Sales",
-      value: analyticsData.counters.totalSales,
+      value: analyticsData.counters.totalSales ?? 0,
       change: ordersChart.percentageChanges[ordersChart.percentageChanges.length - 1] || 0,
       icon: TrendingUp,
       color: "text-green-600",
       bgColor: "bg-green-600",
-      transactionCount: analyticsData.counters.totalOrders.toString()
+      transactionCount: (analyticsData.counters.totalOrders ?? 0).toString()
     },
     {
       title: "VPay Transactions",
-      value: analyticsData.counters.totalVPayTransactions,
+      value: analyticsData.counters.totalVPayTransactions ?? 0,
       change: vPayChart.percentageChanges[vPayChart.percentageChanges.length - 1] || 0,
       icon: CreditCard,
       color: "text-purple-600",
@@ -248,7 +248,7 @@ export default function MerchantAnalyticsPage() {
     },
     {
       title: "Total Orders",
-      value: analyticsData.counters.totalOrders,
+      value: analyticsData.counters.totalOrders ?? 0,
       change: ordersChart.percentageChanges[ordersChart.percentageChanges.length - 1] || 0,
       icon: Package,
       color: "text-blue-600",
@@ -256,7 +256,7 @@ export default function MerchantAnalyticsPage() {
     },
     {
       title: "Website Visits",
-      value: analyticsData.counters.totalWebsiteVisits,
+      value: analyticsData.counters.totalWebsiteVisits ?? 0,
       change: 20,
       icon: Eye,
       color: "text-yellow-600",
