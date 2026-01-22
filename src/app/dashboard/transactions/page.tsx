@@ -9,39 +9,51 @@ import { motion } from "framer-motion"
 const ITEMS_PER_PAGE = 10
 
 // Map API transaction to component-expected format
-const mapApiTransaction = (apiTx: ApiTransaction): Transaction => ({
-  id: apiTx.id,
-  amount: apiTx.amount,
-  currency: apiTx.currency,
-  status: "completed", // Default status since API doesn't provide this
-  paymentMethod: apiTx.method,
-  type: apiTx.type || "subscription", // Use API type (RENEW/NEW)
-  method: apiTx.method,
-  createdAt: {
-    seconds: apiTx.createdAt._seconds,
-    _seconds: apiTx.createdAt._seconds,
-    _nanoseconds: apiTx.createdAt._nanoseconds
-  },
-  store: {
-    name: apiTx.store.name,
-    logo: apiTx.store.logo,
-    country: apiTx.store.country,
-    merchantId: apiTx.store.merchantId,
-    link: apiTx.store.link
-  },
-  plan: {
-    id: apiTx.plan.id,
-    name: apiTx.plan.name,
-    duration: apiTx.plan.duration
-  },
-  admin: apiTx.admin ? {
-    name: apiTx.admin.name,
-    email: apiTx.admin.email,
-    avatar: apiTx.admin.avatar
-  } : undefined,
-  kashierLink: apiTx.kashierLink,
-  discountCode: apiTx.discountCode
-});
+const mapApiTransaction = (apiTx: ApiTransaction): Transaction | null => {
+  // Validate required fields
+  if (!apiTx.store || !apiTx.plan) {
+    console.warn("⚠️ Transaction missing required fields:", {
+      id: apiTx.id,
+      hasStore: !!apiTx.store,
+      hasPlan: !!apiTx.plan
+    });
+    return null;
+  }
+
+  return {
+    id: apiTx.id,
+    amount: apiTx.amount,
+    currency: apiTx.currency,
+    status: "completed", // Default status since API doesn't provide this
+    paymentMethod: apiTx.method,
+    type: apiTx.type || "subscription", // Use API type (RENEW/NEW)
+    method: apiTx.method,
+    createdAt: {
+      seconds: apiTx.createdAt._seconds,
+      _seconds: apiTx.createdAt._seconds,
+      _nanoseconds: apiTx.createdAt._nanoseconds
+    },
+    store: {
+      name: apiTx.store.name,
+      logo: apiTx.store.logo,
+      country: apiTx.store.country,
+      merchantId: apiTx.store.merchantId,
+      link: apiTx.store.link
+    },
+    plan: {
+      id: apiTx.plan.id,
+      name: apiTx.plan.name,
+      duration: apiTx.plan.duration
+    },
+    admin: apiTx.admin ? {
+      name: apiTx.admin.name,
+      email: apiTx.admin.email,
+      avatar: apiTx.admin.avatar
+    } : undefined,
+    kashierLink: apiTx.kashierLink,
+    discountCode: apiTx.discountCode
+  };
+};
 
 // Component Transaction type - keeping for compatibility with existing TransactionList component
 interface Transaction {
@@ -116,8 +128,10 @@ const fetchTransactions = async (page: number, itemsPerPage: number): Promise<Ap
 
     console.log("📊 API data items:", apiData.items.length);
 
-    // Map API transactions to component format
-    const mappedTransactions = apiData.items.map(mapApiTransaction);
+    // Map API transactions to component format and filter out invalid ones
+    const mappedTransactions = apiData.items
+      .map(mapApiTransaction)
+      .filter((tx): tx is Transaction => tx !== null);
 
     console.log("📊 Mapped transactions:", mappedTransactions.length);
 
