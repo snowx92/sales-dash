@@ -40,7 +40,8 @@ export default function ResetPasswordModal({ isOpen, onClose }: ResetPasswordMod
       // Try the API call first
       const response = await profileService.resetPassword({ email });
       
-      if (response && response.status) {
+      // Handle both boolean status (true) and number status (200)
+      if (response && (response.status === true || response.status === 200)) {
         setIsSuccess(true);
       } else {
         setError("Failed to send reset email. Please try again.");

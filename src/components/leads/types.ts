@@ -12,6 +12,11 @@ import {
 } from "lucide-react";
 
 // TypeScript interfaces
+export interface OnboardingAnswer {
+  question: string;
+  answer: string;
+}
+
 export interface Lead {
   id: number;
   name: string;
@@ -32,18 +37,30 @@ export interface Lead {
     message: string;
     date: string;
   }>;
+  // New fields for onboarding feedback
+  createdAtRaw?: {
+    _seconds: number;
+    _nanoseconds: number;
+  };
+  onboardingFeedback?: OnboardingAnswer[];
 }
 
 export interface UpcomingLead {
   id: number;
   name: string;
-  phone: string;
   email: string;
+  phone: string;
   website: string;
   socialUrls: string;
   leadSource: string;
   priority: string;
   createdAt: string;
+  // New fields for onboarding feedback
+  createdAtRaw?: {
+    _seconds: number;
+    _nanoseconds: number;
+  };
+  onboardingFeedback?: OnboardingAnswer[];
 }
 
 export interface FormData {

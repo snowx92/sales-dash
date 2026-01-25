@@ -56,7 +56,7 @@ export interface ResetPasswordRequest {
 }
 
 export interface ResetPasswordResponse {
-  status: boolean;
+  status: boolean | number;
   message: string;
   data: null;
 }

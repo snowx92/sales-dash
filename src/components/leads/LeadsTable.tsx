@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Globe,
   HelpCircle,
@@ -15,7 +15,9 @@ import {
   MessageSquare,
   MessageCircle,
   Ban,
-  Store
+  Store,
+  UserPlus,
+  Calendar
 } from "lucide-react";
 import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
 import { formatPhoneForDisplay } from '@/lib/utils/phone';
@@ -42,6 +44,35 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
   onAssignStore,
   onMarkAsJunk
 }) => {
+  // State for tracking which onboarding accordion is expanded
+  const [expandedOnboarding, setExpandedOnboarding] = useState<number | null>(null);
+
+  const toggleOnboardingExpansion = (leadId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedOnboarding(prev => prev === leadId ? null : leadId);
+  };
+
+  // Helper to format created date from raw timestamp
+  const formatCreatedDate = (createdAtRaw?: { _seconds: number; _nanoseconds: number }) => {
+    if (!createdAtRaw) return '-';
+    return new Date(createdAtRaw._seconds * 1000).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Helper to format datetime
+  const formatDateTime = (createdAtRaw?: { _seconds: number; _nanoseconds: number }) => {
+    if (!createdAtRaw) return '-';
+    return new Date(createdAtRaw._seconds * 1000).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -147,15 +178,16 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                       </span>
                     </td>
 
-                    {/* Attempts + Last Updated Date (date only) */}
+                    {/* Attempts + Created Date */}
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
                       <div className="flex flex-col items-start">
                         <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-medium inline-block">
                           {isNaN(lead.attempts) ? 0 : lead.attempts}
                         </span>
-                        <span className="text-xs text-gray-500 mt-1">
-                          {lead.lastUpdated || lead.lastContact ? new Date(lead.lastUpdated || lead.lastContact).toLocaleDateString() : '-'}
-                        </span>
+                        <div className="flex items-center gap-1 mt-1 text-xs text-gray-500" title={formatDateTime(lead.createdAtRaw)}>
+                          <Calendar className="h-3 w-3" />
+                          <span>{formatCreatedDate(lead.createdAtRaw)}</span>
+                        </div>
                       </div>
                     </td>
 
@@ -239,7 +271,7 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                     </td>
                   </motion.tr>
 
-                  {/* Expanded Row - Feedback History */}
+                  {/* Expanded Row */}
                   {isExpanded && (
                     <motion.tr
                       initial={{ opacity: 0, height: 0 }}
@@ -247,24 +279,73 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                       exit={{ opacity: 0, height: 0 }}
                     >
                       <td colSpan={7} className="px-6 py-4 bg-gray-50">
-                        <div className="space-y-3">
-                          <h4 className="font-medium text-gray-900">Previous Feedback</h4>
-                          {lead.feedbackHistory && lead.feedbackHistory.length > 0 ? (
-                            <div className="space-y-2">
-                              {lead.feedbackHistory.map((feedback) => (
-                                <div key={feedback.id} className="bg-white p-3 rounded-lg border border-gray-200">
-                                  <div className="flex items-start justify-between">
-                                    <p className="text-sm text-gray-700">{feedback.message}</p>
-                                    <span className="text-xs text-gray-500 ml-4">
-                                      {new Date(feedback.date).toLocaleDateString()}
-                                    </span>
-                                  </div>
+                        <div className="space-y-4">
+                          {/* Onboarding Feedback Accordion */}
+                          {lead.onboardingFeedback && lead.onboardingFeedback.length > 0 && (
+                            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                              <button
+                                onClick={(e) => toggleOnboardingExpansion(lead.id, e)}
+                                className="w-full px-4 py-3 flex items-center justify-between bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <UserPlus className="h-4 w-4 text-indigo-600" />
+                                  <span className="font-medium text-indigo-900">Onboarding Info</span>
                                 </div>
-                              ))}
+                                {expandedOnboarding === lead.id ? (
+                                  <ChevronUp className="h-4 w-4 text-indigo-600" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4 text-indigo-600" />
+                                )}
+                              </button>
+                              <AnimatePresence>
+                                {expandedOnboarding === lead.id && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="overflow-hidden"
+                                  >
+                                    <div className="p-4 space-y-3">
+                                      {lead.onboardingFeedback.map((item, index) => (
+                                        <div key={index} className="flex flex-col sm:flex-row sm:items-start gap-2">
+                                          <div className="flex-1">
+                                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Question</p>
+                                            <p className="text-sm text-gray-900">{item.question}</p>
+                                          </div>
+                                          <div className="flex-1">
+                                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Answer</p>
+                                            <p className="text-sm text-gray-700">{item.answer}</p>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
                             </div>
-                          ) : (
-                            <p className="text-sm text-gray-500">No feedback recorded yet.</p>
                           )}
+
+                          {/* Previous Feedback */}
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">Previous Feedback</h4>
+                            {lead.feedbackHistory && lead.feedbackHistory.length > 0 ? (
+                              <div className="space-y-2">
+                                {lead.feedbackHistory.map((feedback) => (
+                                  <div key={feedback.id} className="bg-white p-3 rounded-lg border border-gray-200">
+                                    <div className="flex items-start justify-between">
+                                      <p className="text-sm text-gray-700">{feedback.message}</p>
+                                      <span className="text-xs text-gray-500 ml-4">
+                                        {new Date(feedback.date).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-500">No feedback recorded yet.</p>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </motion.tr>

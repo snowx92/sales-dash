@@ -1,5 +1,5 @@
 import type { ApiLead } from "./types";
-import type { Lead, UpcomingLead } from "@/components/leads/types";
+import type { Lead, UpcomingLead, OnboardingAnswer } from "@/components/leads/types";
 
 // Store mapping between component IDs and API IDs
 const idMapping = new Map<number, string>();
@@ -77,6 +77,26 @@ const mapApiLeadSourceToComponent = (apiLeadSource: string): string => {
 };
 
 /**
+ * Parse the onboarding feedback JSON string from API
+ */
+const parseOnboardingFeedback = (feedback?: string): OnboardingAnswer[] => {
+  if (!feedback) return [];
+  
+  try {
+    // Try to parse as JSON
+    const parsed = JSON.parse(feedback);
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    return [];
+  } catch {
+    // If not valid JSON, return empty array
+    // The feedback might be a regular feedback message, not onboarding data
+    return [];
+  }
+};
+
+/**
  * Convert API lead to component Lead format
  */
 export const mapApiLeadToLead = (apiLead: ApiLead): Lead => {
@@ -105,7 +125,10 @@ export const mapApiLeadToLead = (apiLead: ApiLead): Lead => {
       message: feedback,
       date: updatedAtDate
     })),
-    createdAt: new Date(apiLead.createdAt._seconds * 1000).toISOString().split('T')[0]
+    createdAt: new Date(apiLead.createdAt._seconds * 1000).toISOString().split('T')[0],
+    // New fields
+    createdAtRaw: apiLead.createdAt,
+    onboardingFeedback: parseOnboardingFeedback(apiLead.feedback)
   };
 };
 
@@ -125,7 +148,10 @@ export const mapApiLeadToUpcomingLead = (apiLead: ApiLead): UpcomingLead => {
     socialUrls: (apiLead.socialMediaUrls || []).join(', '),
     leadSource: mapApiLeadSourceToComponent(apiLead.leadSource),
     priority: mapApiPriorityToComponent(apiLead.priority),
-    createdAt: new Date(apiLead.createdAt._seconds * 1000).toISOString().split('T')[0]
+    createdAt: new Date(apiLead.createdAt._seconds * 1000).toISOString().split('T')[0],
+    // New fields
+    createdAtRaw: apiLead.createdAt,
+    onboardingFeedback: parseOnboardingFeedback(apiLead.feedback)
   };
 };
 

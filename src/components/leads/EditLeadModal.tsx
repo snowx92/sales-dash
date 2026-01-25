@@ -13,7 +13,10 @@ interface EditLeadModalProps {
 }
 
 export const EditLeadModal: React.FC<EditLeadModalProps> = ({ isOpen, onClose, lead, onUpdate }) => {
-  const [formData, setFormData] = useState<Lead>(lead);
+  const [formData, setFormData] = useState<Lead>(() => ({
+    ...lead,
+    feedback: '' // Start with empty feedback field
+  }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
