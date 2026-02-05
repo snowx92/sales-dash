@@ -5,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Target, Users, UserCheck, XCircle, HelpCircle, RefreshCw, CheckCircle, Ban } from "lucide-react";
 import { Lead, UpcomingLead } from './types';
 import { LeadsTable } from './LeadsTable';
+import { LeadCard } from './LeadCard';
+import { UpcomingLeadCard } from './UpcomingLeadCard';
 import { EmptyState } from './EmptyState';
 import { Pagination } from "@/components/tables/Pagination";
 
@@ -196,42 +198,81 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
         </TabsList>
       </div>
 
-      {/* Tab Content - All tabs show the same table structure */}
-      {['new', 'all', 'interested', 'subscribed', 'follow_up', 'not_interested', 'no_answer', 'junk'].map((tabValue) => (
-        <TabsContent key={tabValue} value={tabValue} className="mt-6">
-          {paginatedLeads.length > 0 ? (
-            <>
-              <LeadsTable
-                leads={paginatedLeads}
-                expandedRows={expandedRows}
-                onToggleRowExpansion={onToggleRowExpansion}
-                onEditLead={onEditLead}
-                onDeleteLead={onDeleteLead}
-                onAddFeedback={onAddFeedback}
-                onAssignStore={onAssignStore}
-                onMarkAsJunk={onMarkAsJunk}
-              />
-              
-              {totalItems > itemsPerPage && (
-                <div className="mt-6">
-                  <Pagination
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    currentPage={currentPage}
-                    onPageChange={onPageChange}
+      {/* Tab Content - All tabs show cards on mobile, table on desktop */}
+      {['new', 'all', 'interested', 'subscribed', 'follow_up', 'not_interested', 'no_answer', 'junk'].map((tabValue) => {
+        const isNewTab = tabValue === 'new';
+        const displayLeads = paginatedLeads;
+        
+        return (
+          <TabsContent key={tabValue} value={tabValue} className="mt-6">
+            {displayLeads.length > 0 ? (
+              <>
+                {/* Mobile Cards View - shown only on small screens */}
+                <div className="lg:hidden">
+                  {isNewTab ? (
+                    // New leads use UpcomingLeadCard
+                    displayLeads.map((lead) => (
+                      <UpcomingLeadCard
+                        key={lead.id}
+                        lead={lead as import('./types').UpcomingLead}
+                        isExpanded={expandedRows.has(lead.id)}
+                        onToggleExpand={() => onToggleRowExpansion(lead.id)}
+                        onAddFeedback={() => onAddFeedback(lead.id, lead.name)}
+                      />
+                    ))
+                  ) : (
+                    // Other leads use LeadCard
+                    displayLeads.map((lead) => (
+                      <LeadCard
+                        key={lead.id}
+                        lead={lead}
+                        isExpanded={expandedRows.has(lead.id)}
+                        onToggleExpand={() => onToggleRowExpansion(lead.id)}
+                        onEditLead={() => onEditLead(lead)}
+                        onDeleteLead={() => onDeleteLead(lead.id)}
+                        onAddFeedback={() => onAddFeedback(lead.id, lead.name)}
+                        onAssignStore={onAssignStore ? () => onAssignStore(lead.id, lead.name) : undefined}
+                        onMarkAsJunk={() => onMarkAsJunk(lead.id)}
+                      />
+                    ))
+                  )}
+                </div>
+
+                {/* Desktop Table View - shown only on large screens */}
+                <div className="hidden lg:block">
+                  <LeadsTable
+                    leads={displayLeads}
+                    expandedRows={expandedRows}
+                    onToggleRowExpansion={onToggleRowExpansion}
+                    onEditLead={onEditLead}
+                    onDeleteLead={onDeleteLead}
+                    onAddFeedback={onAddFeedback}
+                    onAssignStore={onAssignStore}
+                    onMarkAsJunk={onMarkAsJunk}
                   />
                 </div>
-              )}
-            </>
-          ) : (
-            <EmptyState
-              type={tabValue === 'new' ? 'upcoming' : 'leads'}
-              hasFilters={false}
-              onAddLead={onAddLead}
-            />
-          )}
-        </TabsContent>
-      ))}
+                
+                {totalItems > itemsPerPage && (
+                  <div className="mt-6">
+                    <Pagination
+                      totalItems={totalItems}
+                      itemsPerPage={itemsPerPage}
+                      currentPage={currentPage}
+                      onPageChange={onPageChange}
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <EmptyState
+                type={isNewTab ? 'upcoming' : 'leads'}
+                hasFilters={false}
+                onAddLead={onAddLead}
+              />
+            )}
+          </TabsContent>
+        );
+      })}
     </Tabs>
   );
 };

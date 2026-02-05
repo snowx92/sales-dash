@@ -42,6 +42,7 @@ import { formatPhoneForDisplay } from "@/lib/utils/phone";
 import AddReminderModal from "@/components/modals/AddReminderModal";
 import { reminderStorage } from "@/lib/utils/reminderStorage";
 import type { MyReminderFormData } from "@/lib/types/reminder";
+import { RetentionCard } from "@/components/retention/RetentionCard";
 // Export modal with date range & page selection
 const RetentionExportModal = ({
   open,
@@ -673,8 +674,57 @@ export default function RetentionPage() {
   // Render table component
   const renderTable = () => (
     <>
-      {/* Expired Merchants Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {/* Mobile Cards View - shown only on small screens */}
+      <div className="lg:hidden">
+        {currentIsLoading ? (
+          // Loading skeleton
+          [...Array(3)].map((_, index) => (
+            <div key={index} className="bg-white rounded-xl border border-gray-200 p-4 mb-4 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                </div>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <div className="h-6 bg-gray-200 rounded w-20"></div>
+                <div className="h-6 bg-gray-200 rounded w-20"></div>
+                <div className="h-6 bg-gray-200 rounded w-20"></div>
+              </div>
+            </div>
+          ))
+        ) : filteredMerchants.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+            <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No {viewMode === 'expiring' ? 'expiring' : 'expired'} plans
+            </h3>
+            <p className="text-gray-600">
+              {viewMode === 'expiring' ? 'No subscriptions expiring in this period.' : 'Great! All merchants have active subscriptions.'}
+            </p>
+          </div>
+        ) : (
+          filteredMerchants.map((merchant) => (
+            <RetentionCard
+              key={merchant.id}
+              merchant={merchant}
+              isExpanded={expandedRows.has(merchant.id)}
+              onToggleExpand={() => toggleRowExpansion(merchant.id)}
+              onEdit={() => handleEditMerchant(merchant)}
+              onAddReminder={() => handleOpenReminderModal(
+                merchant.id,
+                (merchant.storeName || merchant.name),
+                merchant.email,
+                merchant.phone
+              )}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table View - shown only on large screens */}
+      <div className="hidden lg:block bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full table-fixed">
             <thead className="bg-gray-50 border-b border-gray-200">
