@@ -167,29 +167,55 @@ class ExportService extends ApiService {
       if (!response.ok) {
         console.error("🚨 ExportService: Download failed with status:", response.status);
         console.error("🚨 ExportService: Response:", await response.text());
-        
+
         if (response.status === 404) {
           throw new Error('Export endpoint not found. The backend may not have this feature implemented yet.');
         }
-        
+
         throw new Error(`Download failed with status ${response.status}`);
       }
 
-      // Get the blob
-      const blob = await response.blob();
-      
-      // Create download link
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup
-      window.URL.revokeObjectURL(downloadUrl);
-      document.body.removeChild(link);
-      
+      // Check if response is JSON (contains a URL) or a blob (actual file)
+      const contentType = response.headers.get('content-type');
+
+      if (contentType && contentType.includes('application/json')) {
+        // API returned JSON with URL
+        const jsonData = await response.json();
+        const downloadUrl = jsonData.data || jsonData.url;
+
+        if (!downloadUrl) {
+          throw new Error('No download URL provided in response');
+        }
+
+        console.log("📥 ExportService: Received download URL from API:", downloadUrl);
+
+        // Download directly from the URL
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+
+        // Cleanup
+        document.body.removeChild(link);
+      } else {
+        // API returned the file blob directly
+        const blob = await response.blob();
+
+        // Create download link
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+
+        // Cleanup
+        window.URL.revokeObjectURL(downloadUrl);
+        document.body.removeChild(link);
+      }
+
       return true;
     } catch (error) {
       console.error("🚨 ExportService: Error downloading file:", error);

@@ -7,10 +7,14 @@ import {
   ExternalLink,
   Phone,
   Calendar,
-  Clock,
   MessageCircle,
+  MessageSquare,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Edit,
+  Trash2,
+  Ban,
+  Store
 } from "lucide-react";
 import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
 import { formatPhoneForDisplay } from '@/lib/utils/phone';
@@ -21,13 +25,21 @@ interface UpcomingLeadCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onAddFeedback: () => void;
+  onEditLead?: () => void;
+  onDeleteLead?: () => void;
+  onAssignStore?: () => void;
+  onMarkAsJunk?: () => void;
 }
 
 export const UpcomingLeadCard: React.FC<UpcomingLeadCardProps> = ({
   lead,
   isExpanded,
   onToggleExpand,
-  onAddFeedback
+  onAddFeedback,
+  onEditLead,
+  onDeleteLead,
+  onAssignStore,
+  onMarkAsJunk
 }) => {
   const source = leadSources.find(s => s.id === lead.leadSource);
   const priority = priorities.find(p => p.id === lead.priority);
@@ -203,9 +215,67 @@ export const UpcomingLeadCard: React.FC<UpcomingLeadCardProps> = ({
                 }}
                 className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-600 text-white rounded-lg font-medium text-sm min-w-[80px]"
               >
-                <Clock className="h-4 w-4" />
+                <MessageSquare className="h-4 w-4" />
                 Feedback
               </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mt-2">
+              {/* Assign Store */}
+              {onAssignStore && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAssignStore();
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-indigo-600 text-white rounded-lg font-medium text-sm min-w-[80px]"
+                >
+                  <Store className="h-4 w-4" />
+                  Store
+                </button>
+              )}
+
+              {/* Edit */}
+              {onEditLead && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditLead();
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-purple-600 text-white rounded-lg font-medium text-sm min-w-[80px]"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </button>
+              )}
+
+              {/* Mark as Junk */}
+              {onMarkAsJunk && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMarkAsJunk();
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm min-w-[80px]"
+                >
+                  <Ban className="h-4 w-4" />
+                  Junk
+                </button>
+              )}
+
+              {/* Delete */}
+              {onDeleteLead && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteLead();
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-red-600 text-white rounded-lg font-medium text-sm min-w-[80px]"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </button>
+              )}
             </div>
           </div>
         </motion.div>

@@ -218,6 +218,10 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
                         isExpanded={expandedRows.has(lead.id)}
                         onToggleExpand={() => onToggleRowExpansion(lead.id)}
                         onAddFeedback={() => onAddFeedback(lead.id, lead.name)}
+                        onEditLead={() => onEditLead(lead)}
+                        onDeleteLead={() => onDeleteLead(lead.id)}
+                        onAssignStore={onAssignStore ? () => onAssignStore(lead.id, lead.name) : undefined}
+                        onMarkAsJunk={() => onMarkAsJunk(lead.id)}
                       />
                     ))
                   ) : (
