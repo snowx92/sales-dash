@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Search, Filter, XCircle, Calendar } from "lucide-react";
+import { Search, Filter, XCircle, Calendar, ArrowUpDown } from "lucide-react";
 import { statuses } from './types';
 
 interface LeadFiltersProps {
@@ -17,6 +17,8 @@ interface LeadFiltersProps {
   placeholder?: string;
   hideCompletedLeads?: boolean;
   onHideCompletedLeadsChange?: (value: boolean) => void;
+  sortBy?: string;
+  onSortByChange?: (value: string) => void;
 }
 
 export const LeadFilters: React.FC<LeadFiltersProps> = ({
@@ -31,7 +33,9 @@ export const LeadFilters: React.FC<LeadFiltersProps> = ({
   showStatusFilter = true,
   placeholder = "Search leads by name, phone, or email...",
   hideCompletedLeads,
-  onHideCompletedLeadsChange
+  onHideCompletedLeadsChange,
+  sortBy,
+  onSortByChange
 }) => {
   const gridCols = showStatusFilter ? "lg:grid-cols-6" : "lg:grid-cols-5";
   const searchCols = showStatusFilter ? "lg:col-span-2" : "lg:col-span-2";
@@ -57,6 +61,7 @@ export const LeadFilters: React.FC<LeadFiltersProps> = ({
               if (showStatusFilter) onStatusFilterChange("");
               onFromDateChange("");
               onToDateChange("");
+              if (onSortByChange) onSortByChange("default");
             }}
             className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
           >
@@ -92,6 +97,26 @@ export const LeadFilters: React.FC<LeadFiltersProps> = ({
               {statuses.map(status => (
                 <option key={status.id} value={status.id}>{status.name}</option>
               ))}
+            </select>
+          </div>
+        )}
+
+        {/* Sort By */}
+        {onSortByChange && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+              <ArrowUpDown className="h-3 w-3" /> Sort By
+            </label>
+            <select
+              value={sortBy || 'default'}
+              onChange={(e) => onSortByChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 bg-white"
+            >
+              <option value="default">Default</option>
+              <option value="score_desc">Score (High → Low)</option>
+              <option value="score_asc">Score (Low → High)</option>
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
             </select>
           </div>
         )}

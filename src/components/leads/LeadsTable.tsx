@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
 import { formatPhoneForDisplay } from '@/lib/utils/phone';
+import { calculateLeadScore, getScoreBadgeColor, getScoreIcon } from '@/lib/utils/leadScoring';
 import { Lead, leadSources, priorities, statuses } from './types';
 
 interface LeadsTableProps {
@@ -32,6 +33,7 @@ interface LeadsTableProps {
   onAddFeedback: (id: number, leadName: string) => void;
   onAssignStore?: (id: number, leadName: string) => void;
   onMarkAsJunk: (id: number) => void;
+  onStatusChange?: (id: number, newStatus: string) => void;
 }
 
 export const LeadsTable: React.FC<LeadsTableProps> = ({
@@ -42,7 +44,8 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
   onDeleteLead,
   onAddFeedback,
   onAssignStore,
-  onMarkAsJunk
+  onMarkAsJunk,
+  onStatusChange
 }) => {
   // State for tracking which onboarding accordion is expanded
   const [expandedOnboarding, setExpandedOnboarding] = useState<number | null>(null);
@@ -85,6 +88,7 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider hidden sm:table-cell">Source</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider hidden sm:table-cell">Status</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider hidden md:table-cell">Priority</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider hidden lg:table-cell">Score</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Attempts</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Actions</th>
             </tr>
@@ -97,6 +101,9 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
               const SourceIcon = source?.icon || Globe;
               const StatusIcon = status?.icon || HelpCircle;
               const isExpanded = expandedRows.has(lead.id);
+              const score = calculateLeadScore(lead);
+              const scoreBadgeColor = getScoreBadgeColor(score.total);
+              const scoreIcon = getScoreIcon(score.rating);
 
               return (
                 <React.Fragment key={lead.id}>
@@ -165,9 +172,25 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                     <td className="px-3 py-2 whitespace-nowrap hidden sm:table-cell">
                       <div className="flex items-center gap-2">
                         <StatusIcon className="h-3 w-3 text-gray-400" />
+                        {onStatusChange ? (
+                          <select
+                            value={lead.status}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              onStatusChange(lead.id, e.target.value);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`px-2 py-1 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-purple-500 ${status?.color}`}
+                          >
+                            {statuses.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        ) : (
                         <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${status?.color}`}>
                           {status?.name || lead.status}
                         </span>
+                        )}
                       </div>
                     </td>
 
@@ -175,6 +198,16 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                     <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell">
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${priority?.color}`}>
                         {priority?.name || lead.priority}
+                      </span>
+                    </td>
+
+                    {/* Score */}
+                    <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell">
+                      <span
+                        className={`px-2 py-1 inline-flex items-center gap-1 text-xs font-semibold rounded-full border ${scoreBadgeColor.bg} ${scoreBadgeColor.text} ${scoreBadgeColor.border}`}
+                        title={`${score.rating.toUpperCase()} - ${score.recommendations[0] || 'No recommendations'}`}
+                      >
+                        {scoreIcon} {score.total}
                       </span>
                     </td>
 
@@ -278,7 +311,7 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                     >
-                      <td colSpan={7} className="px-6 py-4 bg-gray-50">
+                      <td colSpan={8} className="px-6 py-4 bg-gray-50">
                         <div className="space-y-4">
                           {/* Onboarding Feedback Accordion */}
                           {lead.onboardingFeedback && lead.onboardingFeedback.length > 0 && (

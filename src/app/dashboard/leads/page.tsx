@@ -12,9 +12,12 @@ import {
   LeadExportModal
 } from "@/components/leads";
 import { SimpleFeedbackModal } from "@/components/leads/SimpleFeedbackModal";
+import { KanbanBoard } from "@/components/leads/KanbanBoard";
+import { ViewToggle, ViewMode } from "@/components/leads/ViewToggle";
 import { leadsService } from "@/lib/api/leads/leadsService";
 import { mapApiLeadToLead, mapApiLeadToUpcomingLead, getApiId } from "@/lib/api/leads/utils";
 import type { LeadStatus, LeadSource, LeadPriority, ApiLead } from "@/lib/api/leads/types";
+import { calculateLeadScore } from "@/lib/utils/leadScoring";
 
 import { toast } from "sonner";
 
@@ -37,6 +40,38 @@ export default function LeadsPage() {
   const [feedbackLeadName, setFeedbackLeadName] = useState<string>('');
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [sortBy, setSortBy] = useState('default');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('leadsViewMode') as ViewMode) || 'list';
+    }
+    return 'list';
+  });
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('leadsViewMode', mode);
+    }
+  };
+
+  // Apply sorting to leads
+  const sortedLeads = React.useMemo(() => {
+    if (sortBy === 'default') return leads;
+    const sorted = [...leads];
+    switch (sortBy) {
+      case 'score_desc':
+        return sorted.sort((a, b) => calculateLeadScore(b).total - calculateLeadScore(a).total);
+      case 'score_asc':
+        return sorted.sort((a, b) => calculateLeadScore(a).total - calculateLeadScore(b).total);
+      case 'newest':
+        return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      case 'oldest':
+        return sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      default:
+        return sorted;
+    }
+  }, [leads, sortBy]);
 
 
   const loadLeads = useCallback(async () => {
@@ -348,6 +383,43 @@ export default function LeadsPage() {
     }
   };
 
+  const handleStatusChange = async (id: number, newStatus: string) => {
+    try {
+      const apiId = getApiId(id);
+      if (!apiId) {
+        throw new Error('API ID not found for this lead');
+      }
+
+      const statusMap: Record<string, LeadStatus> = {
+        'new': 'NEW',
+        'interested': 'INTERSTED',
+        'subscribed': 'SUBSCRIBED',
+        'not_interested': 'NOT_INTERSTED',
+        'no_answer': 'NO_ANSWER',
+        'follow_up': 'FOLLOW_UP',
+        'junk': 'JUNK'
+      };
+
+      const apiStatus = (statusMap[newStatus] || newStatus.toUpperCase()) as LeadStatus;
+      await leadsService.updateLead(apiId, { status: apiStatus });
+
+      // Also add a feedback note about the status change
+      const lead = leads.find(l => l.id === id);
+      const oldStatusName = lead?.status || 'unknown';
+      try {
+        await leadsService.addFeedback(apiId, `Status changed from ${oldStatusName} to ${newStatus}`);
+      } catch {
+        // Non-fatal
+      }
+
+      toast.success(`Status updated to ${newStatus}`);
+      await loadLeads();
+    } catch (err) {
+      console.error('Error changing status:', err);
+      toast.error('Failed to update status');
+    }
+  };
+
   const handleBulkUploadSuccess = async () => {
     await loadLeads();
   };
@@ -383,7 +455,8 @@ export default function LeadsPage() {
             <p className="text-gray-600 mt-1">Manage and track your sales leads</p>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
+            <ViewToggle viewMode={viewMode} onViewModeChange={handleViewModeChange} />
             <button
               onClick={() => setIsExportModalOpen(true)}
               disabled={loading}
@@ -434,9 +507,9 @@ export default function LeadsPage() {
           </div>
         ) : (
           <>
-            {/* Search Bar */}
-            <div className="mb-4">
-              <div className="relative">
+            {/* Search Bar + Sort */}
+            <div className="mb-4 flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <input
                   type="text"
@@ -446,26 +519,47 @@ export default function LeadsPage() {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 bg-white text-sm sm:w-48"
+              >
+                <option value="default">Sort: Default</option>
+                <option value="score_desc">Sort: Score (High → Low)</option>
+                <option value="score_asc">Sort: Score (Low → High)</option>
+                <option value="newest">Sort: Newest First</option>
+                <option value="oldest">Sort: Oldest First</option>
+              </select>
             </div>
 
-            {/* Tabs */}
-            <LeadsTabs
-            activeTab={activeTab}
-            onTabChange={(tab) => { setActiveTab(tab); setCurrentPage(1); }}
-            leads={leads}
-            upcomingLeads={upcomingLeads}
-            currentPage={currentPage}
-            onPageChange={setCurrentPage}
-            itemsPerPage={itemsPerPage}
-            expandedRows={expandedRows}
-            onToggleRowExpansion={toggleRowExpansion}
-            onEditLead={handleEditLead}
-            onDeleteLead={handleDeleteLead}
-            onAddFeedback={handleOpenFeedbackModal}
-            onAssignStore={handleAssignStore}
-            onMarkAsJunk={handleMarkAsJunk}
-            onAddLead={() => setIsAddModalOpen(true)}
-          />
+            {/* Kanban Board or List Tabs */}
+            {viewMode === 'board' ? (
+              <KanbanBoard
+                leads={sortedLeads}
+                onStatusChange={handleStatusChange}
+                onEditLead={handleEditLead}
+                onAddFeedback={handleOpenFeedbackModal}
+              />
+            ) : (
+              <LeadsTabs
+                activeTab={activeTab}
+                onTabChange={(tab) => { setActiveTab(tab); setCurrentPage(1); }}
+                leads={sortedLeads}
+                upcomingLeads={upcomingLeads}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                itemsPerPage={itemsPerPage}
+                expandedRows={expandedRows}
+                onToggleRowExpansion={toggleRowExpansion}
+                onEditLead={handleEditLead}
+                onDeleteLead={handleDeleteLead}
+                onAddFeedback={handleOpenFeedbackModal}
+                onAssignStore={handleAssignStore}
+                onMarkAsJunk={handleMarkAsJunk}
+                onAddLead={() => setIsAddModalOpen(true)}
+                onStatusChange={handleStatusChange}
+              />
+            )}
           </>
         )}
 

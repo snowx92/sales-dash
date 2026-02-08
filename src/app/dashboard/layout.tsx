@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/SideBar";
 import DynamicNavbar from "@/components/layout/DynamicNavbar";
+import OverdueAlert from "@/components/layout/OverdueAlert";
 import { SessionManager } from "@/lib/utils/session";
 
 export default function DashboardLayout({
@@ -77,6 +78,9 @@ export default function DashboardLayout({
           isMobileMenuOpen={isMobileMenuOpen}
           setIsMobileMenuOpen={setIsMobileMenuOpen}
         />
+
+        {/* Overdue Follow-up Alert */}
+        <OverdueAlert />
 
         {/* Page Content */}
         <main className="flex-1 overflow-x-hidden">

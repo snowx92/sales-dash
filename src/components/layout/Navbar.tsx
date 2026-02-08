@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Bell,
   ChevronDown,
@@ -42,6 +42,7 @@ export default function Navbar({
   setIsMobileMenuOpen
 }: NavbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -579,6 +580,12 @@ export default function Navbar({
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: index * 0.1 }}
+                              onClick={() => {
+                                if (notification.route) {
+                                  router.push(notification.route);
+                                  setIsNotificationOpen(false);
+                                }
+                              }}
                               className={`p-3 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${
                                 notification.isNew ? 'bg-purple-50' : ''
                               }`}

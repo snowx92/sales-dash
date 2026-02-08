@@ -1,6 +1,5 @@
 // StatCard.tsx
-import { LucideIcon, TrendingUp, TrendingDown } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { LucideIcon } from "lucide-react"
 
 interface SubValue {
   value: number;
@@ -19,65 +18,59 @@ interface StatCardProps {
   bgColor?: string;
 }
 
-export default function StatCard({ 
-  title, 
-  value, 
+export default function StatCard({
+  title,
+  value,
   change,
   icon: Icon,
-  color,
   subValue,
   transactionCount,
-  bgColor = "bg-gray-100"
 }: StatCardProps) {
   // Format number to remove decimals
   const formatNumber = (num: number | string) => {
     return typeof num === 'number' ? Math.floor(num).toLocaleString() : num;
   };
 
-  // Get change indicator component
-  const getChangeIndicator = () => {
-    if (change === undefined || change === 0) return null;
-    
-    const isPositive = change > 0;
-    const ArrowIcon = isPositive ? TrendingUp : TrendingDown;
-    const colorClass = isPositive ? "text-green-600" : "text-red-600";
-    
-    return (
-      <div className={`flex items-center gap-1 text-sm font-medium ${colorClass}`}>
-        <ArrowIcon className="h-4 w-4" />
-        <span>{Math.abs(change).toFixed(1)}%</span>
-      </div>
-    );
-  };
-
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-500">{title}</p>
-            <div className="mt-2">
-              <h3 className="text-2xl font-semibold text-purple-900">{formatNumber(value)}</h3>
-              {subValue && (
-                <p className={subValue.color}>
-                  {subValue.label}: {formatNumber(subValue.value)}
-                </p>
-              )}
-              {transactionCount && (
-                <p className="text-sm text-gray-500">
-                  Transactions: {transactionCount}
-                </p>
-              )}
-              {getChangeIndicator()}
-            </div>
-          </div>
-          <div className={`p-3 rounded-full ${bgColor} bg-opacity-15`}>
-            <Icon className={`h-5 w-5 ${color}`} />
-          </div>
+    <div className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
+      {/* Header: title + change badge */}
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4 text-slate-400" />
+          <p className="text-sm font-medium text-slate-500">{title}</p>
         </div>
+        {change !== undefined && change !== 0 && (
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+            change > 0
+              ? 'bg-emerald-50 text-emerald-700'
+              : 'bg-red-50 text-red-700'
+          }`}>
+            {change > 0 ? '+' : ''}{Math.abs(change).toFixed(1)}%
+          </span>
+        )}
+      </div>
 
-      </CardContent>
-    </Card>
+      {/* Value */}
+      <h3 className="text-2xl font-bold text-slate-900 mt-2">{formatNumber(value)}</h3>
+
+      {/* Sub value */}
+      {subValue && (
+        <p className="text-sm text-slate-500 mt-1">
+          {subValue.label}: {formatNumber(subValue.value)}
+        </p>
+      )}
+
+      {/* Transaction count */}
+      {transactionCount && (
+        <p className="text-xs text-slate-400 mt-1">
+          {transactionCount} transactions
+        </p>
+      )}
+
+      {/* Accent bar */}
+      <div className="mt-4 h-0.5 bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-full bg-indigo-500 rounded-full" style={{ width: '30%' }} />
+      </div>
+    </div>
   );
 }
-

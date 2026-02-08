@@ -29,6 +29,7 @@ interface LeadsTabsProps {
   onAssignStore?: (id: number, leadName: string) => void;
   onMarkAsJunk: (id: number) => void;
   onAddLead: () => void;
+  onStatusChange?: (id: number, newStatus: string) => void;
 }
 
 export const LeadsTabs: React.FC<LeadsTabsProps> = ({
@@ -47,6 +48,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
   onAssignStore,
   onMarkAsJunk,
   onAddLead,
+  onStatusChange,
 }) => {
   // Filter leads by active tab status
   const getFilteredLeads = (): Lead[] => {
@@ -237,6 +239,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
                         onAddFeedback={() => onAddFeedback(lead.id, lead.name)}
                         onAssignStore={onAssignStore ? () => onAssignStore(lead.id, lead.name) : undefined}
                         onMarkAsJunk={() => onMarkAsJunk(lead.id)}
+                        onStatusChange={onStatusChange}
                       />
                     ))
                   )}
@@ -253,6 +256,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
                     onAddFeedback={onAddFeedback}
                     onAssignStore={onAssignStore}
                     onMarkAsJunk={onMarkAsJunk}
+                    onStatusChange={onStatusChange}
                   />
                 </div>
                 

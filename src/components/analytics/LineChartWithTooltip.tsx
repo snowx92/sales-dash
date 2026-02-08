@@ -15,8 +15,6 @@ import {
   TimeScale,
   ScriptableContext,
 } from "chart.js"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
 import { motion } from "framer-motion"
 import 'chartjs-adapter-date-fns';
 
@@ -38,7 +36,7 @@ interface Dataset {
   borderColor: string;
   backgroundColor: string;
   borderDash?: number[];
-  dates?: string[]; // Optional dates for each data point
+  dates?: string[];
 }
 
 interface LineChartWithTooltipProps {
@@ -49,18 +47,16 @@ interface LineChartWithTooltipProps {
     to: string;
   };
   showPercentage?: boolean;
-  dates?: string[]; // Optional explicit dates array
+  dates?: string[];
 }
 
-export default function LineChartWithTooltip({ 
-  title, 
+export default function LineChartWithTooltip({
+  title,
   datasets,
   dateRange,
   dates: explicitDates,
-}: LineChartWithTooltipProps) 
+}: LineChartWithTooltipProps)
 {
-
-
   const getDaysBetweenDates = (startDate: string, endDate: string) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -77,7 +73,7 @@ export default function LineChartWithTooltip({
   const getTimeUnit = () => {
     const days = getDaysBetweenDates(dateRange.from, dateRange.to);
     const years = getYearsBetweenDates(dateRange.from, dateRange.to);
-    
+
     if (years >= 2) return 'year' as const;
     if (days > 90) return 'month' as const;
     if (days > 31) return 'week' as const;
@@ -98,23 +94,18 @@ export default function LineChartWithTooltip({
     return labels;
   };
 
-  // Use explicit dates if provided, otherwise generate from range
   const dateLabels = explicitDates && explicitDates.length > 0 ? explicitDates : generateDateLabels();
   const timeUnit = getTimeUnit();
-
 
   const chartData = {
     labels: dateLabels,
     datasets: datasets.map(dataset => {
-      // If we have explicit dates, use data as-is (no distribution needed)
-      // Otherwise, distribute data across generated date labels
       let finalData = dataset.data;
-      
+
       if (!explicitDates || explicitDates.length === 0) {
-        // Old behavior: distribute data across generated labels
         const totalDays = getDaysBetweenDates(dateRange.from, dateRange.to);
         const stepSize = Math.floor(totalDays / (dataset.data.length - 1));
-        
+
         const distributedData = new Array(dateLabels.length).fill(null);
         dataset.data.forEach((value, index) => {
           const dayIndex = index * stepSize;
@@ -122,7 +113,7 @@ export default function LineChartWithTooltip({
             distributedData[dayIndex] = value;
           }
         });
-        
+
         finalData = distributedData;
       }
 
@@ -138,8 +129,8 @@ export default function LineChartWithTooltip({
         pointBorderWidth: 2,
         pointHoverBorderColor: dataset.borderColor,
         pointHoverBackgroundColor: 'white',
-        backgroundColor: dataset.backgroundColor.replace('0.5)', '0.1)'),
-        spanGaps: true, // Enable line spanning over null values
+        backgroundColor: dataset.backgroundColor.replace(/[\d.]+\)$/, '0.05)'),
+        spanGaps: true,
         datalabels: {
           display: false
         }
@@ -161,17 +152,18 @@ export default function LineChartWithTooltip({
             size: 12,
             family: "'Inter', sans-serif",
             weight: 400
-          }
+          },
+          color: '#64748b'
         }
       },
       tooltip: {
         enabled: true,
         mode: "nearest" as const,
         intersect: true,
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        titleColor: '#1f2937',
-        bodyColor: '#4b5563',
-        borderColor: '#e5e7eb',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        titleColor: '#1e293b',
+        bodyColor: '#475569',
+        borderColor: '#e2e8f0',
         borderWidth: 1,
         padding: 12,
         bodyFont: {
@@ -233,11 +225,11 @@ export default function LineChartWithTooltip({
         },
         ticks: {
           font: {
-            size: 12,
+            size: 11,
             family: "'Inter', sans-serif",
             weight: 500
           },
-          color: '#6B7280',
+          color: '#94a3b8',
           maxRotation: 45,
           minRotation: 45
         }
@@ -245,15 +237,16 @@ export default function LineChartWithTooltip({
       y: {
         type: 'linear' as const,
         grid: {
-          display: false,
+          display: true,
+          color: '#f1f5f9',
         },
         ticks: {
           font: {
-            size: 12,
+            size: 11,
             family: "'Inter', sans-serif",
             weight: 500
           },
-          color: '#6B7280',
+          color: '#94a3b8',
           padding: 8,
           callback: function(value: number | string) {
             if (typeof value === 'number') {
@@ -297,34 +290,29 @@ export default function LineChartWithTooltip({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.3 }}
     >
-      <Card className="overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div>
-            <CardTitle className="text-base font-semibold text-gray-900">
-              {title}
-            </CardTitle>
-
-          </div>
-        </CardHeader>
-        <CardContent>
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="px-5 pt-4 pb-2">
+          <h3 className="text-base font-semibold text-slate-800">{title}</h3>
+        </div>
+        <div className="px-5 pb-4">
           <div className="h-[300px] w-full">
             {datasets?.length > 0 && datasets[0]?.data?.length > 0 ? (
-              <Line 
-                options={options} 
+              <Line
+                options={options}
                 data={chartData}
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-gray-400">
+              <div className="flex h-full items-center justify-center text-slate-400 text-sm">
                 No data available for chart
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </motion.div>
   )
 }

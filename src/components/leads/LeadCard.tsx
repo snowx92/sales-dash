@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
 import { formatPhoneForDisplay } from '@/lib/utils/phone';
+import { calculateLeadScore, getScoreBadgeColor, getScoreIcon } from '@/lib/utils/leadScoring';
 import { Lead, leadSources, priorities, statuses } from './types';
 
 interface LeadCardProps {
@@ -32,6 +33,7 @@ interface LeadCardProps {
   onAddFeedback: () => void;
   onAssignStore?: () => void;
   onMarkAsJunk: () => void;
+  onStatusChange?: (id: number, newStatus: string) => void;
 }
 
 export const LeadCard: React.FC<LeadCardProps> = ({
@@ -42,7 +44,8 @@ export const LeadCard: React.FC<LeadCardProps> = ({
   onDeleteLead,
   onAddFeedback,
   onAssignStore,
-  onMarkAsJunk
+  onMarkAsJunk,
+  onStatusChange
 }) => {
   // State for tracking which onboarding accordion is expanded
   const [expandedOnboarding, setExpandedOnboarding] = useState(false);
@@ -51,6 +54,9 @@ export const LeadCard: React.FC<LeadCardProps> = ({
   const priority = priorities.find(p => p.id === lead.priority);
   const status = statuses.find(s => s.id === lead.status);
   const SourceIcon = source?.icon || Globe;
+  const score = calculateLeadScore(lead);
+  const scoreBadgeColor = getScoreBadgeColor(score.total);
+  const scoreIcon = getScoreIcon(score.rating);
 
   // Helper to format created date
   const formatCreatedDate = (createdAtRaw?: { _seconds: number; _nanoseconds: number }) => {
@@ -82,9 +88,25 @@ export const LeadCard: React.FC<LeadCardProps> = ({
             <div className="ml-3 min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base font-semibold text-gray-900 truncate">{lead.name}</h3>
-                <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${status?.color}`}>
-                  {status?.name || lead.status}
-                </span>
+                {onStatusChange ? (
+                  <select
+                    value={lead.status}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      onStatusChange(lead.id, e.target.value);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={`px-2 py-0.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-purple-500 ${status?.color}`}
+                  >
+                    {statuses.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${status?.color}`}>
+                    {status?.name || lead.status}
+                  </span>
+                )}
               </div>
               {lead.website && (
                 <a 
@@ -133,6 +155,14 @@ export const LeadCard: React.FC<LeadCardProps> = ({
             {priority?.name || lead.priority}
           </span>
 
+          {/* Lead Score */}
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-1 ${scoreBadgeColor.bg} ${scoreBadgeColor.text} border ${scoreBadgeColor.border} rounded-lg text-sm font-semibold`}
+            title={`Score: ${score.total}/100 (${score.rating})\n${score.recommendations.join('\n')}`}
+          >
+            {scoreIcon} {score.total}
+          </span>
+
           {/* Attempts */}
           <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
             <Clock className="h-3.5 w-3.5" />
@@ -145,6 +175,24 @@ export const LeadCard: React.FC<LeadCardProps> = ({
             <span className="hidden sm:inline">{formatCreatedDate(lead.createdAtRaw)}</span>
             <span className="sm:hidden">{formatCreatedDate(lead.createdAtRaw)?.split(',')[0]}</span>
           </span>
+
+          {/* Urgency Indicator for Follow-up / Interested / No Answer leads */}
+          {(() => {
+            if (!['follow_up', 'interested', 'no_answer'].includes(lead.status)) return null;
+            const lastDate = lead.lastContact ? new Date(lead.lastContact) : (lead.createdAtRaw ? new Date(lead.createdAtRaw._seconds * 1000) : new Date(lead.createdAt));
+            const daysSince = Math.floor((Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+            let urgencyColor = 'bg-green-100 text-green-700';
+            let urgencyLabel = 'Today';
+            if (daysSince > 7) { urgencyColor = 'bg-red-100 text-red-700'; urgencyLabel = `${daysSince}d overdue`; }
+            else if (daysSince > 3) { urgencyColor = 'bg-orange-100 text-orange-700'; urgencyLabel = `${daysSince}d ago`; }
+            else if (daysSince > 1) { urgencyColor = 'bg-yellow-100 text-yellow-700'; urgencyLabel = `${daysSince}d ago`; }
+            else if (daysSince === 1) { urgencyLabel = '1d ago'; }
+            return (
+              <span className={`inline-flex items-center gap-1 px-2 py-1 ${urgencyColor} rounded-lg text-xs font-semibold`}>
+                {daysSince > 7 ? '!!' : daysSince > 3 ? '!' : ''} {urgencyLabel}
+              </span>
+            );
+          })()}
         </div>
       </div>
 

@@ -1,17 +1,39 @@
 import { MyReminder } from '@/lib/types/reminder';
 
 const STORAGE_KEY = 'myReminders';
+const MIGRATION_KEY = 'myReminders_migrated';
 
 export const reminderStorage = {
-  // Get all reminders from session storage
-  getAll(): MyReminder[] {
-    if (typeof window === 'undefined') return [];
+  // Migrate existing sessionStorage data to localStorage (one-time)
+  migrate(): void {
+    if (typeof window === 'undefined') return;
+    if (localStorage.getItem(MIGRATION_KEY)) return;
 
     try {
-      const data = sessionStorage.getItem(STORAGE_KEY);
+      const sessionData = sessionStorage.getItem(STORAGE_KEY);
+      if (sessionData) {
+        const existing = localStorage.getItem(STORAGE_KEY);
+        if (!existing) {
+          localStorage.setItem(STORAGE_KEY, sessionData);
+        }
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
+      localStorage.setItem(MIGRATION_KEY, 'true');
+    } catch {
+      // Ignore migration errors
+    }
+  },
+
+  // Get all reminders from localStorage
+  getAll(): MyReminder[] {
+    if (typeof window === 'undefined') return [];
+    this.migrate();
+
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
       return data ? JSON.parse(data) : [];
     } catch (error) {
-      console.error('Error reading reminders from session storage:', error);
+      console.error('Error reading reminders from storage:', error);
       return [];
     }
   },
@@ -87,20 +109,20 @@ export const reminderStorage = {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   },
 
-  // Save reminders to session storage
+  // Save reminders to localStorage
   save(reminders: MyReminder[]): void {
     if (typeof window === 'undefined') return;
 
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
     } catch (error) {
-      console.error('Error saving reminders to session storage:', error);
+      console.error('Error saving reminders to storage:', error);
     }
   },
 
   // Clear all reminders
   clear(): void {
     if (typeof window === 'undefined') return;
-    sessionStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
   }
 };

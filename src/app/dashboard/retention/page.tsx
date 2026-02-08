@@ -43,6 +43,7 @@ import AddReminderModal from "@/components/modals/AddReminderModal";
 import { reminderStorage } from "@/lib/utils/reminderStorage";
 import type { MyReminderFormData } from "@/lib/types/reminder";
 import { RetentionCard } from "@/components/retention/RetentionCard";
+import { RetentionSummaryBar } from "@/components/retention/RetentionSummaryBar";
 // Export modal with date range & page selection
 const RetentionExportModal = ({
   open,
@@ -1006,6 +1007,9 @@ export default function RetentionPage() {
     <>
       <ResponsiveWrapper padding="sm">
         <div className="space-y-6 pb-8">
+          {/* Revenue Impact Summary */}
+          <RetentionSummaryBar merchants={currentMerchants} />
+
           {/* View Mode Toggle */}
           <div className="bg-white p-4 rounded-xl shadow-sm">
             <div className="flex items-center justify-center gap-2">
