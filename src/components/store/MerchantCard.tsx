@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, ShoppingBag, Globe, Box, Eye, Calendar, Clock, LogIn, BarChart, Key, EyeOff, MapPin, Building2, XCircle, CreditCard, User, Wallet, AlertCircle, Sparkles, CheckCircle2 } from "lucide-react";
+import { Users, ShoppingBag, Globe, Box, Eye, Calendar, Clock, LogIn, BarChart, Key, EyeOff, MapPin, Building2, XCircle, CreditCard, User, Wallet, AlertCircle, Sparkles, CheckCircle2, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { ActionDropdown } from "@/components/ui/ActionDropdown";
 // import logo from "@/lib/images/logo.png";
@@ -24,6 +24,28 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { MerchantModal } from "./MerchantModal";
+
+export interface Step {
+  desc: string;
+  completed: boolean;
+}
+
+export interface Steps {
+  logo: Step;
+  shippingAreas: Step;
+  categories: Step;
+  products: Step;
+  adjustTheme: Step;
+  order: Step;
+  isAllComplete: boolean;
+}
+
+export interface RetentionData {
+  feedbacks: string[];
+  priority: string;
+  lastAttempt: Timestamp;
+  attemps: number;
+}
 
 export interface MerchantCardProps {
   id: string;
@@ -57,6 +79,8 @@ export interface MerchantCardProps {
   isBeta: boolean;
   isWebsiteExpired: boolean;
   finishedSetup: boolean;
+  steps?: Steps;
+  retantion?: RetentionData;
 }
 
 // Function to generate a unique color based on a string value with opacity and a matching text color
@@ -121,10 +145,13 @@ export function MerchantCard({
   isBeta,
   isWebsiteExpired,
   finishedSetup,
+  steps,
+  retantion,
 }: MerchantCardProps) {
   const [imageError, setImageError] = useState(false);
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showRetentionAccordion, setShowRetentionAccordion] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -360,6 +387,116 @@ export function MerchantCard({
                 </div>
               </div>
             </div>
+
+            {/* Steps Progress Bar - Milestones */}
+            {steps && (
+              <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-t border-blue-100">
+                <div className="mb-3 flex items-center justify-between">
+                  <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Setup Milestones</h4>
+                  <span className="text-xs font-bold text-blue-600">
+                    {Object.entries(steps).filter(([key, val]) => key !== 'isAllComplete' && typeof val === 'object' && val.completed).length}/{Object.entries(steps).filter(([key]) => key !== 'isAllComplete').length}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden mb-3">
+                  <div 
+                    className="bg-gradient-to-r from-blue-500 to-purple-500 h-full transition-all duration-300"
+                    style={{
+                      width: `${(Object.entries(steps).filter(([key, val]) => key !== 'isAllComplete' && typeof val === 'object' && val.completed).length / Object.entries(steps).filter(([key]) => key !== 'isAllComplete').length) * 100}%`
+                    }}
+                  />
+                </div>
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  {Object.entries(steps).map(([key, step], index) => {
+                    if (key === 'isAllComplete' || typeof step !== 'object') return null;
+                    return (
+                      <div key={key} className="flex flex-col items-center gap-1 flex-shrink-0">
+                        <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold flex-shrink-0 transition-all ${step.completed ? 'bg-green-500 border-green-600 text-white' : 'bg-white border-gray-300 text-gray-600'}`}>
+                          {step.completed ? <CheckCircle2 className="w-4 h-4" /> : index + 1}
+                        </div>
+                        <span className={`text-xs text-center leading-tight max-w-[60px] font-medium ${step.completed ? 'text-green-700' : 'text-gray-600'}`}>
+                          {step.desc}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Retention Accordion */}
+            {retantion && (
+              <div className="border-t border-amber-100">
+                <button
+                  onClick={() => setShowRetentionAccordion(!showRetentionAccordion)}
+                  className="w-full px-4 py-2.5 bg-amber-50 hover:bg-amber-100 transition-colors flex items-center justify-between group"
+                >
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${retantion.priority === 'HIGH' ? 'bg-red-500' : retantion.priority === 'MEDIUM' ? 'bg-yellow-500' : 'bg-green-500'}`} />
+                    <span className="text-xs font-medium text-amber-800">Retention Follow-up</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-amber-600 transition-transform duration-200 ${showRetentionAccordion ? 'rotate-180' : ''}`} />
+                </button>
+                {showRetentionAccordion && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="px-4 py-3 bg-amber-50/50 space-y-3 border-t border-amber-100"
+                  >
+                    {/* Priority */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-600">Priority</span>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                        retantion.priority === 'HIGH' 
+                          ? 'bg-red-100 text-red-700 border border-red-300' 
+                          : retantion.priority === 'MEDIUM'
+                          ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
+                          : 'bg-green-100 text-green-700 border border-green-300'
+                      }`}>
+                        {retantion.priority}
+                      </span>
+                    </div>
+
+                    {/* Attempts */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-600">Attempts</span>
+                      <span className="text-xs font-semibold text-gray-900">{retantion.attemps}</span>
+                    </div>
+
+                    {/* Last Attempt Date */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-600">Last Attempt</span>
+                      <span className="text-xs font-semibold text-gray-900">
+                        {retantion.lastAttempt ? new Date(retantion.lastAttempt._seconds * 1000).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric'
+                        }) : 'N/A'}
+                      </span>
+                    </div>
+
+                    {/* Feedbacks */}
+                    {retantion.feedbacks && retantion.feedbacks.length > 0 && (
+                      <div className="border-t border-amber-200 pt-2">
+                        <p className="text-xs font-semibold text-gray-900 mb-2 flex items-center gap-1.5">
+                          <Sparkles className="w-3 h-3 text-purple-600" />
+                          Feedback
+                        </p>
+                        <div className="space-y-1.5 max-h-24 overflow-y-auto">
+                          {retantion.feedbacks.map((feedback, index) => (
+                            <div 
+                              key={index}
+                              className="p-2 bg-purple-50 rounded border border-purple-200 text-xs text-gray-700"
+                            >
+                              {feedback}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </div>
+            )}
 
             {/* Stats Grid - More Compact */}
             <div className="px-4 pb-3">

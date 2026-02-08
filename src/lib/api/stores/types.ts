@@ -71,6 +71,21 @@ export interface Store {
   counters: Counters;
   localMarkets: string[];
   assignedSales?: AssignedSales;
+  steps?: {
+    logo: { desc: string; completed: boolean };
+    shippingAreas: { desc: string; completed: boolean };
+    categories: { desc: string; completed: boolean };
+    products: { desc: string; completed: boolean };
+    adjustTheme: { desc: string; completed: boolean };
+    order: { desc: string; completed: boolean };
+    isAllComplete: boolean;
+  };
+  retantion?: {
+    feedbacks: string[];
+    priority: string;
+    lastAttempt: Timestamp;
+    attemps: number;
+  };
 }
 
 export type StoresResponse = PaginatedResponse<Store>;

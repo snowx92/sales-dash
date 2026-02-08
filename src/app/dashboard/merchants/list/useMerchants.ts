@@ -23,6 +23,28 @@ interface ActualApiResponse {
   totalPages: number;
 }
 
+interface Step {
+  desc: string;
+  completed: boolean;
+}
+
+interface Steps {
+  logo: Step;
+  shippingAreas: Step;
+  categories: Step;
+  products: Step;
+  adjustTheme: Step;
+  order: Step;
+  isAllComplete: boolean;
+}
+
+interface RetentionData {
+  feedbacks: string[];
+  priority: string;
+  lastAttempt: Timestamp;
+  attemps: number;
+}
+
 interface Merchant {
   id: string;
   storeName: string;
@@ -51,6 +73,8 @@ interface Merchant {
   isBeta: boolean;
   isWebsiteExpired: boolean;
   finishedSetup: boolean;
+  steps?: Steps;
+  retantion?: RetentionData;
 }
 
 // Export Merchant type for use in other components 
@@ -280,6 +304,21 @@ export const useMerchants = () => {
           isBeta: store.isBeta || false,
           isWebsiteExpired: store.isWebsiteExpired || false,
           finishedSetup: store.finishedSetup || false,
+          steps: store.steps ? {
+            logo: store.steps.logo || { desc: "Upload your logo", completed: false },
+            shippingAreas: store.steps.shippingAreas || { desc: "Adjust your shipping areas", completed: false },
+            categories: store.steps.categories || { desc: "Create your first category", completed: false },
+            products: store.steps.products || { desc: "Add your first product", completed: false },
+            adjustTheme: store.steps.adjustTheme || { desc: "Adjust your theme", completed: false },
+            order: store.steps.order || { desc: "Receive your first order", completed: false },
+            isAllComplete: store.steps.isAllComplete || false,
+          } : undefined,
+          retantion: store.retantion ? {
+            feedbacks: store.retantion.feedbacks || [],
+            priority: store.retantion.priority || "LOW",
+            lastAttempt: store.retantion.lastAttempt,
+            attemps: store.retantion.attemps || 0,
+          } : undefined,
         }));
         console.log("[Stores API] Processed merchants:", apiMerchants);
         setMerchants(apiMerchants);
