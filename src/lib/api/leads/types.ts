@@ -22,7 +22,7 @@ export interface ApiLead {
   feedback?: string;
   salesId: string;
   createdAt: LeadTimestamp;
-  feedbacks: string[];
+  feedbacks: unknown[];
   attemps: number;
   updatedAt: LeadTimestamp;
 }
@@ -68,6 +68,7 @@ export interface LeadsRequest {
   to?: string;
   status?: LeadStatus;
   searchQuery?: string;
+  sortBy?: string;
 }
 
 export interface UpdateLeadRequest {

@@ -14,6 +14,8 @@ import {
   Banknote,
   User,
   Bell,
+  Ticket,
+  MessageSquareText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSidebarCounters } from "@/lib/hooks/useSidebarCounters";
@@ -44,6 +46,8 @@ const navigationItems: NavigationItem[] = [
   { href: "/dashboard/leads", label: "Leads", icon: UserPlus, countKey: "pendingLeads" },
   { href: "/dashboard/retention", label: "Retention", icon: RefreshCw, countKey: "retention" },
   { href: "/dashboard/reminders", label: "Reminders", icon: Bell },
+  { href: "/dashboard/tickets", label: "Tickets", icon: Ticket },
+  { href: "/dashboard/templates", label: "Templates", icon: MessageSquareText },
   { href: "/dashboard/transactions", label: "Transactions", icon: Banknote, countKey: "allTransactions" },
   { href: "/dashboard/profile", label: "Profile", icon: User },
 ];

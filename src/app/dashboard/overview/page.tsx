@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ShoppingCart, RefreshCw, Plus, AlertTriangle, Users, Bell, AlertCircle, Star } from "lucide-react";
+import { ShoppingCart, RefreshCw, Plus, AlertTriangle, Users, Bell, AlertCircle, Star, Ticket } from "lucide-react";
 import StatCard from "@/components/analytics/StatCard";
 import LineChartWithTooltip from "@/components/analytics/LineChartWithTooltip";
 import { useState, useEffect, useCallback } from "react";
@@ -21,6 +21,8 @@ import {
 } from "@/components/analytics";
 import TodayAgenda from "@/components/dashboard/TodayAgenda";
 import ConversionFunnel from "@/components/dashboard/ConversionFunnel";
+import TicketsPanel from "@/components/dashboard/TicketsPanel";
+import HomeRemindersCalendar from "@/components/dashboard/HomeRemindersCalendar";
 
 // Current user defaults
 const defaultCurrentUser = {
@@ -64,7 +66,14 @@ export default function ReportsPage() {
   const [leaderboardData, setLeaderboardData] = useState<SalesUser[]>([]);
   const [apiLoading, setApiLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [leadOverview, setLeadOverview] = useState<any>(null);
+  const [leadOverview, setLeadOverview] = useState<{
+    total?: number;
+    totalSubscribedLeads?: number;
+    totalInterestedLeads?: number;
+    totalFollowUpLeads?: number;
+    totalNotInterestedLeads?: number;
+    totalNewLeads?: number;
+  } | null>(null);
 
   // Fetch data from API
   const fetchData = useCallback(async (dateRange?: { from: string; to: string }) => {
@@ -322,8 +331,18 @@ export default function ReportsPage() {
     <ResponsiveWrapper padding="sm">
       <div className="space-y-6 pb-8 sm:pb-12">
 
-        {/* 1. Today's Agenda */}
-        <TodayAgenda />
+        {/* 1. API Reminders + Calendar + Tickets */}
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
+          <div className="xl:col-span-3">
+            <TodayAgenda />
+          </div>
+          <div className="xl:col-span-1">
+            <TicketsPanel />
+          </div>
+          <div className="xl:col-span-4">
+            <HomeRemindersCalendar />
+          </div>
+        </div>
 
         {/* 2. Date Range Header + Quick Actions */}
         <div className="space-y-3">
@@ -336,7 +355,7 @@ export default function ReportsPage() {
           />
 
           {/* Quick Actions - Subtle link-style buttons */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             <Link
               href="/dashboard/leads"
               className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors"
@@ -364,6 +383,13 @@ export default function ReportsPage() {
             >
               <Bell className="h-3.5 w-3.5" />
               Reminders
+            </Link>
+            <Link
+              href="/dashboard/tickets"
+              className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-colors"
+            >
+              <Ticket className="h-3.5 w-3.5" />
+              Tickets
             </Link>
           </div>
         </div>

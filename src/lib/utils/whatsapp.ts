@@ -1,7 +1,9 @@
 // Utility for building proper WhatsApp URLs with country code
 // Default country code set to Egypt (20) – adjust if needed or pass explicitly.
 
-export function buildWhatsAppUrl(rawPhone: string, text?: string, countryCode = '20') {
+export type WhatsAppClient = "normal" | "business";
+
+const normalizeWhatsAppPhone = (rawPhone: string, countryCode = "20") => {
   // Strip all non-digits
   let digits = rawPhone.replace(/\D/g, '');
 
@@ -19,9 +21,30 @@ export function buildWhatsAppUrl(rawPhone: string, text?: string, countryCode = 
     digits = countryCode + digits;
   }
 
+  return digits;
+};
+
+const encodeMessageParam = (text?: string) => {
+  if (!text || !text.trim()) return "";
+  return `&text=${encodeURIComponent(text)}`;
+};
+
+export function buildWhatsAppUrl(rawPhone: string, text?: string, countryCode = '20') {
+  const digits = normalizeWhatsAppPhone(rawPhone, countryCode);
+  const messageParam = encodeMessageParam(text);
+
   const base = `https://api.whatsapp.com/send?phone=${digits}`;
-  if (text && text.trim()) {
-    return `${base}&text=${encodeURIComponent(text)}`;
-  }
-  return base;
+  return `${base}${messageParam}`;
+}
+
+export function buildWhatsAppAppUrl(
+  rawPhone: string,
+  text: string | undefined,
+  client: WhatsAppClient,
+  countryCode = "20"
+) {
+  const digits = normalizeWhatsAppPhone(rawPhone, countryCode);
+  const messageParam = encodeMessageParam(text);
+  const scheme = client === "business" ? "whatsapp-business://send" : "whatsapp://send";
+  return `${scheme}?phone=${digits}${messageParam}`;
 }

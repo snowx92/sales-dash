@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, ShoppingBag, Globe, Box, Eye, Calendar, Clock, LogIn, BarChart, Key, EyeOff, MapPin, Building2, XCircle, CreditCard, User, Wallet, AlertCircle, Sparkles, CheckCircle2, ChevronDown } from "lucide-react";
+import { Users, ShoppingBag, Globe, Box, Eye, Calendar, Clock, LogIn, BarChart, Key, EyeOff, MapPin, Building2, XCircle, CreditCard, User, Wallet, AlertCircle, Sparkles, CheckCircle2, ChevronDown, Bell } from "lucide-react";
 import { useState } from "react";
 import { ActionDropdown } from "@/components/ui/ActionDropdown";
 // import logo from "@/lib/images/logo.png";
@@ -81,6 +81,7 @@ export interface MerchantCardProps {
   finishedSetup: boolean;
   steps?: Steps;
   retantion?: RetentionData;
+  onAddReminder?: (merchantId: string, merchantName: string) => void;
 }
 
 // Function to generate a unique color based on a string value with opacity and a matching text color
@@ -147,6 +148,7 @@ export function MerchantCard({
   finishedSetup,
   steps,
   retantion,
+  onAddReminder,
 }: MerchantCardProps) {
   const [imageError, setImageError] = useState(false);
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
@@ -223,6 +225,7 @@ export function MerchantCard({
   };
 
   const actions = [
+    ...(onAddReminder ? [{ icon: Bell, label: "Add Reminder", onClick: () => onAddReminder(id, storeName), color: "orange" as const }] : []),
     { icon: LogIn, label: "Login to Store", onClick: handleLoginToStore, color: "green" },
     { icon: CreditCard, label: "Subscribe Store", onClick: handleSubscribeStore, color: "blue" },
     { icon: Key, label: "Force Reset Password", onClick: handleForcePasswordReset, color: "indigo" },

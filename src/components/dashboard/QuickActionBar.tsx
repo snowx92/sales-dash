@@ -85,7 +85,7 @@ export default function QuickActionBar({ onAddLead, onSearch }: QuickActionBarPr
       icon: BarChart,
       shortcut: 'Ctrl+A',
       action: () => {
-        router.push('/dashboard/analytics');
+        router.push('/dashboard/overview');
         setIsOpen(false);
       },
       category: 'navigation'
@@ -263,7 +263,16 @@ export default function QuickActionBar({ onAddLead, onSearch }: QuickActionBarPr
     }
 
     // Handle other shortcuts when palette is closed
-    if (!isOpen) {
+    // Skip shortcuts if user is typing in an input, textarea, or contenteditable (e.g. Quill editor)
+    const target = e.target as HTMLElement;
+    const isEditing =
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable ||
+      target.closest('.ql-editor') !== null;
+
+    if (!isOpen && !isEditing) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
         e.preventDefault();
         router.push('/dashboard/overview');
@@ -274,7 +283,7 @@ export default function QuickActionBar({ onAddLead, onSearch }: QuickActionBarPr
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
         e.preventDefault();
-        router.push('/dashboard/analytics');
+        router.push('/dashboard/overview');
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();

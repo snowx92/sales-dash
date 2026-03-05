@@ -17,9 +17,10 @@ import {
   Ban,
   Store,
   UserPlus,
-  Calendar
+  Calendar,
+  Bell
 } from "lucide-react";
-import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
+import { useWhatsAppTemplatePicker } from "@/components/providers/WhatsAppTemplateProvider";
 import { formatPhoneForDisplay } from '@/lib/utils/phone';
 import { calculateLeadScore, getScoreBadgeColor, getScoreIcon } from '@/lib/utils/leadScoring';
 import { Lead, leadSources, priorities, statuses } from './types';
@@ -31,6 +32,7 @@ interface LeadsTableProps {
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (id: number) => void;
   onAddFeedback: (id: number, leadName: string) => void;
+  onAddReminder?: (id: number, leadName: string, leadEmail: string, leadPhone: string) => void;
   onAssignStore?: (id: number, leadName: string) => void;
   onMarkAsJunk: (id: number) => void;
   onStatusChange?: (id: number, newStatus: string) => void;
@@ -43,10 +45,12 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
   onEditLead,
   onDeleteLead,
   onAddFeedback,
+  onAddReminder,
   onAssignStore,
   onMarkAsJunk,
   onStatusChange
 }) => {
+  const { openTemplatePicker } = useWhatsAppTemplatePicker();
   // State for tracking which onboarding accordion is expanded
   const [expandedOnboarding, setExpandedOnboarding] = useState<number | null>(null);
 
@@ -180,10 +184,10 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                               onStatusChange(lead.id, e.target.value);
                             }}
                             onClick={(e) => e.stopPropagation()}
-                            className={`px-2 py-1 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-purple-500 ${status?.color}`}
+                            className={`px-2 py-1 text-xs font-semibold rounded-full cursor-pointer focus:ring-2 focus:ring-purple-500 border border-gray-200 ${status?.color || "bg-gray-100 text-gray-800"}`}
                           >
                             {statuses.map(s => (
-                              <option key={s.id} value={s.id}>{s.name}</option>
+                              <option key={s.id} value={s.id} className="bg-white text-gray-900">{s.name}</option>
                             ))}
                           </select>
                         ) : (
@@ -240,8 +244,17 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            const url = buildWhatsAppUrl(lead.phone, 'Hello');
-                            window.open(url, '_blank');
+                            openTemplatePicker({
+                              type: "lead",
+                              phone: lead.phone,
+                              title: lead.name,
+                              variables: {
+                                name: lead.name,
+                                storeName: lead.name,
+                                ownerName: lead.name,
+                                phone: lead.phone,
+                              },
+                            });
                           }}
                           className="text-green-600 hover:text-green-900 transition-colors p-1"
                           title="WhatsApp"
@@ -258,6 +271,18 @@ export const LeadsTable: React.FC<LeadsTableProps> = ({
                         >
                           <MessageSquare className="h-3 w-3" />
                         </button>
+                        {onAddReminder && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAddReminder(lead.id, lead.name, lead.email, lead.phone);
+                            }}
+                            className="text-orange-600 hover:text-orange-900 transition-colors p-1"
+                            title="Add Reminder"
+                          >
+                            <Bell className="h-3 w-3" />
+                          </button>
+                        )}
                         {onAssignStore && (
                           <button
                             onClick={(e) => {

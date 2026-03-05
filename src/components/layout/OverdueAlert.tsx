@@ -4,26 +4,34 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, X, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { reminderStorage } from "@/lib/utils/reminderStorage";
+import { remindersService } from "@/lib/api/reminders/remindersService";
+import { parseFirestoreDate } from "@/lib/utils/firestoreDate";
 
 export default function OverdueAlert() {
   const [overdueCount, setOverdueCount] = useState(0);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Check for overdue items
-    const reminders = reminderStorage.getAll();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const loadOverdue = async () => {
+      try {
+        const reminders = await remindersService.getReminders({ status: "OPENED" });
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-    const overdue = reminders.filter((r) => {
-      if (r.completed) return false;
-      const reminderDate = new Date(r.date);
-      reminderDate.setHours(0, 0, 0, 0);
-      return reminderDate < today;
-    });
+        const overdue = reminders.filter((r) => {
+          const reminderDate = parseFirestoreDate(r.date);
+          if (!reminderDate) return false;
+          reminderDate.setHours(0, 0, 0, 0);
+          return reminderDate < today;
+        });
 
-    setOverdueCount(overdue.length);
+        setOverdueCount(overdue.length);
+      } catch (error) {
+        console.error("Failed to load overdue reminders:", error);
+      }
+    };
+
+    loadOverdue();
 
     // Check if already dismissed this session
     const sessionDismissed = sessionStorage.getItem("overdueAlertDismissed");

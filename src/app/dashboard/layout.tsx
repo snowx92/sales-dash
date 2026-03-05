@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/SideBar";
 import DynamicNavbar from "@/components/layout/DynamicNavbar";
 import OverdueAlert from "@/components/layout/OverdueAlert";
+import { WhatsAppTemplateProvider } from "@/components/providers/WhatsAppTemplateProvider";
 import { SessionManager } from "@/lib/utils/session";
 
 export default function DashboardLayout({
@@ -59,34 +60,36 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Fixed Sidebar */}
-      <Sidebar
-        isMobileMenuOpen={isMobileMenuOpen}
-        setIsMobileMenuOpen={setIsMobileMenuOpen}
-        onCollapsedChange={setIsSidebarCollapsed}
-      />
-
-      {/* Main Content Area - with left margin that matches sidebar width */}
-      <div
-        className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out ${
-          isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-[280px]'
-        }`}
-      >
-        {/* Navbar */}
-        <DynamicNavbar
+    <WhatsAppTemplateProvider>
+      <div className="min-h-screen bg-gray-50">
+        {/* Fixed Sidebar */}
+        <Sidebar
           isMobileMenuOpen={isMobileMenuOpen}
           setIsMobileMenuOpen={setIsMobileMenuOpen}
+          onCollapsedChange={setIsSidebarCollapsed}
         />
 
-        {/* Overdue Follow-up Alert */}
-        <OverdueAlert />
+        {/* Main Content Area - with left margin that matches sidebar width */}
+        <div
+          className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out ${
+            isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-[280px]'
+          }`}
+        >
+          {/* Navbar */}
+          <DynamicNavbar
+            isMobileMenuOpen={isMobileMenuOpen}
+            setIsMobileMenuOpen={setIsMobileMenuOpen}
+          />
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-x-hidden">
-          {children}
-        </main>
+          {/* Overdue Follow-up Alert */}
+          <OverdueAlert />
+
+          {/* Page Content */}
+          <main className="flex-1 overflow-x-hidden">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </WhatsAppTemplateProvider>
   );
 } 

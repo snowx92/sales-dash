@@ -1,824 +1,825 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Bell,
-  Clock,
-  Phone,
-  Mail,
-  ExternalLink,
   AlertTriangle,
-  TrendingUp,
-  Users,
-  Building,
-  Search,
-  MessageCircle,
+  Bell,
+  CalendarDays,
   CheckCircle,
+  Clock3,
+  MessageCircle,
+  Plus,
+  RefreshCw,
+  Search,
+  Table2,
   Trash2,
-  CalendarDays
 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-import type { ApiLead } from "@/lib/api/leads/types";
-import { EndedSubscriptionItem } from "@/lib/api/retention/types";
-import { leadsService } from "@/lib/api/leads/leadsService";
-import { retentionService } from "@/lib/api/retention/retentionService";
-import { buildWhatsAppUrl } from "@/lib/utils/whatsapp";
+import AddReminderModal from "@/components/modals/AddReminderModal";
+import RemindersCalendar from "@/components/reminders/RemindersCalendar";
+import { remindersService } from "@/lib/api/reminders/remindersService";
+import type { ReminderSourceType, ReminderStatus, SalesReminder } from "@/lib/api/reminders/types";
+import type { MyReminderFormData } from "@/lib/types/reminder";
+import { formatDateTimeForApi, parseFirestoreDate, type FirestoreDateInput } from "@/lib/utils/firestoreDate";
 import { formatPhoneForDisplay } from "@/lib/utils/phone";
-import { reminderStorage } from "@/lib/utils/reminderStorage";
-import type { MyReminder } from "@/lib/types/reminder";
+import { profileService } from "@/lib/api/stores/profile/ProfileService";
+import { useWhatsAppTemplatePicker } from "@/components/providers/WhatsAppTemplateProvider";
 import { toast } from "sonner";
 
-interface SmartReminderItem {
-  id: string;
-  type: 'lead' | 'retention';
-  name: string;
-  phone: string;
-  email: string;
-  website: string;
-  priority: 'high' | 'mid' | 'low';
-  daysSinceContact: number;
-  urgency: 'critical' | 'high' | 'medium';
-  message: string;
-  lastContact: string;
-  status?: string;
-  attempts?: number;
-  originalData: ApiLead | EndedSubscriptionItem | unknown;
-}
+type SourceFilter = "all" | ReminderSourceType;
+type StatusFilter = "all" | ReminderStatus;
+type DisplayMode = "table" | "calendar";
+
+const getReminderSourceLabel = (sourceType: ReminderSourceType) => {
+  if (sourceType === "lead") return "Lead";
+  if (sourceType === "retention") return "Retention";
+  return "Other";
+};
+
+const getReminderStatusLabel = (status: ReminderStatus) => {
+  if (status === "OPENED") return "Opened";
+  if (status === "DONE") return "Done";
+  return "Discarded";
+};
+
+const getReminderStatusStyles = (status: ReminderStatus) => {
+  if (status === "DONE") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (status === "DISCARDED") return "bg-slate-100 text-slate-600 border-slate-200";
+  return "bg-blue-50 text-blue-700 border-blue-200";
+};
+
+const getSourceStyles = (source: ReminderSourceType) => {
+  if (source === "lead") return "bg-indigo-50 text-indigo-700 border-indigo-200";
+  if (source === "retention") return "bg-amber-50 text-amber-700 border-amber-200";
+  return "bg-slate-50 text-slate-700 border-slate-200";
+};
+
+const toDateKey = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatDateKey = (dateKey: string) => {
+  const [yearText, monthText, dayText] = dateKey.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+
+  if (!year || !month || !day) return dateKey;
+
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return dateKey;
+
+  return date.toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+const buildDateTimeInputFromDateKey = (dateKey: string) => {
+  const [yearText, monthText, dayText] = dateKey.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+
+  if (!year || !month || !day) return "";
+
+  const candidate = new Date(year, month - 1, day, 9, 0, 0, 0);
+  const now = new Date();
+
+  if (toDateKey(now) === dateKey && candidate < now) {
+    candidate.setTime(now.getTime() + 5 * 60 * 1000);
+    candidate.setSeconds(0, 0);
+  }
+
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${candidate.getFullYear()}-${pad(candidate.getMonth() + 1)}-${pad(candidate.getDate())}T${pad(candidate.getHours())}:${pad(candidate.getMinutes())}`;
+};
+
+const isReminderOnDate = (value: FirestoreDateInput, dateKey: string) => {
+  const parsed = parseFirestoreDate(value);
+  if (!parsed) return false;
+  return toDateKey(parsed) === dateKey;
+};
+
+const extractReminderContact = (
+  reminder: SalesReminder,
+  cache?: Map<string, { name: string; phone: string }>
+) => {
+  const parent = reminder.parentData && typeof reminder.parentData === "object"
+    ? (reminder.parentData as Record<string, unknown>)
+    : {};
+
+  // Try parentData first
+  let name =
+    (typeof parent.storeName === "string" && parent.storeName) ||
+    (typeof parent.name === "string" && parent.name) ||
+    "";
+  let phone = typeof parent.phone === "string" ? parent.phone : "";
+  const email = typeof parent.email === "string" ? parent.email : "";
+
+  // If no name from parentData, check the store cache
+  if (!name && reminder.parentId && cache?.has(reminder.parentId)) {
+    const cached = cache.get(reminder.parentId)!;
+    name = cached.name || `#${reminder.parentId}`;
+    phone = phone || cached.phone;
+  }
+
+  // Final fallback
+  if (!name) {
+    name = reminder.parentId ? `#${reminder.parentId}` : "General Reminder";
+  }
+
+  return { name, email, phone };
+};
+
+const getDateTag = (value: FirestoreDateInput) => {
+  const date = parseFirestoreDate(value);
+  if (!date) return { label: "No date", color: "text-slate-500" };
+
+  const reminderDay = new Date(date);
+  reminderDay.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const diffMs = reminderDay.getTime() - today.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return { label: `Overdue (${Math.abs(diffDays)}d)`, color: "text-red-600" };
+  }
+
+  if (diffDays === 0) {
+    return { label: "Today", color: "text-orange-600" };
+  }
+
+  if (diffDays === 1) {
+    return { label: "Tomorrow", color: "text-amber-600" };
+  }
+
+  return { label: date.toLocaleDateString(), color: "text-slate-600" };
+};
+
+const getReminderTimeLabel = (value: FirestoreDateInput) => {
+  const parsed = parseFirestoreDate(value);
+  if (!parsed) return null;
+
+  if (parsed.getHours() === 0 && parsed.getMinutes() === 0) {
+    return null;
+  }
+
+  return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
 
 export default function RemindersPage() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'my' | 'smart'>('my');
-
-  // My Reminders state
-  const [myReminders, setMyReminders] = useState<MyReminder[]>([]);
-  const [filteredMyReminders, setFilteredMyReminders] = useState<MyReminder[]>([]);
-  const [myReminderSearch, setMyReminderSearch] = useState("");
-  const [myReminderTypeFilter, setMyReminderTypeFilter] = useState<'all' | 'lead' | 'retention'>('all');
-
-  // Smart Reminders state
-  const [smartReminders, setSmartReminders] = useState<SmartReminderItem[]>([]);
-  const [filteredSmartReminders, setFilteredSmartReminders] = useState<SmartReminderItem[]>([]);
-  const [smartReminderSearch, setSmartReminderSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<'all' | 'lead' | 'retention'>('all');
-  const [urgencyFilter, setUrgencyFilter] = useState<'all' | 'critical' | 'high' | 'medium'>('all');
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
-
+  const { openTemplatePicker } = useWhatsAppTemplatePicker();
+  const [reminders, setReminders] = useState<SalesReminder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>("calendar");
 
-  // Load My Reminders from session storage
-  const loadMyReminders = useCallback(() => {
-    const reminders = reminderStorage.getAll();
-    setMyReminders(reminders);
-    setFilteredMyReminders(reminders);
-  }, []); // No dependencies - stable function
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createDefaultDateTime, setCreateDefaultDateTime] = useState<string | undefined>(undefined);
 
-  // Load Smart Reminders (existing logic)
-  const loadSmartReminders = useCallback(async (currentDismissedIds: Set<string>) => {
-    setLoading(true);
+  // Cache for resolved store names/phones (parentId → { name, phone })
+  const [storeCache, setStoreCache] = useState<Map<string, { name: string; phone: string }>>(new Map());
+
+  const loadReminders = useCallback(async (isManualRefresh = false) => {
     try {
-      const now = new Date();
-      const newReminders: SmartReminderItem[] = [];
-
-      // Load leads
-      const leadsResponse = await leadsService.getLeads({ page: 1, limit: 500 });
-      if (leadsResponse?.items) {
-        leadsResponse.items.forEach((apiLead: ApiLead) => {
-          const leadId = String(apiLead.id);
-
-          if (currentDismissedIds.has(leadId) || apiLead.status === 'NOT_INTERSTED' || apiLead.status === 'SUBSCRIBED') {
-            return;
-          }
-
-          const lastContactTs: unknown = apiLead.updatedAt?._seconds ? apiLead.updatedAt : apiLead.createdAt;
-
-          function convertToDate(ts: unknown): Date {
-            if (ts == null) return new Date(0);
-
-            if (typeof ts === 'number') {
-              return ts > 1e12 ? new Date(ts) : new Date(ts * 1000);
-            }
-
-            if (typeof ts === 'string') {
-              return new Date(ts);
-            }
-
-            if (typeof ts === 'object' && ts !== null) {
-              const obj = ts as Record<string, unknown>;
-
-              if ('_seconds' in obj && typeof obj._seconds === 'number') {
-                return new Date(obj._seconds * 1000);
-              }
-
-              if ('seconds' in obj && typeof obj.seconds === 'number') {
-                return new Date((obj.seconds as number) * 1000);
-              }
-
-              if ('toDate' in obj && typeof obj.toDate === 'function') {
-                const maybeToDate = obj.toDate;
-                return (maybeToDate as () => Date)();
-              }
-            }
-
-            return new Date(0);
-          }
-
-          const lastContactDate = convertToDate(lastContactTs);
-          const daysSince = Math.floor((now.getTime() - lastContactDate.getTime()) / (1000 * 60 * 60 * 24));
-
-          let urgency: 'critical' | 'high' | 'medium' = 'medium';
-          let message = '';
-
-          if (daysSince >= 14) {
-            urgency = 'critical';
-            message = `No contact for ${daysSince} days! Urgent follow-up needed.`;
-          } else if (daysSince >= 7) {
-            urgency = 'high';
-            message = `Follow-up needed (${daysSince} days since contact).`;
-          } else if (apiLead.status === 'INTERSTED' && daysSince >= 3) {
-            urgency = 'medium';
-            message = `Interested lead - follow up to maintain momentum.`;
-          } else if (apiLead.status === 'FOLLOW_UP' && daysSince >= 5) {
-            urgency = 'medium';
-            message = `Follow-up task pending (${daysSince} days).`;
-          } else {
-            return;
-          }
-
-          newReminders.push({
-            id: leadId,
-            type: 'lead',
-            name: apiLead.name,
-            phone: apiLead.phone,
-            email: apiLead.email || '',
-            website: apiLead.websiteUrl || '',
-            priority: apiLead.priority === 'HIGH' ? 'high' : apiLead.priority === 'MEDIUM' ? 'mid' : 'low',
-            daysSinceContact: daysSince,
-            urgency,
-            message,
-            lastContact: lastContactDate.toLocaleDateString(),
-            status: apiLead.status,
-            attempts: apiLead.attemps || 0,
-            originalData: apiLead
-          });
-        });
+      if (isManualRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
       }
 
-      // Load retention merchants (wrapped in try-catch to handle errors gracefully)
-      try {
-        const retentionResponse = await retentionService.getEndedSubscriptions({ pageNo: 1, limit: 500 });
-        if (retentionResponse?.items) {
-        retentionResponse.items.forEach((merchant: EndedSubscriptionItem) => {
-          const merchantId = `retention_${merchant.id}`;
-
-          if (currentDismissedIds.has(merchantId)) {
-            return;
-          }
-
-          // Handle expiredAt which can be string, null, or Firestore timestamp
-          let expiredDate: Date;
-          if (!merchant.expiredAt) {
-            return; // Skip if no expiration date
-          }
-
-          if (typeof merchant.expiredAt === 'object' && '_seconds' in merchant.expiredAt) {
-            expiredDate = new Date(merchant.expiredAt._seconds * 1000);
-          } else {
-            expiredDate = new Date(merchant.expiredAt);
-          }
-
-          const daysSince = Math.floor((now.getTime() - expiredDate.getTime()) / (1000 * 60 * 60 * 24));
-
-          let urgency: 'critical' | 'high' | 'medium' = 'medium';
-          let message = '';
-
-          if (daysSince >= 30) {
-            urgency = 'critical';
-            message = `Subscription ended ${daysSince} days ago! Critical re-engagement needed.`;
-          } else if (daysSince >= 14) {
-            urgency = 'high';
-            message = `Win-back opportunity (${daysSince} days since expiration).`;
-          } else if (daysSince >= 7) {
-            urgency = 'medium';
-            message = `Recent churn - good time to reconnect.`;
-          } else {
-            return;
-          }
-
-          newReminders.push({
-            id: merchantId,
-            type: 'retention',
-            name: merchant.storeName || merchant.name,
-            phone: merchant.phone,
-            email: merchant.email,
-            website: merchant.link || '',
-            priority: merchant.priority === 'HIGH' ? 'high' : merchant.priority === 'MEDIUM' ? 'mid' : 'low',
-            daysSinceContact: daysSince,
-            urgency,
-            message,
-            lastContact: expiredDate.toLocaleDateString(),
-            status: 'expired',
-            originalData: merchant
-          });
-        });
-        }
-      } catch (retentionError) {
-        console.warn('Could not load retention data for smart reminders:', retentionError);
-        // Continue without retention data
-      }
-
-      newReminders.sort((a, b) => {
-        const urgencyOrder = { critical: 3, high: 2, medium: 1 };
-        if (urgencyOrder[a.urgency] !== urgencyOrder[b.urgency]) {
-          return urgencyOrder[b.urgency] - urgencyOrder[a.urgency];
-        }
-        return b.daysSinceContact - a.daysSinceContact;
+      const data = await remindersService.getReminders({
+        ...(sourceFilter !== "all" ? { sourceType: sourceFilter } : {}),
+        ...(statusFilter !== "all" ? { status: statusFilter } : {}),
+        ...(fromDate ? { from: fromDate } : {}),
+        ...(toDate ? { to: toDate } : {}),
       });
 
-      setSmartReminders(newReminders);
-      setFilteredSmartReminders(newReminders);
+      const ordered = [...data].sort((a, b) => {
+        const first = parseFirestoreDate(a.date)?.getTime() || 0;
+        const second = parseFirestoreDate(b.date)?.getTime() || 0;
+        return first - second;
+      });
+
+      setReminders(ordered);
     } catch (error) {
-      console.error('Error loading smart reminders:', error);
-      toast.error('Failed to load smart reminders');
+      console.error("Failed to load reminders:", error);
+      toast.error("Failed to load reminders");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, []); // No dependencies - pass dismissedIds as parameter
+  }, [fromDate, sourceFilter, statusFilter, toDate]);
 
   useEffect(() => {
-    // Load dismissed IDs from localStorage first
-    const stored = localStorage.getItem('dismissedReminders');
-    const initialDismissedIds = stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
-    setDismissedIds(initialDismissedIds);
+    loadReminders();
+  }, [loadReminders]);
 
-    // Load reminders once on mount
-    loadMyReminders();
-    loadSmartReminders(initialDismissedIds);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount - loadMyReminders and loadSmartReminders are stable
-
-  // Filter My Reminders
+  // Resolve store names for reminders with missing parentData
   useEffect(() => {
-    let filtered = myReminders;
+    if (reminders.length === 0) return;
 
-    if (myReminderSearch) {
-      const term = myReminderSearch.toLowerCase();
-      filtered = filtered.filter(r =>
-        r.entityName.toLowerCase().includes(term) ||
-        r.entityEmail?.toLowerCase().includes(term) ||
-        r.entityPhone?.includes(term) ||
-        r.note.toLowerCase().includes(term)
+    const unresolvedIds = reminders
+      .filter((r) => {
+        if (!r.parentId) return false;
+        if (r.sourceType === "lead") return false;
+        // Already cached
+        if (storeCache.has(r.parentId)) return false;
+        // Has parentData with name — no need to resolve
+        const parent = r.parentData && typeof r.parentData === "object"
+          ? (r.parentData as Record<string, unknown>)
+          : {};
+        if (typeof parent.storeName === "string" && parent.storeName) return false;
+        if (typeof parent.name === "string" && parent.name) return false;
+        return true;
+      })
+      .map((r) => r.parentId!)
+      // Deduplicate
+      .filter((id, idx, arr) => arr.indexOf(id) === idx);
+
+    if (unresolvedIds.length === 0) return;
+
+    const resolveStores = async () => {
+      // Batch resolve — max 10 at a time
+      const batches: string[][] = [];
+      for (let i = 0; i < unresolvedIds.length; i += 10) {
+        batches.push(unresolvedIds.slice(i, i + 10));
+      }
+
+      const newEntries = new Map<string, { name: string; phone: string }>();
+
+      for (const batch of batches) {
+        const results = await Promise.allSettled(
+          batch.map((id) => profileService.getStoreAnalytics(id))
+        );
+
+        results.forEach((result, idx) => {
+          if (result.status === "fulfilled" && result.value) {
+            const storeName = result.value.store?.name || "";
+            const ownerPhone = result.value.owner?.phone || "";
+            if (storeName || ownerPhone) {
+              newEntries.set(batch[idx], { name: storeName, phone: ownerPhone });
+            }
+          }
+        });
+      }
+
+      if (newEntries.size > 0) {
+        setStoreCache((prev) => {
+          const updated = new Map(prev);
+          newEntries.forEach((value, key) => updated.set(key, value));
+          return updated;
+        });
+      }
+    };
+
+    void resolveStores();
+  }, [reminders, storeCache]);
+
+  const filteredReminders = useMemo(() => {
+    if (!searchTerm.trim()) return reminders;
+
+    const lowerTerm = searchTerm.toLowerCase();
+
+    return reminders.filter((reminder) => {
+      const contact = extractReminderContact(reminder, storeCache);
+      return (
+        contact.name.toLowerCase().includes(lowerTerm) ||
+        contact.email.toLowerCase().includes(lowerTerm) ||
+        contact.phone.includes(searchTerm) ||
+        (reminder.note || "").toLowerCase().includes(lowerTerm) ||
+        (reminder.parentId || "").toLowerCase().includes(lowerTerm)
       );
-    }
+    });
+  }, [reminders, searchTerm, storeCache]);
 
-    if (myReminderTypeFilter !== 'all') {
-      filtered = filtered.filter(r => r.type === myReminderTypeFilter);
-    }
+  const selectedDayReminders = useMemo(() => {
+    if (!selectedDate) return [];
+    return filteredReminders.filter((reminder) => isReminderOnDate(reminder.date, selectedDate));
+  }, [filteredReminders, selectedDate]);
 
-    setFilteredMyReminders(filtered);
-  }, [myReminders, myReminderSearch, myReminderTypeFilter]);
+  const visibleReminders = useMemo(() => {
+    if (!selectedDate) return filteredReminders;
+    return selectedDayReminders;
+  }, [filteredReminders, selectedDate, selectedDayReminders]);
 
-  // Filter Smart Reminders
-  useEffect(() => {
-    let filtered = smartReminders;
+  const stats = useMemo(() => {
+    const opened = reminders.filter((r) => (r.status || "OPENED") === "OPENED").length;
+    const done = reminders.filter((r) => (r.status || "OPENED") === "DONE").length;
+    const discarded = reminders.filter((r) => (r.status || "OPENED") === "DISCARDED").length;
 
-    if (smartReminderSearch) {
-      const term = smartReminderSearch.toLowerCase();
-      filtered = filtered.filter(r =>
-        r.name.toLowerCase().includes(term) ||
-        r.email.toLowerCase().includes(term) ||
-        r.phone.includes(term) ||
-        r.website.toLowerCase().includes(term)
-      );
-    }
-
-    if (typeFilter !== 'all') {
-      filtered = filtered.filter(r => r.type === typeFilter);
-    }
-
-    if (urgencyFilter !== 'all') {
-      filtered = filtered.filter(r => r.urgency === urgencyFilter);
-    }
-
-    setFilteredSmartReminders(filtered);
-  }, [smartReminders, smartReminderSearch, typeFilter, urgencyFilter]);
-
-  const handleToggleComplete = (id: string) => {
-    reminderStorage.toggleComplete(id);
-    loadMyReminders();
-    toast.success('Reminder status updated');
-  };
-
-  const handleDeleteReminder = (id: string) => {
-    reminderStorage.delete(id);
-    loadMyReminders();
-    toast.success('Reminder deleted');
-  };
-
-  const handleDismissSmartReminder = (id: string) => {
-    const newDismissed = new Set(dismissedIds);
-    newDismissed.add(id);
-    setDismissedIds(newDismissed);
-    localStorage.setItem('dismissedReminders', JSON.stringify([...newDismissed]));
-
-    // Remove from both lists without triggering a full reload
-    setSmartReminders(prev => prev.filter(r => r.id !== id));
-    setFilteredSmartReminders(prev => prev.filter(r => r.id !== id));
-    toast.success('Reminder dismissed');
-  };
-
-  const getUrgencyColor = (urgency: 'critical' | 'high' | 'medium') => {
-    switch (urgency) {
-      case 'critical': return 'text-red-600 bg-red-50 border-red-200';
-      case 'high': return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-    }
-  };
-
-  const getStatusColor = (completed: boolean) => {
-    return completed ? 'bg-gray-100 border-gray-300' : 'bg-white border-blue-200';
-  };
-
-  const formatReminderDate = (dateStr: string) => {
-    const date = new Date(dateStr);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const reminderDate = new Date(date);
-    reminderDate.setHours(0, 0, 0, 0);
 
-    const diffTime = reminderDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const overdue = reminders.filter((r) => {
+      if ((r.status || "OPENED") !== "OPENED") return false;
+      const date = parseFirestoreDate(r.date);
+      if (!date) return false;
+      date.setHours(0, 0, 0, 0);
+      return date < today;
+    }).length;
 
-    if (diffDays < 0) return <span className="text-red-600 font-semibold">Overdue</span>;
-    if (diffDays === 0) return <span className="text-orange-600 font-semibold">Today</span>;
-    if (diffDays === 1) return <span className="text-yellow-600 font-semibold">Tomorrow</span>;
-    return <span className="text-gray-600">{date.toLocaleDateString()}</span>;
+    const dueToday = reminders.filter((r) => {
+      if ((r.status || "OPENED") !== "OPENED") return false;
+      const date = parseFirestoreDate(r.date);
+      if (!date) return false;
+      date.setHours(0, 0, 0, 0);
+      return date.getTime() === today.getTime();
+    }).length;
+
+    return {
+      total: reminders.length,
+      opened,
+      done,
+      discarded,
+      overdue,
+      dueToday,
+    };
+  }, [reminders]);
+
+  const openCreateModal = (dateKey?: string | null) => {
+    if (dateKey) {
+      setCreateDefaultDateTime(buildDateTimeInputFromDateKey(dateKey));
+    } else {
+      setCreateDefaultDateTime(undefined);
+    }
+    setIsCreateOpen(true);
   };
 
-  // Stats for My Reminders
-  const myReminderStats = {
-    total: myReminders.length,
-    pending: myReminders.filter(r => !r.completed).length,
-    completed: myReminders.filter(r => r.completed).length,
-    overdue: myReminders.filter(r => {
-      const date = new Date(r.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return !r.completed && date < today;
-    }).length,
-    today: myReminders.filter(r => {
-      const date = new Date(r.date);
-      const today = new Date();
-      return !r.completed &&
-        date.getDate() === today.getDate() &&
-        date.getMonth() === today.getMonth() &&
-        date.getFullYear() === today.getFullYear();
-    }).length,
-    upcoming: myReminders.filter(r => {
-      const date = new Date(r.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return !r.completed && date > today;
-    }).length
+  const handleCreateReminder = async (data: MyReminderFormData) => {
+    try {
+      setIsCreating(true);
+      await remindersService.createReminder({
+        sourceType: "other",
+        parentId: "",
+        date: formatDateTimeForApi(data.date),
+        note: data.note,
+      });
+      toast.success("Reminder created");
+      setIsCreateOpen(false);
+      await loadReminders(true);
+    } catch (error) {
+      console.error("Failed to create reminder:", error);
+      toast.error("Failed to create reminder");
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  // Stats for Smart Reminders
-  const smartReminderStats = {
-    total: smartReminders.length,
-    critical: smartReminders.filter(r => r.urgency === 'critical').length,
-    high: smartReminders.filter(r => r.urgency === 'high').length,
-    medium: smartReminders.filter(r => r.urgency === 'medium').length,
-    leads: smartReminders.filter(r => r.type === 'lead').length,
-    retention: smartReminders.filter(r => r.type === 'retention').length
+  const handleChangeStatus = async (reminderId: string, status: ReminderStatus) => {
+    try {
+      await remindersService.updateReminderStatus(reminderId, status);
+      toast.success("Reminder status updated");
+      await loadReminders(true);
+    } catch (error) {
+      console.error("Failed to update reminder status:", error);
+      toast.error("Failed to update status");
+    }
   };
+
+  const handleDelete = async (reminderId: string) => {
+    try {
+      await remindersService.deleteReminder(reminderId);
+      toast.success("Reminder deleted");
+      await loadReminders(true);
+    } catch (error) {
+      console.error("Failed to delete reminder:", error);
+      toast.error("Failed to delete reminder");
+    }
+  };
+
+  const selectedDateLabel = selectedDate ? formatDateKey(selectedDate) : "";
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Reminders</h1>
-            <p className="text-gray-600 mt-1">Manage your follow-ups and smart suggestions</p>
+            <h1 className="text-2xl font-bold text-slate-900">Sales Reminders</h1>
+            <p className="mt-1 text-sm text-slate-600">API-powered reminders for leads, retention, and custom follow-ups.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1">
+              <button
+                onClick={() => setDisplayMode("calendar")}
+                className={`rounded-md px-2 py-1 text-xs font-medium ${displayMode === "calendar" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+              >
+                <CalendarDays className="mr-1 inline h-3.5 w-3.5" />
+                Calendar
+              </button>
+              <button
+                onClick={() => setDisplayMode("table")}
+                className={`rounded-md px-2 py-1 text-xs font-medium ${displayMode === "table" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+              >
+                <Table2 className="mr-1 inline h-3.5 w-3.5" />
+                Table
+              </button>
+            </div>
+
+            <button
+              onClick={() => loadReminders(true)}
+              disabled={refreshing}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-60"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
+            <button
+              onClick={() => openCreateModal()}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              <Plus className="h-4 w-4" />
+              New Reminder
+            </button>
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'my' | 'smart')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-xl border border-gray-200">
-            <TabsTrigger
-              value="my"
-              className="flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-all
-                data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
-                data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs uppercase text-slate-500">Total</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">{stats.total}</p>
+          </div>
+          <div className="rounded-xl border border-blue-200 bg-white p-4 shadow-sm">
+            <p className="text-xs uppercase text-blue-600">Opened</p>
+            <p className="mt-2 text-2xl font-bold text-blue-700">{stats.opened}</p>
+          </div>
+          <div className="rounded-xl border border-orange-200 bg-white p-4 shadow-sm">
+            <p className="text-xs uppercase text-orange-600">Today</p>
+            <p className="mt-2 text-2xl font-bold text-orange-700">{stats.dueToday}</p>
+          </div>
+          <div className="rounded-xl border border-red-200 bg-white p-4 shadow-sm">
+            <p className="text-xs uppercase text-red-600">Overdue</p>
+            <p className="mt-2 text-2xl font-bold text-red-700">{stats.overdue}</p>
+          </div>
+          <div className="rounded-xl border border-emerald-200 bg-white p-4 shadow-sm">
+            <p className="text-xs uppercase text-emerald-600">Done</p>
+            <p className="mt-2 text-2xl font-bold text-emerald-700">{stats.done}</p>
+          </div>
+          <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm">
+            <p className="text-xs uppercase text-slate-500">Discarded</p>
+            <p className="mt-2 text-2xl font-bold text-slate-700">{stats.discarded}</p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
+            <div className="relative lg:col-span-2">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search by note, name, phone, parent id..."
+                className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <select
+              value={sourceFilter}
+              onChange={(event) => setSourceFilter(event.target.value as SourceFilter)}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500"
             >
-              <CalendarDays className="h-4 w-4" />
-              My Reminders
-              <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                {myReminderStats.pending}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="smart"
-              className="flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition-all
-                data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm
-                data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800"
+              <option value="all">All sources</option>
+              <option value="lead">Lead</option>
+              <option value="retention">Retention</option>
+              <option value="other">Other</option>
+            </select>
+
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500"
             >
-              <Bell className="h-4 w-4" />
-              Smart Reminders
-              <span className="ml-1 px-2 py-0.5 bg-orange-100 text-orange-800 rounded-full text-xs font-medium">
-                {smartReminderStats.critical + smartReminderStats.high}
-              </span>
-            </TabsTrigger>
-          </TabsList>
+              <option value="all">All statuses</option>
+              <option value="OPENED">Opened</option>
+              <option value="DONE">Done</option>
+              <option value="DISCARDED">Discarded</option>
+            </select>
 
-          {/* My Reminders Tab */}
-          <TabsContent value="my" className="space-y-6">
-            {/* My Reminders Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-gray-600 uppercase">Total</p>
-                    <p className="text-2xl font-bold text-gray-900">{myReminderStats.total}</p>
-                  </div>
-                  <Bell className="h-8 w-8 text-gray-400" />
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-red-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-red-600 uppercase">Overdue</p>
-                    <p className="text-2xl font-bold text-red-600">{myReminderStats.overdue}</p>
-                  </div>
-                  <AlertTriangle className="h-8 w-8 text-red-400" />
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-orange-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-orange-600 uppercase">Today</p>
-                    <p className="text-2xl font-bold text-orange-600">{myReminderStats.today}</p>
-                  </div>
-                  <Clock className="h-8 w-8 text-orange-400" />
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-yellow-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-yellow-600 uppercase">Upcoming</p>
-                    <p className="text-2xl font-bold text-yellow-600">{myReminderStats.upcoming}</p>
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-yellow-400" />
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-blue-600 uppercase">Pending</p>
-                    <p className="text-2xl font-bold text-blue-600">{myReminderStats.pending}</p>
-                  </div>
-                  <Users className="h-8 w-8 text-blue-400" />
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-green-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-green-600 uppercase">Completed</p>
-                    <p className="text-2xl font-bold text-green-600">{myReminderStats.completed}</p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-green-400" />
-                </div>
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(event) => setFromDate(event.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none focus:border-indigo-500"
+              />
+              <input
+                type="date"
+                value={toDate}
+                onChange={(event) => setToDate(event.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none focus:border-indigo-500"
+              />
             </div>
+          </div>
+        </div>
 
-            {/* Search & Filters */}
-            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search my reminders..."
-                    value={myReminderSearch}
-                    onChange={(e) => setMyReminderSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+        {loading && (
+          <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
+            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600" />
+            <p className="text-sm text-slate-500">Loading reminders...</p>
+          </div>
+        )}
+
+        {!loading && displayMode === "calendar" && (
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+            <RemindersCalendar
+              className="xl:col-span-3"
+              reminders={filteredReminders}
+              selectedDate={selectedDate}
+              onSelectDate={(dateKey) => setSelectedDate(dateKey)}
+              title="Calendar View"
+              subtitle="Click a day to review reminders and create a reminder for that date"
+            />
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-1">
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Day Menu</h3>
+                  <p className="text-xs text-slate-500">Reminders on selected day</p>
                 </div>
-
-                <select
-                  value={myReminderTypeFilter}
-                  onChange={(e) => setMyReminderTypeFilter(e.target.value as 'all' | 'lead' | 'retention')}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Types</option>
-                  <option value="lead">Leads Only</option>
-                  <option value="retention">Retention Only</option>
-                </select>
+                {selectedDate && (
+                  <button
+                    onClick={() => setSelectedDate(null)}
+                    className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-100"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
-            </div>
 
-            {/* My Reminders List */}
-            <div className="space-y-3">
-              {loading && (
-                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-                  <p className="text-gray-500">Loading your reminders...</p>
+              {!selectedDate && (
+                <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">
+                  Click a day in the calendar to show that day reminders and create a new one quickly.
                 </div>
               )}
 
-              {!loading && filteredMyReminders.length === 0 && (
-                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                  <Bell className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Reminders Yet</h3>
-                  <p className="text-gray-500">
-                    {myReminderSearch ? 'No reminders match your search.' : 'Create reminders from leads or retention pages.'}
-                  </p>
-                </div>
-              )}
+              {selectedDate && (
+                <>
+                  <div className="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+                    <p className="text-xs font-semibold uppercase text-indigo-600">Selected Day</p>
+                    <p className="mt-1 text-sm font-semibold text-indigo-900">{selectedDateLabel}</p>
+                    <p className="mt-1 text-xs text-indigo-700">{selectedDayReminders.length} reminder{selectedDayReminders.length === 1 ? "" : "s"}</p>
+                    <button
+                      onClick={() => openCreateModal(selectedDate)}
+                      className="mt-3 inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add On This Day
+                    </button>
+                  </div>
 
-              {!loading && filteredMyReminders.map((reminder) => (
-                <motion.div
-                  key={reminder.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`rounded-xl border shadow-sm p-6 ${getStatusColor(reminder.completed)}`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <button
-                          onClick={() => handleToggleComplete(reminder.id)}
-                          className={`h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
-                            reminder.completed
-                              ? 'bg-green-600 border-green-600'
-                              : 'border-gray-300 hover:border-blue-500'
-                          }`}
-                        >
-                          {reminder.completed && <CheckCircle className="h-4 w-4 text-white" />}
-                        </button>
-                        <h3 className={`text-lg font-semibold ${reminder.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
-                          {reminder.entityName}
-                        </h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          reminder.type === 'lead' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                        }`}>
-                          {reminder.type === 'lead' ? 'Lead' : 'Retention'}
-                        </span>
+                  <div className="max-h-[430px] space-y-2 overflow-y-auto pr-1">
+                    {selectedDayReminders.length === 0 && (
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
+                        No reminders on this day.
                       </div>
+                    )}
 
-                      <p className={`mb-3 ${reminder.completed ? 'text-gray-400' : 'text-gray-700'}`}>{reminder.note}</p>
+                    {selectedDayReminders.map((reminder) => {
+                      const status = reminder.status || "OPENED";
+                      const contact = extractReminderContact(reminder, storeCache);
+                      const reminderTime = getReminderTimeLabel(reminder.date);
 
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <CalendarDays className="h-4 w-4" />
-                          {formatReminderDate(reminder.date)}
+                      return (
+                        <div key={reminder.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <p className="truncate text-sm font-semibold text-slate-900">{contact.name}</p>
+                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getReminderStatusStyles(status)}`}>
+                              {getReminderStatusLabel(status)}
+                            </span>
+                          </div>
+
+                          <p className="line-clamp-2 text-xs text-slate-600">{reminder.note || "No note"}</p>
+
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${getSourceStyles(reminder.sourceType)}`}>
+                              {getReminderSourceLabel(reminder.sourceType)}
+                            </span>
+                            {reminderTime && (
+                              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                                {reminderTime}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                            <button
+                              onClick={() => handleChangeStatus(reminder.id, "OPENED")}
+                              className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
+                            >
+                              <Clock3 className="h-3 w-3" />
+                              Open
+                            </button>
+                            <button
+                              onClick={() => handleChangeStatus(reminder.id, "DONE")}
+                              className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100"
+                            >
+                              <CheckCircle className="h-3 w-3" />
+                              Done
+                            </button>
+                            <button
+                              onClick={() => handleChangeStatus(reminder.id, "DISCARDED")}
+                              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+                            >
+                              <AlertTriangle className="h-3 w-3" />
+                              Discard
+                            </button>
+
+                            {contact.phone && (
+                              <button
+                                onClick={() => {
+                                  const templateType = reminder.sourceType === "lead" ? "lead" : "retention";
+                                  openTemplatePicker({
+                                    type: templateType,
+                                    phone: contact.phone,
+                                    title: contact.name,
+                                    variables: {
+                                      name: contact.name,
+                                      storeName: contact.name,
+                                      ownerName: contact.name,
+                                      phone: contact.phone,
+                                    },
+                                  });
+                                }}
+                                className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-white px-2 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-50"
+                              >
+                                <MessageCircle className="h-3 w-3" />
+                                WhatsApp
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => handleDelete(reminder.id)}
+                              className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-white px-2 py-1 text-[11px] font-medium text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              Delete
+                            </button>
+                          </div>
                         </div>
-                        {reminder.entityPhone && (
-                          <div className="flex items-center gap-1">
-                            <Phone className="h-4 w-4" />
-                            {formatPhoneForDisplay(reminder.entityPhone)}
-                          </div>
-                        )}
-                        {reminder.entityEmail && (
-                          <div className="flex items-center gap-1">
-                            <Mail className="h-4 w-4" />
-                            {reminder.entityEmail}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      {reminder.entityPhone && (
-                        <button
-                          onClick={() => window.open(buildWhatsAppUrl(reminder.entityPhone!, ''), '_blank')}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                          title="WhatsApp"
-                        >
-                          <MessageCircle className="h-5 w-5" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteReminder(reminder.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </div>
+                      );
+                    })}
                   </div>
-                </motion.div>
-              ))}
-            </div>
-          </TabsContent>
-
-          {/* Smart Reminders Tab */}
-          <TabsContent value="smart" className="space-y-6">
-            {/* Smart Reminders Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-gray-600 uppercase">Total</p>
-                    <p className="text-2xl font-bold text-gray-900">{smartReminderStats.total}</p>
-                  </div>
-                  <Bell className="h-8 w-8 text-gray-400" />
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-red-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-red-600 uppercase">Critical</p>
-                    <p className="text-2xl font-bold text-red-600">{smartReminderStats.critical}</p>
-                  </div>
-                  <AlertTriangle className="h-8 w-8 text-red-400" />
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-orange-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-orange-600 uppercase">High</p>
-                    <p className="text-2xl font-bold text-orange-600">{smartReminderStats.high}</p>
-                  </div>
-                  <Clock className="h-8 w-8 text-orange-400" />
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-yellow-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-yellow-600 uppercase">Medium</p>
-                    <p className="text-2xl font-bold text-yellow-600">{smartReminderStats.medium}</p>
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-yellow-400" />
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-blue-600 uppercase">Leads</p>
-                    <p className="text-2xl font-bold text-blue-600">{smartReminderStats.leads}</p>
-                  </div>
-                  <Users className="h-8 w-8 text-blue-400" />
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-green-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-green-600 uppercase">Retention</p>
-                    <p className="text-2xl font-bold text-green-600">{smartReminderStats.retention}</p>
-                  </div>
-                  <Building className="h-8 w-8 text-green-400" />
-                </div>
-              </div>
-            </div>
-
-            {/* Filters */}
-            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search reminders..."
-                    value={smartReminderSearch}
-                    onChange={(e) => setSmartReminderSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value as 'all' | 'lead' | 'retention')}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Types</option>
-                  <option value="lead">Leads Only</option>
-                  <option value="retention">Retention Only</option>
-                </select>
-
-                <select
-                  value={urgencyFilter}
-                  onChange={(e) => setUrgencyFilter(e.target.value as 'all' | 'critical' | 'high' | 'medium')}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Urgency</option>
-                  <option value="critical">Critical</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Smart Reminders List */}
-            <div className="space-y-3">
-              {loading && (
-                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-                  <p className="text-gray-500">Loading smart reminders...</p>
-                </div>
+                </>
               )}
-
-              {!loading && filteredSmartReminders.length === 0 && (
-                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                  <Bell className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Smart Reminders</h3>
-                  <p className="text-gray-500">All caught up! No urgent follow-ups at the moment.</p>
-                </div>
-              )}
-
-              {!loading && filteredSmartReminders.map((reminder) => (
-                <motion.div
-                  key={reminder.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`rounded-xl border shadow-sm p-6 ${getUrgencyColor(reminder.urgency)}`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">{reminder.name}</h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          reminder.type === 'lead' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                        }`}>
-                          {reminder.type === 'lead' ? 'Lead' : 'Retention'}
-                        </span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${
-                          reminder.urgency === 'critical'
-                            ? 'bg-red-100 text-red-800'
-                            : reminder.urgency === 'high'
-                            ? 'bg-orange-100 text-orange-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {reminder.urgency}
-                        </span>
-                      </div>
-
-                      <p className="text-gray-700 mb-3">{reminder.message}</p>
-
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          Last contact: {reminder.lastContact}
-                        </div>
-                        {reminder.phone && (
-                          <div className="flex items-center gap-1">
-                            <Phone className="h-4 w-4" />
-                            {formatPhoneForDisplay(reminder.phone)}
-                          </div>
-                        )}
-                        {reminder.email && (
-                          <div className="flex items-center gap-1">
-                            <Mail className="h-4 w-4" />
-                            {reminder.email}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => window.open(`tel:${reminder.phone}`, '_self')}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Call"
-                      >
-                        <Phone className="h-5 w-5" />
-                      </button>
-                      {reminder.phone && (
-                        <button
-                          onClick={() => window.open(buildWhatsAppUrl(reminder.phone, ''), '_blank')}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                          title="WhatsApp"
-                        >
-                          <MessageCircle className="h-5 w-5" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          const path = reminder.type === 'lead' ? '/dashboard/leads' : '/dashboard/retention';
-                          router.push(path);
-                        }}
-                        className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                        title="View Details"
-                      >
-                        <ExternalLink className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDismissSmartReminder(reminder.id)}
-                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        title="Dismiss"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
+
+        {!loading && displayMode === "table" && (
+          <>
+            {selectedDate && (
+              <div className="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+                <span>
+                  Showing reminders for <strong>{selectedDateLabel}</strong>
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openCreateModal(selectedDate)}
+                    className="rounded-md border border-indigo-300 px-2 py-1 text-xs font-medium hover:bg-indigo-100"
+                  >
+                    Add On This Day
+                  </button>
+                  <button
+                    onClick={() => setSelectedDate(null)}
+                    className="rounded-md border border-indigo-300 px-2 py-1 text-xs font-medium hover:bg-indigo-100"
+                  >
+                    Clear Date Filter
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {visibleReminders.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
+                <Bell className="mx-auto mb-4 h-12 w-12 text-slate-300" />
+                <h3 className="text-lg font-semibold text-slate-900">No reminders found</h3>
+                <p className="mt-1 text-sm text-slate-500">Adjust filters or create a new reminder.</p>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Due</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Contact</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Source</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Note</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Channels</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 bg-white">
+                      {visibleReminders.map((reminder) => {
+                        const status = reminder.status || "OPENED";
+                        const contact = extractReminderContact(reminder, storeCache);
+                        const dueDate = parseFirestoreDate(reminder.date);
+                        const dateTag = getDateTag(reminder.date);
+                        const reminderTime = getReminderTimeLabel(reminder.date);
+
+                        return (
+                          <tr key={reminder.id} className="hover:bg-slate-50">
+                            <td className="px-4 py-3 align-top">
+                              <p className="text-sm font-medium text-slate-900">{dueDate ? dueDate.toLocaleDateString() : "-"}</p>
+                              {reminderTime && <p className="text-xs text-slate-500">{reminderTime}</p>}
+                              <p className={`mt-0.5 text-xs ${dateTag.color}`}>{dateTag.label}</p>
+                            </td>
+                            <td className="px-4 py-3 align-top">
+                              <p className="max-w-[200px] truncate text-sm font-semibold text-slate-900">{contact.name}</p>
+                              {contact.phone && <p className="text-xs text-slate-500">{formatPhoneForDisplay(contact.phone)}</p>}
+                              {contact.email && <p className="max-w-[200px] truncate text-xs text-slate-500">{contact.email}</p>}
+                            </td>
+                            <td className="px-4 py-3 align-top">
+                              <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${getSourceStyles(reminder.sourceType)}`}>
+                                {getReminderSourceLabel(reminder.sourceType)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 align-top">
+                              <p className="max-w-[280px] text-sm text-slate-700 line-clamp-2">{reminder.note || "No note"}</p>
+                            </td>
+                            <td className="px-4 py-3 align-top">
+                              <select
+                                value={status}
+                                onChange={(event) => handleChangeStatus(reminder.id, event.target.value as ReminderStatus)}
+                                className={`rounded-lg border px-2 py-1 text-xs font-medium outline-none ${getReminderStatusStyles(status)}`}
+                              >
+                                <option value="OPENED">Opened</option>
+                                <option value="DONE">Done</option>
+                                <option value="DISCARDED">Discarded</option>
+                              </select>
+                            </td>
+                            <td className="px-4 py-3 align-top">
+                              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                                {contact.phone && (
+                                  <button
+                                    onClick={() => {
+                                      const templateType = reminder.sourceType === "lead" ? "lead" : "retention";
+                                      openTemplatePicker({
+                                        type: templateType,
+                                        phone: contact.phone,
+                                        title: contact.name,
+                                        variables: {
+                                          name: contact.name,
+                                          storeName: contact.name,
+                                          ownerName: contact.name,
+                                          phone: contact.phone,
+                                        },
+                                      });
+                                    }}
+                                    className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-white px-2 py-1 font-medium text-emerald-700 hover:bg-emerald-50"
+                                  >
+                                    <MessageCircle className="h-3.5 w-3.5" />
+                                    WhatsApp
+                                  </button>
+                                )}
+                                {!contact.phone && <span className="text-slate-400">-</span>}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 align-top">
+                              <button
+                                onClick={() => handleDelete(reminder.id)}
+                                className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
+
+      <AddReminderModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSave={handleCreateReminder}
+        entityName="General Reminder"
+        defaultDateTime={createDefaultDateTime}
+        loading={isCreating}
+      />
     </div>
   );
 }

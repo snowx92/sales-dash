@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Calendar, FileText } from 'lucide-react';
 import { MyReminderFormData } from '@/lib/types/reminder';
 
@@ -9,6 +9,8 @@ interface AddReminderModalProps {
   onClose: () => void;
   onSave: (data: MyReminderFormData) => void;
   entityName: string;
+  defaultDateTime?: string;
+  loading?: boolean;
 }
 
 export default function AddReminderModal({
@@ -16,6 +18,8 @@ export default function AddReminderModal({
   onClose,
   onSave,
   entityName,
+  defaultDateTime,
+  loading = false,
 }: AddReminderModalProps) {
   const [formData, setFormData] = useState<MyReminderFormData>({
     date: '',
@@ -24,18 +28,30 @@ export default function AddReminderModal({
 
   const [errors, setErrors] = useState<{ date?: string; note?: string }>({});
 
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({ date: defaultDateTime || "", note: "" });
+      setErrors({});
+      return;
+    }
+
+    if (!isOpen) {
+      setFormData({ date: '', note: '' });
+      setErrors({});
+    }
+  }, [defaultDateTime, isOpen]);
+
   const validateForm = (): boolean => {
     const newErrors: { date?: string; note?: string } = {};
 
     if (!formData.date) {
-      newErrors.date = 'Date is required';
+      newErrors.date = 'Date and time are required';
     } else {
       const selectedDate = new Date(formData.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const now = new Date();
 
-      if (selectedDate < today) {
-        newErrors.date = 'Date cannot be in the past';
+      if (selectedDate < now) {
+        newErrors.date = 'Date and time cannot be in the past';
       }
     }
 
@@ -49,10 +65,10 @@ export default function AddReminderModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
 
     if (validateForm()) {
       onSave(formData);
-      handleClose();
     }
   };
 
@@ -87,16 +103,17 @@ export default function AddReminderModal({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <Calendar size={16} className="inline mr-1" />
-              Reminder Date
+              Reminder Date & Time
             </label>
             <input
-              type="date"
+              type="datetime-local"
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 ${
                 errors.date ? 'border-red-500' : 'border-gray-300'
               }`}
-              min={new Date().toISOString().split('T')[0]}
+              min={new Date().toISOString().slice(0, 16)}
+              disabled={loading}
             />
             {errors.date && (
               <p className="text-red-500 text-xs mt-1">{errors.date}</p>
@@ -117,6 +134,7 @@ export default function AddReminderModal({
               className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900 placeholder-gray-400 ${
                 errors.note ? 'border-red-500' : 'border-gray-300'
               }`}
+              disabled={loading}
             />
             {errors.note && (
               <p className="text-red-500 text-xs mt-1">{errors.note}</p>
@@ -128,15 +146,17 @@ export default function AddReminderModal({
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={loading}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-60"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60"
             >
-              Add Reminder
+              {loading ? 'Saving...' : 'Add Reminder'}
             </button>
           </div>
         </form>

@@ -14,10 +14,14 @@ import {
 import { SimpleFeedbackModal } from "@/components/leads/SimpleFeedbackModal";
 import { KanbanBoard } from "@/components/leads/KanbanBoard";
 import { ViewToggle, ViewMode } from "@/components/leads/ViewToggle";
+import AddReminderModal from "@/components/modals/AddReminderModal";
 import { leadsService } from "@/lib/api/leads/leadsService";
 import { mapApiLeadToLead, mapApiLeadToUpcomingLead, getApiId } from "@/lib/api/leads/utils";
 import type { LeadStatus, LeadSource, LeadPriority, ApiLead } from "@/lib/api/leads/types";
 import { calculateLeadScore } from "@/lib/utils/leadScoring";
+import type { MyReminderFormData } from "@/lib/types/reminder";
+import { remindersService } from "@/lib/api/reminders/remindersService";
+import { formatDateTimeForApi } from "@/lib/utils/firestoreDate";
 
 import { toast } from "sonner";
 
@@ -38,6 +42,10 @@ export default function LeadsPage() {
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [feedbackLeadId, setFeedbackLeadId] = useState<number | null>(null);
   const [feedbackLeadName, setFeedbackLeadName] = useState<string>('');
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [isSavingReminder, setIsSavingReminder] = useState(false);
+  const [reminderLeadId, setReminderLeadId] = useState<number | null>(null);
+  const [reminderLeadName, setReminderLeadName] = useState<string>('');
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [sortBy, setSortBy] = useState('default');
@@ -87,9 +95,11 @@ export default function LeadsPage() {
         status?: LeadStatus;
         from?: string;
         to?: string;
+        sortBy?: string;
       } = {
         page: 1,
-        limit: 500
+        limit: 500,
+        sortBy: "updatedAt",
       };
 
       if (debouncedSearch) {
@@ -349,6 +359,45 @@ export default function LeadsPage() {
     setFeedbackLeadName('');
   };
 
+  const handleOpenReminderModal = (id: number, leadName: string) => {
+    setReminderLeadId(id);
+    setReminderLeadName(leadName);
+    setIsReminderModalOpen(true);
+  };
+
+  const handleCloseReminderModal = () => {
+    setIsReminderModalOpen(false);
+    setReminderLeadId(null);
+    setReminderLeadName('');
+  };
+
+  const handleSaveReminder = async (data: MyReminderFormData) => {
+    if (!reminderLeadId) return;
+
+    const apiId = getApiId(reminderLeadId);
+    if (!apiId) {
+      toast.error("Could not map lead to API ID");
+      return;
+    }
+
+    try {
+      setIsSavingReminder(true);
+      await remindersService.createReminder({
+        sourceType: "lead",
+        parentId: apiId,
+        date: formatDateTimeForApi(data.date),
+        note: data.note,
+      });
+      toast.success("Reminder created successfully");
+      handleCloseReminderModal();
+    } catch (error) {
+      console.error("Error creating lead reminder:", error);
+      toast.error("Failed to create reminder");
+    } finally {
+      setIsSavingReminder(false);
+    }
+  };
+
   const handleAssignStore = async (id: number, leadName: string) => {
     try {
       setLoading(true);
@@ -554,6 +603,7 @@ export default function LeadsPage() {
                 onEditLead={handleEditLead}
                 onDeleteLead={handleDeleteLead}
                 onAddFeedback={handleOpenFeedbackModal}
+                onAddReminder={handleOpenReminderModal}
                 onAssignStore={handleAssignStore}
                 onMarkAsJunk={handleMarkAsJunk}
                 onAddLead={() => setIsAddModalOpen(true)}
@@ -588,6 +638,14 @@ export default function LeadsPage() {
           onAdd={handleSubmitFeedback}
           leadName={feedbackLeadName}
           loading={loading}
+        />
+
+        <AddReminderModal
+          isOpen={isReminderModalOpen}
+          onClose={handleCloseReminderModal}
+          onSave={handleSaveReminder}
+          entityName={reminderLeadName}
+          loading={isSavingReminder}
         />
 
         <BulkUploadModal

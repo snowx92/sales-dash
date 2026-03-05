@@ -1,3 +1,5 @@
+@import "quill/dist/quill.snow.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -41,9 +43,129 @@ body {
   border: 1px solid #d1d5db !important;
 }
 
-/* Ensure inputs are visible */
-input {
+/* Ensure inputs are visible — exclude Quill editor internals */
+input:not(.ql-tooltip input):not(.ticket-editor input) {
   background-color: white !important;
   color: #111827 !important;
   border: 1px solid #d1d5db !important;
+}
+
+.ticket-editor {
+  border: 1px solid #d6d8df;
+  border-radius: 0.75rem;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+
+.ticket-editor .ticket-editor-shell {
+  display: flex;
+  flex-direction: column;
+}
+
+.ticket-editor .ticket-editor-toolbar.ql-toolbar.ql-snow {
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 0;
+  background: #f8fafc;
+  padding: 0.75rem;
+}
+
+.ticket-editor .ticket-editor-toolbar .ql-formats {
+  margin-right: 0.625rem;
+  padding-right: 0.625rem;
+  border-right: 1px solid #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.ticket-editor .ticket-editor-toolbar .ql-formats:last-child {
+  margin-right: 0;
+  padding-right: 0;
+  border-right: 0;
+}
+
+.ticket-editor .ticket-editor-toolbar button {
+  border-radius: 0.4rem;
+}
+
+.ticket-editor .ticket-editor-toolbar button.ticket-heading-btn {
+  width: auto;
+  min-width: 2rem;
+  padding: 0 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.ticket-editor .ticket-editor-toolbar button.ticket-table-btn {
+  width: auto;
+  min-width: 2rem;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.ticket-editor .ticket-editor-toolbar button:hover {
+  background: #e2e8f0;
+}
+
+.ticket-editor .ticket-editor-toolbar button.ql-active {
+  color: #4f46e5;
+  background: #e0e7ff;
+}
+
+.ticket-editor .ticket-editor-canvas .ql-container.ql-snow {
+  border: 1px solid #e2e8f0;
+  border-radius: 0;
+  min-height: 360px;
+  background: #ffffff;
+}
+
+.ticket-editor .ticket-editor-canvas .ql-editor {
+  min-height: 340px;
+  font-size: 0.96rem;
+  color: #0f172a;
+  line-height: 1.6;
+}
+
+.ticket-editor .ticket-editor-canvas .ql-editor.ql-blank::before {
+  color: #8d97a5;
+  font-style: italic;
+}
+
+.ticket-editor .ticket-editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8rem;
+  color: #667085;
+}
+
+/* Table styles inside Quill editor */
+.ticket-editor .ql-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5rem 0;
+}
+
+.ticket-editor .ql-editor td,
+.ticket-editor .ql-editor th {
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem;
+  min-width: 80px;
+}
+
+/* Quill tooltip (link input) override */
+.ql-tooltip {
+  z-index: 100;
+}
+
+.ql-tooltip input[type="text"] {
+  background: white !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
 }

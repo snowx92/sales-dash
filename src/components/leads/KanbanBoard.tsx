@@ -3,8 +3,8 @@
 import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Phone, MessageCircle, GripVertical, ExternalLink } from "lucide-react";
-import { Lead, statuses } from "./types";
-import { buildWhatsAppUrl } from "@/lib/utils/whatsapp";
+import { Lead } from "./types";
+import { useWhatsAppTemplatePicker } from "@/components/providers/WhatsAppTemplateProvider";
 import { formatPhoneForDisplay } from "@/lib/utils/phone";
 import { calculateLeadScore, getScoreBadgeColor, getScoreIcon } from "@/lib/utils/leadScoring";
 
@@ -30,6 +30,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onEditLead,
   onAddFeedback,
 }) => {
+  const { openTemplatePicker } = useWhatsAppTemplatePicker();
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
@@ -115,7 +116,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                       <motion.div
                         key={lead.id}
                         draggable
-                        onDragStart={(e: any) => handleDragStart(e, lead)}
+                        onDragStartCapture={(e) => handleDragStart(e, lead)}
                         layout
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -189,16 +190,27 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                               >
                                 <Phone className="h-3 w-3" />
                               </a>
-                              <a
-                                href={buildWhatsAppUrl(lead.phone, "Hello")}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openTemplatePicker({
+                                    type: "lead",
+                                    phone: lead.phone,
+                                    title: lead.name,
+                                    variables: {
+                                      name: lead.name,
+                                      storeName: lead.name,
+                                      ownerName: lead.name,
+                                      phone: lead.phone,
+                                    },
+                                  });
+                                }}
                                 className="p-1.5 bg-green-50 text-green-600 rounded hover:bg-green-100 transition-colors"
-                                onClick={(e) => e.stopPropagation()}
                                 title="WhatsApp"
                               >
                                 <MessageCircle className="h-3 w-3" />
-                              </a>
+                              </button>
                             </>
                           )}
                           <button

@@ -13,13 +13,14 @@ import {
   Mail,
   MessageSquare,
   MessageCircle,
+  Bell,
   Ban,
   Store,
   UserPlus,
   Calendar,
   Clock
 } from "lucide-react";
-import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
+import { useWhatsAppTemplatePicker } from "@/components/providers/WhatsAppTemplateProvider";
 import { formatPhoneForDisplay } from '@/lib/utils/phone';
 import { calculateLeadScore, getScoreBadgeColor, getScoreIcon } from '@/lib/utils/leadScoring';
 import { Lead, leadSources, priorities, statuses } from './types';
@@ -31,6 +32,7 @@ interface LeadCardProps {
   onEditLead: () => void;
   onDeleteLead: () => void;
   onAddFeedback: () => void;
+  onAddReminder?: () => void;
   onAssignStore?: () => void;
   onMarkAsJunk: () => void;
   onStatusChange?: (id: number, newStatus: string) => void;
@@ -43,10 +45,12 @@ export const LeadCard: React.FC<LeadCardProps> = ({
   onEditLead,
   onDeleteLead,
   onAddFeedback,
+  onAddReminder,
   onAssignStore,
   onMarkAsJunk,
   onStatusChange
 }) => {
+  const { openTemplatePicker } = useWhatsAppTemplatePicker();
   // State for tracking which onboarding accordion is expanded
   const [expandedOnboarding, setExpandedOnboarding] = useState(false);
 
@@ -96,10 +100,10 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                       onStatusChange(lead.id, e.target.value);
                     }}
                     onClick={(e) => e.stopPropagation()}
-                    className={`px-2 py-0.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-purple-500 ${status?.color}`}
+                    className={`px-2 py-0.5 text-xs font-semibold rounded-full cursor-pointer focus:ring-2 focus:ring-purple-500 border border-gray-200 ${status?.color || "bg-gray-100 text-gray-800"}`}
                   >
                     {statuses.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
+                      <option key={s.id} value={s.id} className="bg-white text-gray-900">{s.name}</option>
                     ))}
                   </select>
                 ) : (
@@ -308,16 +312,26 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                 </a>
 
                 {/* WhatsApp */}
-                <a
-                  href={buildWhatsAppUrl(lead.phone, 'Hello')}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openTemplatePicker({
+                      type: "lead",
+                      phone: lead.phone,
+                      title: lead.name,
+                      variables: {
+                        name: lead.name,
+                        storeName: lead.name,
+                        ownerName: lead.name,
+                        phone: lead.phone,
+                      },
+                    });
+                  }}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-500 text-white rounded-lg font-medium text-sm min-w-[80px]"
-                  onClick={(e) => e.stopPropagation()}
                 >
                   <MessageCircle className="h-4 w-4" />
                   WhatsApp
-                </a>
+                </button>
 
                 {/* Add Feedback */}
                 <button
@@ -330,6 +344,19 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                   <MessageSquare className="h-4 w-4" />
                   Feedback
                 </button>
+
+                {onAddReminder && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddReminder();
+                    }}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm min-w-[80px]"
+                  >
+                    <Bell className="h-4 w-4" />
+                    Reminder
+                  </button>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-2 mt-2">
@@ -390,4 +417,3 @@ export const LeadCard: React.FC<LeadCardProps> = ({
     </motion.div>
   );
 };
-

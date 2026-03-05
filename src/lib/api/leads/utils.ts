@@ -97,6 +97,102 @@ const parseOnboardingFeedback = (feedback?: string): OnboardingAnswer[] => {
 };
 
 /**
+ * Parse feedback date from mixed API formats.
+ */
+const parseFeedbackDate = (value: unknown, fallbackDate: string): string => {
+  if (value == null) return fallbackDate;
+
+  if (typeof value === "string") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? fallbackDate : parsed.toISOString().split("T")[0];
+  }
+
+  if (typeof value === "number") {
+    const millis = value > 1e12 ? value : value * 1000;
+    const parsed = new Date(millis);
+    return Number.isNaN(parsed.getTime()) ? fallbackDate : parsed.toISOString().split("T")[0];
+  }
+
+  if (typeof value === "object") {
+    const source = value as Record<string, unknown>;
+    const seconds =
+      (typeof source._seconds === "number" && source._seconds) ||
+      (typeof source.seconds === "number" && source.seconds);
+
+    if (typeof seconds === "number") {
+      return new Date(seconds * 1000).toISOString().split("T")[0];
+    }
+  }
+
+  return fallbackDate;
+};
+
+/**
+ * Normalize feedback message from mixed API formats.
+ */
+const normalizeFeedbackMessage = (value: unknown): string => {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+
+  if (value && typeof value === "object") {
+    const source = value as Record<string, unknown>;
+    const candidate =
+      (typeof source.feedback === "string" && source.feedback) ||
+      (typeof source.message === "string" && source.message) ||
+      (typeof source.text === "string" && source.text) ||
+      (typeof source.note === "string" && source.note);
+
+    if (candidate) {
+      return candidate.trim();
+    }
+  }
+
+  return "";
+};
+
+/**
+ * Normalize feedback history to UI shape.
+ */
+const mapFeedbackHistory = (apiLead: ApiLead, fallbackDate: string) => {
+  const rawFeedbacks = Array.isArray(apiLead.feedbacks) ? apiLead.feedbacks : [];
+
+  const normalized = rawFeedbacks
+    .map((item, index) => {
+      const message = normalizeFeedbackMessage(item);
+      if (!message) return null;
+
+      let date = fallbackDate;
+      if (item && typeof item === "object") {
+        const source = item as Record<string, unknown>;
+        const dateCandidate = source.createdAt ?? source.updatedAt ?? source.date ?? source.time;
+        date = parseFeedbackDate(dateCandidate, fallbackDate);
+      }
+
+      return {
+        id: index + 1,
+        message,
+        date,
+      };
+    })
+    .filter((item): item is { id: number; message: string; date: string } => Boolean(item));
+
+  // Fallback for backends that only return `feedback` but no `feedbacks`.
+  if (normalized.length === 0) {
+    const message = normalizeFeedbackMessage(apiLead.feedback);
+    if (message && parseOnboardingFeedback(apiLead.feedback).length === 0) {
+      normalized.push({
+        id: 1,
+        message,
+        date: fallbackDate,
+      });
+    }
+  }
+
+  return normalized;
+};
+
+/**
  * Convert API lead to component Lead format
  */
 export const mapApiLeadToLead = (apiLead: ApiLead): Lead => {
@@ -105,6 +201,7 @@ export const mapApiLeadToLead = (apiLead: ApiLead): Lead => {
   
   const updatedAtIso = new Date(apiLead.updatedAt._seconds * 1000).toISOString();
   const updatedAtDate = updatedAtIso.split('T')[0];
+  const feedbackHistory = mapFeedbackHistory(apiLead, updatedAtDate);
   
   return {
     id: componentId,
@@ -120,11 +217,7 @@ export const mapApiLeadToLead = (apiLead: ApiLead): Lead => {
     lastContact: updatedAtDate, // keep old field for UI compatibility
     lastUpdated: updatedAtIso, // new precise timestamp for sorting
     feedback: apiLead.feedback || '',
-    feedbackHistory: (apiLead.feedbacks || []).map((feedback, index) => ({
-      id: index + 1,
-      message: feedback,
-      date: updatedAtDate
-    })),
+    feedbackHistory,
     createdAt: new Date(apiLead.createdAt._seconds * 1000).toISOString().split('T')[0],
     // New fields
     createdAtRaw: apiLead.createdAt,
@@ -138,6 +231,10 @@ export const mapApiLeadToLead = (apiLead: ApiLead): Lead => {
 export const mapApiLeadToUpcomingLead = (apiLead: ApiLead): UpcomingLead => {
   const componentId = generateComponentId(apiLead.id);
   storeIdMapping(componentId, apiLead.id);
+
+  const updatedAtIso = new Date(apiLead.updatedAt._seconds * 1000).toISOString();
+  const updatedAtDate = updatedAtIso.split("T")[0];
+  const feedbackHistory = mapFeedbackHistory(apiLead, updatedAtDate);
   
   return {
     id: componentId,
@@ -148,7 +245,13 @@ export const mapApiLeadToUpcomingLead = (apiLead: ApiLead): UpcomingLead => {
     socialUrls: (apiLead.socialMediaUrls || []).join(', '),
     leadSource: mapApiLeadSourceToComponent(apiLead.leadSource),
     priority: mapApiPriorityToComponent(apiLead.priority),
+    status: mapApiStatusToComponent(apiLead.status),
+    attempts: Number.isInteger(apiLead.attemps) ? apiLead.attemps : 0,
+    feedback: apiLead.feedback || "",
+    lastContact: updatedAtDate,
+    lastUpdated: updatedAtIso,
     createdAt: new Date(apiLead.createdAt._seconds * 1000).toISOString().split('T')[0],
+    feedbackHistory,
     // New fields
     createdAtRaw: apiLead.createdAt,
     onboardingFeedback: parseOnboardingFeedback(apiLead.feedback)

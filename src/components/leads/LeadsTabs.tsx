@@ -26,6 +26,7 @@ interface LeadsTabsProps {
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (id: number) => void;
   onAddFeedback: (id: number, leadName: string) => void;
+  onAddReminder?: (id: number, leadName: string, leadEmail: string, leadPhone: string) => void;
   onAssignStore?: (id: number, leadName: string) => void;
   onMarkAsJunk: (id: number) => void;
   onAddLead: () => void;
@@ -45,6 +46,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
   onEditLead,
   onDeleteLead,
   onAddFeedback,
+  onAddReminder,
   onAssignStore,
   onMarkAsJunk,
   onAddLead,
@@ -224,6 +226,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
                         onDeleteLead={() => onDeleteLead(lead.id)}
                         onAssignStore={onAssignStore ? () => onAssignStore(lead.id, lead.name) : undefined}
                         onMarkAsJunk={() => onMarkAsJunk(lead.id)}
+                        onAddReminder={onAddReminder ? () => onAddReminder(lead.id, lead.name, lead.email, lead.phone) : undefined}
                       />
                     ))
                   ) : (
@@ -237,6 +240,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
                         onEditLead={() => onEditLead(lead)}
                         onDeleteLead={() => onDeleteLead(lead.id)}
                         onAddFeedback={() => onAddFeedback(lead.id, lead.name)}
+                        onAddReminder={onAddReminder ? () => onAddReminder(lead.id, lead.name, lead.email, lead.phone) : undefined}
                         onAssignStore={onAssignStore ? () => onAssignStore(lead.id, lead.name) : undefined}
                         onMarkAsJunk={() => onMarkAsJunk(lead.id)}
                         onStatusChange={onStatusChange}
@@ -254,6 +258,7 @@ export const LeadsTabs: React.FC<LeadsTabsProps> = ({
                     onEditLead={onEditLead}
                     onDeleteLead={onDeleteLead}
                     onAddFeedback={onAddFeedback}
+                    onAddReminder={onAddReminder}
                     onAssignStore={onAssignStore}
                     onMarkAsJunk={onMarkAsJunk}
                     onStatusChange={onStatusChange}

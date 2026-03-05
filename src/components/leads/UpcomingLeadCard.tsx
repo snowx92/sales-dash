@@ -9,6 +9,7 @@ import {
   Calendar,
   MessageCircle,
   MessageSquare,
+  Bell,
   ChevronDown,
   ChevronUp,
   Edit,
@@ -16,7 +17,7 @@ import {
   Ban,
   Store
 } from "lucide-react";
-import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
+import { useWhatsAppTemplatePicker } from "@/components/providers/WhatsAppTemplateProvider";
 import { formatPhoneForDisplay } from '@/lib/utils/phone';
 import { UpcomingLead, leadSources, priorities } from './types';
 
@@ -25,6 +26,7 @@ interface UpcomingLeadCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onAddFeedback: () => void;
+  onAddReminder?: () => void;
   onEditLead?: () => void;
   onDeleteLead?: () => void;
   onAssignStore?: () => void;
@@ -36,11 +38,13 @@ export const UpcomingLeadCard: React.FC<UpcomingLeadCardProps> = ({
   isExpanded,
   onToggleExpand,
   onAddFeedback,
+  onAddReminder,
   onEditLead,
   onDeleteLead,
   onAssignStore,
   onMarkAsJunk
 }) => {
+  const { openTemplatePicker } = useWhatsAppTemplatePicker();
   const source = leadSources.find(s => s.id === lead.leadSource);
   const priority = priorities.find(p => p.id === lead.priority);
   const SourceIcon = source?.icon || Globe;
@@ -162,10 +166,10 @@ export const UpcomingLeadCard: React.FC<UpcomingLeadCardProps> = ({
             </div>
           </div>
 
-          {/* Onboarding Feedback */}
-          {lead.onboardingFeedback && lead.onboardingFeedback.length > 0 && (
-            <>
-              <div className="border-t border-blue-100" />
+            {/* Onboarding Feedback */}
+            {lead.onboardingFeedback && lead.onboardingFeedback.length > 0 && (
+              <>
+                <div className="border-t border-blue-100" />
               <div className="p-4">
                 <h4 className="font-medium text-blue-900 mb-3">Onboarding Info</h4>
                 <div className="space-y-2">
@@ -179,8 +183,32 @@ export const UpcomingLeadCard: React.FC<UpcomingLeadCardProps> = ({
                   ))}
                 </div>
               </div>
-            </>
-          )}
+              </>
+            )}
+
+          {/* Previous Feedback */}
+          <>
+            <div className="border-t border-blue-100" />
+            <div className="p-4 bg-white">
+              <h4 className="font-medium text-blue-900 mb-3">Previous Feedback</h4>
+              {lead.feedbackHistory && lead.feedbackHistory.length > 0 ? (
+                <div className="space-y-2">
+                  {lead.feedbackHistory.map((feedback) => (
+                    <div key={feedback.id} className="bg-white p-3 rounded-lg border border-blue-100">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm text-gray-700">{feedback.message}</p>
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          {new Date(feedback.date).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No feedback recorded yet.</p>
+              )}
+            </div>
+          </>
 
           {/* Action Buttons */}
           <div className="border-t border-blue-100 p-4 bg-white">
@@ -196,29 +224,52 @@ export const UpcomingLeadCard: React.FC<UpcomingLeadCardProps> = ({
               </a>
 
               {/* WhatsApp */}
-              <a
-                href={buildWhatsAppUrl(lead.phone, 'Hello')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-500 text-white rounded-lg font-medium text-sm min-w-[80px]"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp
-              </a>
-
-              {/* Add Feedback */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onAddFeedback();
+                  openTemplatePicker({
+                    type: "lead",
+                    phone: lead.phone,
+                    title: lead.name,
+                    variables: {
+                      name: lead.name,
+                      storeName: lead.name,
+                      ownerName: lead.name,
+                      phone: lead.phone,
+                    },
+                  });
                 }}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-600 text-white rounded-lg font-medium text-sm min-w-[80px]"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-500 text-white rounded-lg font-medium text-sm min-w-[80px]"
               >
-                <MessageSquare className="h-4 w-4" />
-                Feedback
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp
               </button>
-            </div>
+
+              {/* Add Feedback */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddFeedback();
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-600 text-white rounded-lg font-medium text-sm min-w-[80px]"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Feedback
+                </button>
+
+                {onAddReminder && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddReminder();
+                    }}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm min-w-[80px]"
+                  >
+                    <Bell className="h-4 w-4" />
+                    Reminder
+                  </button>
+                )}
+              </div>
 
             <div className="flex flex-wrap gap-2 mt-2">
               {/* Assign Store */}
@@ -283,4 +334,3 @@ export const UpcomingLeadCard: React.FC<UpcomingLeadCardProps> = ({
     </motion.div>
   );
 };
-

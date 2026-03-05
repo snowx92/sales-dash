@@ -42,7 +42,8 @@ export class LeadsService extends ApiService {
     try {
       const queryParams: Record<string, string> = {
         page: (params.page || 1).toString(),
-        limit: (params.limit || 10).toString()
+        limit: (params.limit || 10).toString(),
+        sortBy: params.sortBy || "updatedAt",
       };
 
       // Add optional filters if provided

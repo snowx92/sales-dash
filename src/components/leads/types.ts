@@ -54,7 +54,17 @@ export interface UpcomingLead {
   socialUrls: string;
   leadSource: string;
   priority: string;
+  status: string;
+  attempts: number;
+  feedback: string;
+  lastContact: string;
+  lastUpdated: string;
   createdAt: string;
+  feedbackHistory: Array<{
+    id: number;
+    message: string;
+    date: string;
+  }>;
   // New fields for onboarding feedback
   createdAtRaw?: {
     _seconds: number;

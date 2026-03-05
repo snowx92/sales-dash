@@ -40,10 +40,12 @@ import { retentionService } from "@/lib/api/retention/retentionService";
 import { formatPhoneForDisplay } from "@/lib/utils/phone";
 
 import AddReminderModal from "@/components/modals/AddReminderModal";
-import { reminderStorage } from "@/lib/utils/reminderStorage";
 import type { MyReminderFormData } from "@/lib/types/reminder";
 import { RetentionCard } from "@/components/retention/RetentionCard";
 import { RetentionSummaryBar } from "@/components/retention/RetentionSummaryBar";
+import { remindersService } from "@/lib/api/reminders/remindersService";
+import { formatDateTimeForApi } from "@/lib/utils/firestoreDate";
+import { useWhatsAppTemplatePicker } from "@/components/providers/WhatsAppTemplateProvider";
 // Export modal with date range & page selection
 const RetentionExportModal = ({
   open,
@@ -212,7 +214,6 @@ const RetentionExportModal = ({
 };
 
 // TypeScript interfaces for the edit modal
-import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
 
 interface EditMerchantData {
   priority: Priority;
@@ -252,6 +253,7 @@ const EditMerchantModal = ({ isOpen, onClose, merchant, onUpdate }: {
   merchant: EndedSubscriptionItem;
   onUpdate: (id: string, updates: { priority: Priority; feedback: string }) => void;
 }) => {
+  const { openTemplatePicker } = useWhatsAppTemplatePicker();
   const [formData, setFormData] = useState<EditMerchantData>({
     priority: merchant.priority || 'MEDIUM',
     feedback: ''
@@ -303,8 +305,17 @@ const EditMerchantModal = ({ isOpen, onClose, merchant, onUpdate }: {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    const url = buildWhatsAppUrl(merchant.phone, 'Hello');
-                    window.open(url, '_blank');
+                    openTemplatePicker({
+                      type: "retention",
+                      phone: merchant.phone,
+                      title: merchant.storeName || merchant.name,
+                      variables: {
+                        name: merchant.name,
+                        storeName: merchant.storeName,
+                        ownerName: merchant.name,
+                        phone: merchant.phone,
+                      },
+                    });
                   }}
                   type="button"
                   className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
@@ -398,6 +409,7 @@ const EditMerchantModal = ({ isOpen, onClose, merchant, onUpdate }: {
 };
 
 export default function RetentionPage() {
+  const { openTemplatePicker } = useWhatsAppTemplatePicker();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingMerchant, setEditingMerchant] = useState<EndedSubscriptionItem | null>(null);
@@ -428,10 +440,9 @@ export default function RetentionPage() {
 
   // Reminder states
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [isSavingReminder, setIsSavingReminder] = useState(false);
   const [reminderMerchantId, setReminderMerchantId] = useState<string | null>(null);
   const [reminderMerchantName, setReminderMerchantName] = useState<string>('');
-  const [reminderMerchantEmail, setReminderMerchantEmail] = useState<string>('');
-  const [reminderMerchantPhone, setReminderMerchantPhone] = useState<string>('');
 
   // Use the retention hook for API integration (expired subscriptions)
   const {
@@ -639,11 +650,9 @@ export default function RetentionPage() {
     fetchPeriodCounts();
   }, []);
 
-  const handleOpenReminderModal = (id: string, name: string, email: string, phone: string) => {
+  const handleOpenReminderModal = (id: string, name: string) => {
     setReminderMerchantId(id);
     setReminderMerchantName(name);
-    setReminderMerchantEmail(email);
-    setReminderMerchantPhone(phone);
     setIsReminderModalOpen(true);
   };
 
@@ -651,24 +660,26 @@ export default function RetentionPage() {
     setIsReminderModalOpen(false);
     setReminderMerchantId(null);
     setReminderMerchantName('');
-    setReminderMerchantEmail('');
-    setReminderMerchantPhone('');
   };
 
-  const handleSaveReminder = (data: MyReminderFormData) => {
-    if (reminderMerchantId) {
-      reminderStorage.add({
-        type: 'retention',
-        entityId: reminderMerchantId,
-        entityName: reminderMerchantName,
-        entityEmail: reminderMerchantEmail,
-        entityPhone: reminderMerchantPhone,
-        date: data.date,
+  const handleSaveReminder = async (data: MyReminderFormData) => {
+    if (!reminderMerchantId) return;
+
+    try {
+      setIsSavingReminder(true);
+      await remindersService.createReminder({
+        sourceType: 'retention',
+        parentId: reminderMerchantId,
+        date: formatDateTimeForApi(data.date),
         note: data.note,
-        completed: false,
       });
-      console.log('Reminder added for merchant:', reminderMerchantName);
-      toast.success('Reminder added successfully');
+      toast.success('Reminder created successfully');
+      handleCloseReminderModal();
+    } catch (error) {
+      console.error('Failed to create retention reminder:', error);
+      toast.error('Failed to create reminder');
+    } finally {
+      setIsSavingReminder(false);
     }
   };
 
@@ -715,9 +726,7 @@ export default function RetentionPage() {
               onEdit={() => handleEditMerchant(merchant)}
               onAddReminder={() => handleOpenReminderModal(
                 merchant.id,
-                (merchant.storeName || merchant.name),
-                merchant.email,
-                merchant.phone
+                (merchant.storeName || merchant.name)
               )}
             />
           ))
@@ -886,8 +895,17 @@ export default function RetentionPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const url = buildWhatsAppUrl(merchant.phone, 'Hello');
-                                window.open(url, '_blank');
+                                openTemplatePicker({
+                                  type: "retention",
+                                  phone: merchant.phone,
+                                  title: merchant.storeName || merchant.name,
+                                  variables: {
+                                    name: merchant.name,
+                                    storeName: merchant.storeName,
+                                    ownerName: merchant.name,
+                                    phone: merchant.phone,
+                                  },
+                                });
                               }}
                               className="p-1 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                               title="WhatsApp"
@@ -909,9 +927,7 @@ export default function RetentionPage() {
                                 e.stopPropagation();
                                 handleOpenReminderModal(
                                   merchant.id,
-                                  (merchant.storeName || merchant.name),
-                                  merchant.email,
-                                  merchant.phone
+                                  (merchant.storeName || merchant.name)
                                 );
                               }}
                               className="p-1 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
@@ -1267,6 +1283,7 @@ export default function RetentionPage() {
           onClose={handleCloseReminderModal}
           onSave={handleSaveReminder}
           entityName={reminderMerchantName}
+          loading={isSavingReminder}
         />
       </ResponsiveWrapper>
     </>

@@ -17,7 +17,7 @@ import {
   Building,
   Clock
 } from "lucide-react";
-import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
+import { useWhatsAppTemplatePicker } from "@/components/providers/WhatsAppTemplateProvider";
 import { formatPhoneForDisplay } from '@/lib/utils/phone';
 import { EndedSubscriptionItem } from "@/lib/api/retention/types";
 
@@ -44,6 +44,7 @@ export const RetentionCard: React.FC<RetentionCardProps> = ({
   onEdit,
   onAddReminder
 }) => {
+  const { openTemplatePicker } = useWhatsAppTemplatePicker();
   const [expandedFeedback, setExpandedFeedback] = useState(false);
 
   const priority = priorities.find(p => p.id === merchant.priority);
@@ -281,16 +282,26 @@ export const RetentionCard: React.FC<RetentionCardProps> = ({
                 </a>
 
                 {/* WhatsApp */}
-                <a
-                  href={buildWhatsAppUrl(merchant.phone, 'Hello')}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openTemplatePicker({
+                      type: "retention",
+                      phone: merchant.phone,
+                      title: merchant.storeName || merchant.name,
+                      variables: {
+                        name: merchant.name,
+                        storeName: merchant.storeName,
+                        ownerName: merchant.name,
+                        phone: merchant.phone,
+                      },
+                    });
+                  }}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-500 text-white rounded-lg font-medium text-sm min-w-[70px]"
-                  onClick={(e) => e.stopPropagation()}
                 >
                   <MessageCircle className="h-4 w-4" />
                   WhatsApp
-                </a>
+                </button>
 
                 {/* Email */}
                 <a
@@ -335,4 +346,3 @@ export const RetentionCard: React.FC<RetentionCardProps> = ({
     </motion.div>
   );
 };
-

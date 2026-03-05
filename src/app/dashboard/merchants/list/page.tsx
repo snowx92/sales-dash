@@ -10,10 +10,14 @@ import { Pagination } from "@/components/tables/Pagination"
 import { ExportSidebar } from "@/components/layout/export-sidebar"
 import { Search, Filter, X, ChevronDown, ChevronUp } from "lucide-react"
 import { useMerchants, MerchantTab } from "./useMerchants"
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { Button } from "@/components/ui/button"
 import { ResponsiveWrapper, ResponsiveCard } from "@/components/layout/ResponsiveWrapper"
 import { motion, AnimatePresence } from "framer-motion"
+import AddReminderModal from "@/components/modals/AddReminderModal";
+import type { MyReminderFormData } from "@/lib/types/reminder";
+import { remindersService } from "@/lib/api/reminders/remindersService";
+import { formatDateTimeForApi } from "@/lib/utils/firestoreDate";
 
 // Mobile filter component
 const MobileFilters = ({ 
@@ -166,6 +170,43 @@ export default function MerchantListingPage() {
 
   // We'll manage search input purely in local state
   const [localKeyword, setLocalKeyword] = useState("");
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [isSavingReminder, setIsSavingReminder] = useState(false);
+  const [selectedMerchantId, setSelectedMerchantId] = useState<string | null>(null);
+  const [selectedMerchantName, setSelectedMerchantName] = useState("");
+
+  const handleOpenReminder = (merchantId: string, merchantName: string) => {
+    setSelectedMerchantId(merchantId);
+    setSelectedMerchantName(merchantName);
+    setIsReminderModalOpen(true);
+  };
+
+  const handleCloseReminder = () => {
+    setIsReminderModalOpen(false);
+    setSelectedMerchantId(null);
+    setSelectedMerchantName("");
+  };
+
+  const handleSaveReminder = async (data: MyReminderFormData) => {
+    if (!selectedMerchantId) return;
+
+    try {
+      setIsSavingReminder(true);
+      await remindersService.createReminder({
+        sourceType: "other",
+        parentId: selectedMerchantId,
+        date: formatDateTimeForApi(data.date),
+        note: data.note,
+      });
+      toast.success("Reminder created for merchant");
+      handleCloseReminder();
+    } catch (error) {
+      console.error("Failed to create merchant reminder:", error);
+      toast.error("Failed to create reminder");
+    } finally {
+      setIsSavingReminder(false);
+    }
+  };
 
   return (
     <ResponsiveWrapper padding="sm">
@@ -394,6 +435,7 @@ export default function MerchantListingPage() {
             >
               <MerchantCard
                 {...merchant}
+                onAddReminder={handleOpenReminder}
               />
             </motion.div>
           ))
@@ -413,7 +455,14 @@ export default function MerchantListingPage() {
           />
         </ResponsiveCard>
       )}
+
+      <AddReminderModal
+        isOpen={isReminderModalOpen}
+        onClose={handleCloseReminder}
+        onSave={handleSaveReminder}
+        entityName={selectedMerchantName || "Merchant"}
+        loading={isSavingReminder}
+      />
     </ResponsiveWrapper>
   )
 }
-

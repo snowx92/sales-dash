@@ -22,6 +22,7 @@ const getColorClasses = (color: string) => {
     case 'gray': return { icon: 'text-gray-600', text: 'text-gray-600' };
     case 'yellow': return { icon: 'text-yellow-600', text: 'text-yellow-600' };
     case 'indigo': return { icon: 'text-indigo-600', text: 'text-indigo-600' };
+    case 'orange': return { icon: 'text-orange-600', text: 'text-orange-600' };
     case 'red': return { icon: 'text-red-600', text: 'text-red-600' };
     default: return { icon: 'text-gray-600', text: 'text-gray-600' };
   }
@@ -56,4 +57,3 @@ export function ActionDropdown({ actions }: ActionDropdownProps) {
     </DropdownMenu>
   )
 }
-

@@ -13,7 +13,7 @@ import {
   Store,
   MoreVertical
 } from "lucide-react";
-import { buildWhatsAppUrl } from '@/lib/utils/whatsapp';
+import { useWhatsAppTemplatePicker } from "@/components/providers/WhatsAppTemplateProvider";
 import { formatPhoneForDisplay } from '@/lib/utils/phone';
 import { UpcomingLead, leadSources, priorities } from './types';
 
@@ -32,6 +32,7 @@ export const UpcomingLeadsTable: React.FC<UpcomingLeadsTableProps> = ({
   onAddReminder,
   onAssignStore
 }) => {
+  const { openTemplatePicker } = useWhatsAppTemplatePicker();
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
 
   const toggleMenu = (leadId: number) => {
@@ -144,8 +145,17 @@ export const UpcomingLeadsTable: React.FC<UpcomingLeadsTableProps> = ({
                         </button>
                         <button
                           onClick={() => {
-                            const url = buildWhatsAppUrl(lead.phone, 'Hello');
-                            window.open(url, '_blank');
+                            openTemplatePicker({
+                              type: "lead",
+                              phone: lead.phone,
+                              title: lead.name,
+                              variables: {
+                                name: lead.name,
+                                storeName: lead.name,
+                                ownerName: lead.name,
+                                phone: lead.phone,
+                              },
+                            });
                             closeMenu();
                           }}
                           className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
