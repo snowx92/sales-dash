@@ -2,9 +2,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getFirebaseAuth } from "@/lib/firebase";  // for user identification
 import {
   AlertCircle,
-  Image as ImageIcon,
   LayoutGrid,
   Loader2,
   Pencil,
@@ -37,8 +37,8 @@ type TicketFormState = {
   desc: string;
   priority: TicketPriority;
   tags: string[];
-  tagInput: string;
   attachments: string[];
+  websiteLink: string;
 };
 
 const initialFormState: TicketFormState = {
@@ -46,8 +46,8 @@ const initialFormState: TicketFormState = {
   desc: "",
   priority: "MEDIUM",
   tags: [],
-  tagInput: "",
   attachments: [],
+  websiteLink: "",
 };
 
 const statusTabs: Array<{ value: "all" | TicketStatus; label: string }> = [
@@ -64,6 +64,19 @@ const priorityOptions: Array<{ value: "all" | TicketPriority; label: string }> =
   { value: "MEDIUM", label: "Medium" },
   { value: "HIGH", label: "High" },
   { value: "CRITICAL", label: "Critical" },
+];
+
+const availableTags = [
+  "backend",
+  "mobile",
+  "web",
+  "ecommerce",
+  "uiux",
+  "vshop",
+  "mediabuyer",
+  "admin",
+  "sales",
+  "other",
 ];
 
 const statusBadge: Record<TicketStatus, string> = {
@@ -94,6 +107,12 @@ const normalizeHtmlDescription = (value: string | null | undefined) => {
 };
 
 const descriptionPreview = (value: string | null | undefined) => stripHtml(value) || "No description";
+
+const extractWebsiteLink = (desc: string | null | undefined): string | null => {
+  if (!desc) return null;
+  const match = desc.match(/website link :\s*<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/i);
+  return match ? match[1] : null;
+};
 
 const normalizeTag = (value: string) => value.trim().toLowerCase();
 
@@ -360,13 +379,22 @@ const filesToBase64 = async (files: FileList | File[]) => {
   return Promise.all(list.map((file) => fileToBase64(file)));
 };
 
-const buildRequestPayload = (form: TicketFormState): CreateTicketRequest => ({
-  title: form.title.trim(),
-  desc: normalizeHtmlDescription(form.desc),
-  tags: form.tags,
-  priority: form.priority,
-  attachments: form.attachments,
-});
+const buildRequestPayload = (form: TicketFormState): CreateTicketRequest => {
+  let desc = normalizeHtmlDescription(form.desc);
+  // Remove existing website link HTML if present
+  desc = desc.replace(/<p>website link :\s*<a[^>]+>.*?<\/a><\/p>/gi, "").trim();
+  if (form.websiteLink.trim()) {
+    const linkHtml = `<p>website link : <a href="${form.websiteLink.trim()}" target="_blank" rel="noopener noreferrer">${form.websiteLink.trim()}</a></p>`;
+    desc = desc ? `${desc}${linkHtml}` : linkHtml;
+  }
+  return {
+    title: form.title.trim(),
+    desc,
+    tags: form.tags,
+    priority: form.priority,
+    attachments: form.attachments,
+  };
+};
 
 const TicketModal = ({
   open,
@@ -376,11 +404,11 @@ const TicketModal = ({
   onClose,
   onSubmit,
   onChange,
-  onAddTag,
   onRemoveTag,
   onUploadAttachments,
   onRemoveAttachment,
   onPreviewImage,
+  readonly = false,
 }: {
   open: boolean;
   mode: TicketFormMode;
@@ -389,11 +417,11 @@ const TicketModal = ({
   onClose: () => void;
   onSubmit: () => void;
   onChange: (next: Partial<TicketFormState>) => void;
-  onAddTag: () => void;
   onRemoveTag: (tag: string) => void;
   onUploadAttachments: (files: FileList | null) => Promise<void>;
   onRemoveAttachment: (index: number) => void;
   onPreviewImage: (src: string) => void;
+  readonly?: boolean;
 }) => {
   if (!open) return null;
 
@@ -417,6 +445,19 @@ const TicketModal = ({
               value={form.title}
               onChange={(event) => onChange({ title: event.target.value })}
               placeholder="Ticket title"
+              disabled={readonly}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Website Link</label>
+            <input
+              value={form.websiteLink}
+              onChange={(event) => onChange({ websiteLink: event.target.value })}
+              placeholder="https://example.com"
+              type="url"
+              disabled={readonly}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
             />
           </div>
@@ -429,10 +470,53 @@ const TicketModal = ({
             <div className="ticket-editor">
               <RichTextEditor
                 value={form.desc}
-                onChange={(value) => onChange({ desc: value })}
                 placeholder="Enter ticket description"
+                // editor itself doesn't support disabled prop easily, so just don't allow changes when readonly
+                onChange={readonly ? () => {} : (value) => onChange({ desc: value })}
               />
             </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Tags</label>
+            <div className="flex flex-wrap gap-2">
+              {availableTags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  disabled={readonly}
+                  onClick={() => {
+                    if (readonly) return;
+                    if (form.tags.includes(tag)) {
+                      onRemoveTag(tag);
+                    } else {
+                      onChange({ tags: [...form.tags, tag] });
+                    }
+                  }}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    form.tags.includes(tag)
+                      ? "border-indigo-500 bg-indigo-500 text-white"
+                      : "border-slate-300 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50"
+                  } ${readonly ? "opacity-60 cursor-not-allowed" : ""}`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+            {form.tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {form.tags.map((tag) => (
+                  <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                    {tag}
+                    {!readonly && (
+                      <button type="button" onClick={() => onRemoveTag(tag)} className="text-indigo-600 hover:text-indigo-800">
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -441,6 +525,7 @@ const TicketModal = ({
               <select
                 value={form.priority}
                 onChange={(event) => onChange({ priority: event.target.value as TicketPriority })}
+                disabled={readonly}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
               >
                 <option value="LOW">LOW</option>
@@ -449,62 +534,27 @@ const TicketModal = ({
                 <option value="CRITICAL">CRITICAL</option>
               </select>
             </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Tags (press Enter)</label>
-              <div className="flex gap-2">
-                <input
-                  value={form.tagInput}
-                  onChange={(event) => onChange({ tagInput: event.target.value })}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === ",") {
-                      event.preventDefault();
-                      onAddTag();
-                    }
-                  }}
-                  placeholder="web"
-                  className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                />
-                <button
-                  type="button"
-                  onClick={onAddTag}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                >
-                  Add
-                </button>
-              </div>
-              {form.tags.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {form.tags.map((tag) => (
-                    <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
-                      {tag}
-                      <button type="button" onClick={() => onRemoveTag(tag)} className="text-indigo-600 hover:text-indigo-800">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Attachments (Images as base64)</label>
-            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm text-slate-600 hover:bg-slate-100">
-              <Upload className="h-4 w-4" />
-              Upload image attachments
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                className="hidden"
-                onChange={async (event) => {
-                  const input = event.currentTarget;
-                  await onUploadAttachments(event.target.files);
-                  if (input) input.value = "";
-                }}
-              />
-            </label>
+            {!readonly && (
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm text-slate-600 hover:bg-slate-100">
+                <Upload className="h-4 w-4" />
+                Upload image attachments
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (event) => {
+                    const input = event.currentTarget;
+                    await onUploadAttachments(event.target.files);
+                    if (input) input.value = "";
+                  }}
+                />
+              </label>
+            )}
 
             {form.attachments.length > 0 && (
               <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -531,8 +581,9 @@ const TicketModal = ({
             disabled={loading}
             className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
-            Cancel
+            Close
           </button>
+          {!readonly && (
           <button
             onClick={onSubmit}
             disabled={loading}
@@ -540,6 +591,7 @@ const TicketModal = ({
           >
             {loading ? "Saving..." : mode === "create" ? "Create Ticket" : "Save Ticket"}
           </button>
+          )}
         </div>
       </div>
     </div>
@@ -552,6 +604,20 @@ export default function TicketsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("table");
+
+  // track current user to control permissions
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // modal read-only flag (for viewing others' tickets)
+  const [modalReadOnly, setModalReadOnly] = useState(false);
+
+  useEffect(() => {
+    const auth = getFirebaseAuth();
+    const unsub = auth.onAuthStateChanged((user) => {
+      setCurrentUserId(user?.uid || null);
+    });
+    return () => unsub();
+  }, []);
 
   const [statusFilter, setStatusFilter] = useState<"all" | TicketStatus>("all");
   const [priorityFilter, setPriorityFilter] = useState<"all" | TicketPriority>("all");
@@ -678,17 +744,18 @@ export default function TicketsPage() {
     setModalOpen(true);
   };
 
-  const openEditModal = (ticket: SalesTicket) => {
+  const openEditModal = (ticket: SalesTicket, readonly = false) => {
     const normalizedTicket = normalizeTicketForUi(ticket);
     setModalMode("edit");
     setSelectedTicket(normalizedTicket);
+    setModalReadOnly(readonly);
     setFormState({
       title: normalizedTicket.title,
       desc: normalizedTicket.desc,
       priority: normalizedTicket.priority,
       tags: normalizedTicket.tags,
-      tagInput: "",
       attachments: normalizedTicket.attachments,
+      websiteLink: extractWebsiteLink(normalizedTicket.desc) || "",
     });
     setModalOpen(true);
   };
@@ -696,18 +763,6 @@ export default function TicketsPage() {
   const closeModal = () => {
     if (submitting) return;
     setModalOpen(false);
-  };
-
-  const addFormTag = () => {
-    const normalized = normalizeTag(formState.tagInput);
-    if (!normalized) return;
-
-    const exists = formState.tags.some((tag) => normalizeTag(tag) === normalized);
-    if (!exists) {
-      setFormState((prev) => ({ ...prev, tags: [...prev.tags, normalized] }));
-    }
-
-    setFormState((prev) => ({ ...prev, tagInput: "" }));
   };
 
   const removeFormTag = (tag: string) => {
@@ -991,104 +1046,152 @@ export default function TicketsPage() {
         )}
 
         {!loading && visibleTickets.length > 0 && viewMode === "table" && (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white shadow-md">
             <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Title</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Owner</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Tags</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Priority</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Attachments</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Created</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
+              <table className="min-w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wide">Title</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wide">Owner</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wide">Tags</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wide">Priority</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wide">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wide">Attachments</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wide">Created</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wide">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 bg-white">
+                <tbody className="divide-y divide-slate-100">
                   {visibleTickets.map((ticket) => {
                     const createdDate = parseFirestoreDate(ticket.createdAt);
                     const ownerName = ticket.user?.name || ticket.user?.email || ticket.createdBy || "Unknown";
+                    const isOwner = ticket.createdBy === currentUserId || ticket.user?.id === currentUserId;
                     return (
-                      <tr key={ticket.id} className="hover:bg-slate-50">
+                      <tr
+                        key={ticket.id}
+                        className="hover:bg-indigo-50/30 cursor-pointer transition-colors duration-150"
+                        onClick={() => openEditModal(ticket, !isOwner)}
+                      >
                         <td className="px-4 py-3 align-top">
-                          <p className="max-w-[280px] truncate text-sm font-semibold text-slate-900">{ticket.title || "Untitled ticket"}</p>
-                          <p className="mt-1 max-w-[320px] truncate text-xs text-slate-500">{descriptionPreview(ticket.desc)}</p>
+                          <p className="max-w-sm truncate text-sm font-semibold text-slate-900">{ticket.title || "Untitled ticket"}</p>
+                          <p className="mt-1 max-w-sm truncate text-xs text-slate-600">{descriptionPreview(ticket.desc)}</p>
+                          {extractWebsiteLink(ticket.desc) && (
+                            <div className="mt-1">
+                              <a
+                                href={extractWebsiteLink(ticket.desc)!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 hover:underline"
+                              >
+                                <span>Website</span>
+                                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                              </a>
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 align-top">
-                          <span className="text-xs font-medium text-slate-700">{ownerName}</span>
+                          <span className="text-sm font-medium text-slate-800">{ownerName}</span>
                         </td>
                         <td className="px-4 py-3 align-top">
-                          <div className="flex max-w-[220px] flex-wrap gap-1">
+                          <div className="flex flex-wrap gap-1.5">
                             {(ticket.tags || []).length > 0 ? (
                               (ticket.tags || []).map((tag) => (
-                                <span key={tag} className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                                <span key={tag} className="inline-block rounded-full border border-indigo-300 bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
                                   {tag}
                                 </span>
                               ))
                             ) : (
-                              <span className="text-xs text-slate-400">-</span>
+                              <span className="text-xs text-slate-400">—</span>
                             )}
                           </div>
                         </td>
                         <td className="px-4 py-3 align-top">
-                          <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${priorityBadge[ticket.priority]}`}>
+                          <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${priorityBadge[ticket.priority]}`}>
                             {ticket.priority}
                           </span>
                         </td>
                         <td className="px-4 py-3 align-top">
-                          <select
-                            value={ticket.status}
-                            onChange={(event) => updateStatus(ticket.id, event.target.value as TicketStatus)}
-                            className={`rounded-lg border px-2 py-1 text-xs font-medium outline-none ${statusBadge[ticket.status]}`}
-                          >
-                            <option value="OPEN">Open</option>
-                            <option value="IN_PROGRESS">In Progress</option>
-                            <option value="RESOLVED">Resolved</option>
-                            <option value="CLOSED">Closed</option>
-                          </select>
+                          {isOwner ? (
+                            <select
+                              value={ticket.status}
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(event) => {
+                                event.stopPropagation();
+                                updateStatus(ticket.id, event.target.value as TicketStatus);
+                              }}
+                              className={`w-full rounded-lg border-2 px-2.5 py-1.5 text-xs font-semibold outline-none transition-colors cursor-pointer hover:border-slate-400 ${statusBadge[ticket.status]}`}
+                            >
+                              <option value="OPEN">Open</option>
+                              <option value="IN_PROGRESS">In Progress</option>
+                              <option value="RESOLVED">Resolved</option>
+                              <option value="CLOSED">Closed</option>
+                            </select>
+                          ) : (
+                            <span 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditModal(ticket, true);
+                              }}
+                              className={`inline-flex rounded-full border-2 px-2.5 py-0.5 text-xs font-semibold cursor-pointer hover:shadow-md transition-all ${statusBadge[ticket.status]}`}
+                            >
+                              {ticket.status.replace(/_/g, " ")}
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 align-top">
                           {(ticket.attachments || []).length > 0 ? (
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-2">
                               {(ticket.attachments || []).slice(0, 2).map((attachment, index) => (
                                 <img
                                   key={`${ticket.id}-attach-${index}`}
                                   src={toImageSrc(attachment)}
                                   alt="attachment"
-                                  onClick={() => setPreviewImage(toImageSrc(attachment))}
-                                  className="h-8 w-8 cursor-pointer rounded border border-slate-200 object-cover hover:ring-2 hover:ring-indigo-400"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPreviewImage(toImageSrc(attachment));
+                                  }}
+                                  className="h-8 w-8 cursor-pointer rounded-lg border border-slate-300 object-cover shadow-sm hover:ring-2 hover:ring-indigo-400 transition-all"
                                 />
                               ))}
                               {(ticket.attachments || []).length > 2 && (
-                                <span className="text-xs text-slate-500">+{(ticket.attachments || []).length - 2}</span>
+                                <span className="text-xs font-medium text-slate-500">+{(ticket.attachments || []).length - 2}</span>
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs text-slate-400">-</span>
+                            <span className="text-xs text-slate-400">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 align-top text-xs text-slate-500">
-                          {createdDate ? createdDate.toLocaleDateString() : "-"}
+                        <td className="px-4 py-3 align-top text-sm text-slate-600 font-medium">
+                          {createdDate ? createdDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "—"}
                         </td>
                         <td className="px-4 py-3 align-top">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => openEditModal(ticket)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => deleteTicket(ticket.id)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              Delete
-                            </button>
-                          </div>
+                          {isOwner && (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditModal(ticket);
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-colors shadow-sm"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                Edit
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteTicket(ticket.id);
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 hover:border-red-400 transition-colors shadow-sm"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Delete
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -1104,9 +1207,16 @@ export default function TicketsPage() {
             {visibleTickets.map((ticket) => {
               const createdDate = parseFirestoreDate(ticket.createdAt);
               const descPreview = descriptionPreview(ticket.desc).slice(0, 180);
+              const isOwner = ticket.createdBy === currentUserId || ticket.user?.id === currentUserId;
 
               return (
-                <div key={ticket.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div
+                  key={ticket.id}
+                  className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                  onClick={() => {
+                    if (!isOwner) openEditModal(ticket, true);
+                  }}
+                >
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -1117,6 +1227,22 @@ export default function TicketsPage() {
                       </div>
 
                       <p className="mb-2 text-sm text-slate-600">{descPreview || "No description"}</p>
+
+                      {extractWebsiteLink(ticket.desc) && (
+                        <div className="mb-2">
+                          <a
+                            href={extractWebsiteLink(ticket.desc)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
+                          >
+                            <span>Website Link</span>
+                            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        </div>
+                      )}
 
                       <div className="mb-2 flex flex-wrap gap-1.5">
                         {(ticket.tags || []).map((tag) => (
@@ -1149,32 +1275,40 @@ export default function TicketsPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 lg:w-[250px] lg:justify-end">
-                      <select
-                        value={ticket.status}
-                        onChange={(event) => updateStatus(ticket.id, event.target.value as TicketStatus)}
-                        className={`rounded-lg border px-2 py-1 text-xs font-medium outline-none ${statusBadge[ticket.status]}`}
-                      >
-                        <option value="OPEN">Open</option>
-                        <option value="IN_PROGRESS">In Progress</option>
-                        <option value="RESOLVED">Resolved</option>
-                        <option value="CLOSED">Closed</option>
-                      </select>
+                      {isOwner ? (
+                        <select
+                          value={ticket.status}
+                          onChange={(event) => updateStatus(ticket.id, event.target.value as TicketStatus)}
+                          className={`rounded-lg border px-2 py-1 text-xs font-medium outline-none ${statusBadge[ticket.status]}`}
+                        >
+                          <option value="OPEN">Open</option>
+                          <option value="IN_PROGRESS">In Progress</option>
+                          <option value="RESOLVED">Resolved</option>
+                          <option value="CLOSED">Closed</option>
+                        </select>
+                      ) : (
+                        <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${statusBadge[ticket.status]}`}>{ticket.status.replace(/_/g, " ")}</span>
+                      )}
 
-                      <button
-                        onClick={() => openEditModal(ticket)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Edit
-                      </button>
+                      {isOwner && (
+                        <>
+                          <button
+                            onClick={() => openEditModal(ticket)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </button>
 
-                      <button
-                        onClick={() => deleteTicket(ticket.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete
-                      </button>
+                          <button
+                            onClick={() => deleteTicket(ticket.id)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1198,10 +1332,10 @@ export default function TicketsPage() {
         mode={modalMode}
         form={formState}
         loading={submitting}
+        readonly={modalReadOnly}
         onClose={closeModal}
         onSubmit={submitTicket}
         onChange={(next) => setFormState((prev) => ({ ...prev, ...next }))}
-        onAddTag={addFormTag}
         onRemoveTag={removeFormTag}
         onUploadAttachments={uploadAttachments}
         onRemoveAttachment={removeAttachment}

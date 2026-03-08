@@ -91,32 +91,34 @@ export default function TicketsPanel() {
       )}
 
       {!loading && items.length > 0 && (
-        <div className="space-y-2">
-          {items.map((ticket) => {
-            const createdAt = parseFirestoreDate(ticket.createdAt);
+        <div className="max-h-96 overflow-y-auto pr-1">
+          <div className="space-y-2">
+            {items.map((ticket) => {
+              const createdAt = parseFirestoreDate(ticket.createdAt);
 
-            return (
-              <div key={ticket.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <p className="truncate text-sm font-semibold text-slate-900">{ticket.title || "Untitled ticket"}</p>
-                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${priorityStyles[ticket.priority] || priorityStyles.MEDIUM}`}>
-                    {ticket.priority}
-                  </span>
-                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusStyles[ticket.status] || statusStyles.OPEN}`}>
-                    {statusLabel(ticket.status)}
-                  </span>
-                </div>
+              return (
+                <div key={ticket.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-slate-900">{ticket.title || "Untitled ticket"}</p>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${priorityStyles[ticket.priority] || priorityStyles.MEDIUM}`}>
+                      {ticket.priority}
+                    </span>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusStyles[ticket.status] || statusStyles.OPEN}`}>
+                      {statusLabel(ticket.status)}
+                    </span>
+                  </div>
 
-                <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
-                  <span className="inline-flex items-center gap-1">
-                    <CircleDot className="h-3 w-3" />
-                    {(ticket.tags || []).slice(0, 2).join(", ") || "No tags"}
-                  </span>
-                  <span>{createdAt ? createdAt.toLocaleDateString() : "-"}</span>
+                  <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+                    <span className="inline-flex items-center gap-1">
+                      <CircleDot className="h-3 w-3" />
+                      {(ticket.tags || []).slice(0, 2).join(", ") || "No tags"}
+                    </span>
+                    <span>{createdAt ? createdAt.toLocaleDateString() : "-"}</span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
