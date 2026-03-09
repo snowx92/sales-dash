@@ -39,6 +39,7 @@ type TicketFormState = {
   tags: string[];
   attachments: string[];
   websiteLink: string;
+  videoLink: string;
 };
 
 const initialFormState: TicketFormState = {
@@ -48,14 +49,15 @@ const initialFormState: TicketFormState = {
   tags: [],
   attachments: [],
   websiteLink: "",
+  videoLink: "",
 };
 
 const statusTabs: Array<{ value: "all" | TicketStatus; label: string }> = [
-  { value: "all", label: "All" },
   { value: "OPEN", label: "Open" },
   { value: "IN_PROGRESS", label: "In Progress" },
-  { value: "RESOLVED", label: "Resolved" },
   { value: "CLOSED", label: "Closed" },
+  { value: "RESOLVED", label: "Resolved" },
+  { value: "all", label: "All" },
 ];
 
 const priorityOptions: Array<{ value: "all" | TicketPriority; label: string }> = [
@@ -110,8 +112,14 @@ const descriptionPreview = (value: string | null | undefined) => stripHtml(value
 
 const extractWebsiteLink = (desc: string | null | undefined): string | null => {
   if (!desc) return null;
-  const match = desc.match(/website link :\s*<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/i);
-  return match ? match[1] : null;
+  const match = desc.match(/website link[:\s]*([^\n\r]+)$/im);
+  return match ? match[1].trim() : null;
+};
+
+const extractVideoLink = (desc: string | null | undefined): string | null => {
+  if (!desc) return null;
+  const match = desc.match(/video link[:\s]*([^\n\r]+)$/im);
+  return match ? match[1].trim() : null;
 };
 
 const normalizeTag = (value: string) => value.trim().toLowerCase();
@@ -380,13 +388,21 @@ const filesToBase64 = async (files: FileList | File[]) => {
 };
 
 const buildRequestPayload = (form: TicketFormState): CreateTicketRequest => {
-  let desc = normalizeHtmlDescription(form.desc);
-  // Remove existing website link HTML if present
-  desc = desc.replace(/<p>website link :\s*<a[^>]+>.*?<\/a><\/p>/gi, "").trim();
+  let desc = form.desc.trim();
+  // Remove existing website link and video link if present
+  desc = desc.replace(/website link[:\s]*.+$/gim, "").trim();
+  desc = desc.replace(/video link[:\s]*.+$/gim, "").trim();
+  
+  // Add website link at the end with plain text format
   if (form.websiteLink.trim()) {
-    const linkHtml = `<p>website link : <a href="${form.websiteLink.trim()}" target="_blank" rel="noopener noreferrer">${form.websiteLink.trim()}</a></p>`;
-    desc = desc ? `${desc}${linkHtml}` : linkHtml;
+    desc = desc ? `${desc}\nwebsite link : ${form.websiteLink.trim()}` : `website link : ${form.websiteLink.trim()}`;
   }
+  
+  // Add video link at the end with plain text format
+  if (form.videoLink.trim()) {
+    desc = desc ? `${desc}\nvideo link : ${form.videoLink.trim()}` : `video link : ${form.videoLink.trim()}`;
+  }
+  
   return {
     title: form.title.trim(),
     desc,
@@ -463,18 +479,27 @@ const TicketModal = ({
           </div>
 
           <div>
-            <div className="mb-1 flex items-center justify-between">
-              <label className="block text-sm font-medium text-slate-700">Description</label>
-              <span className="text-xs text-slate-500">Builder mode</span>
-            </div>
-            <div className="ticket-editor">
-              <RichTextEditor
-                value={form.desc}
-                placeholder="Enter ticket description"
-                // editor itself doesn't support disabled prop easily, so just don't allow changes when readonly
-                onChange={readonly ? () => {} : (value) => onChange({ desc: value })}
-              />
-            </div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Description</label>
+            <textarea
+              value={form.desc}
+              onChange={(event) => onChange({ desc: event.target.value })}
+              placeholder="Enter ticket description"
+              disabled={readonly}
+              rows={5}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Video Link (Optional)</label>
+            <input
+              value={form.videoLink}
+              onChange={(event) => onChange({ videoLink: event.target.value })}
+              placeholder="https://youtube.com/watch?v=..."
+              type="url"
+              disabled={readonly}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+            />
           </div>
 
           <div>
@@ -619,7 +644,7 @@ export default function TicketsPage() {
     return () => unsub();
   }, []);
 
-  const [statusFilter, setStatusFilter] = useState<"all" | TicketStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | TicketStatus>("OPEN");
   const [priorityFilter, setPriorityFilter] = useState<"all" | TicketPriority>("all");
   const [ownerFilter, setOwnerFilter] = useState<"all" | string>("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -756,6 +781,7 @@ export default function TicketsPage() {
       tags: normalizedTicket.tags,
       attachments: normalizedTicket.attachments,
       websiteLink: extractWebsiteLink(normalizedTicket.desc) || "",
+      videoLink: extractVideoLink(normalizedTicket.desc) || "",
     });
     setModalOpen(true);
   };
@@ -1090,6 +1116,22 @@ export default function TicketsPage() {
                               </a>
                             </div>
                           )}
+                          {extractVideoLink(ticket.desc) && (
+                            <div className="mt-1">
+                              <a
+                                href={extractVideoLink(ticket.desc)!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 hover:underline"
+                              >
+                                <span>Video</span>
+                                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.878v4.244a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </a>
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 align-top">
                           <span className="text-sm font-medium text-slate-800">{ownerName}</span>
@@ -1239,6 +1281,23 @@ export default function TicketsPage() {
                             <span>Website Link</span>
                             <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        </div>
+                      )}
+
+                      {extractVideoLink(ticket.desc) && (
+                        <div className="mb-2">
+                          <a
+                            href={extractVideoLink(ticket.desc)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-sm text-emerald-600 hover:text-emerald-800 hover:underline"
+                          >
+                            <span>Video Link</span>
+                            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.878v4.244a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                           </a>
                         </div>
